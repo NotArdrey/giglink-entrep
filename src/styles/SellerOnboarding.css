@@ -1,0 +1,270 @@
+/* SellerOnboarding.css - multi-step seller profile setup */
+
+.onboarding-page {
+  min-height: 100vh;
+  background: linear-gradient(140deg, #f8fffb 0%, #eef5ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+}
+
+.onboarding-page-floating {
+  min-height: auto;
+  background: transparent;
+  padding: 0;
+}
+
+.onboarding-card {
+  width: min(760px, 96vw);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+  padding: 1.2rem;
+  position: relative;
+}
+
+.onboarding-page-floating .onboarding-card {
+  width: min(760px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.onboarding-header h1 {
+  margin: 0;
+  color: #111827;
+}
+
+.onboarding-header p {
+  margin: 0.25rem 0 0;
+  color: #6b7280;
+}
+
+.onboarding-close-button {
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.onboarding-close-button:hover {
+  background: #f3f4f6;
+}
+
+.onboarding-step {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.onboarding-step h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+  color: #111827;
+}
+
+.onboarding-step label,
+.field-label {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 0.35rem;
+}
+
+.onboarding-step input,
+.onboarding-step select,
+.onboarding-step textarea {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  min-height: 42px;
+  padding: 0.58rem 0.65rem;
+  font-family: inherit;
+}
+
+.onboarding-step textarea {
+  resize: vertical;
+  min-height: 104px;
+}
+
+.onboarding-step select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.toggle-button {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  border-radius: 8px;
+  padding: 0.58rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.toggle-button.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.93rem;
+  color: #1f2937;
+}
+
+.payment-extra-fields {
+  margin-top: 0.4rem;
+  padding: 0.8rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.qr-upload-hint {
+  margin: 0;
+  font-size: 0.83rem;
+  color: #64748b;
+}
+
+.setup-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.onboarding-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: 1.1rem;
+}
+
+.onboarding-error {
+  margin: 0.8rem 0 0;
+  color: #b91c1c;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.back-button,
+.next-button,
+.submit-button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.62rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.back-button {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.next-button,
+.submit-button {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.next-button:hover,
+.submit-button:hover {
+  background: #1d4ed8;
+}
+
+.success-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 420;
+}
+
+.success-modal-content {
+  width: min(560px, 92vw);
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: center;
+  text-align: left;
+  padding: 1.5rem;
+}
+
+.success-modal-content h3 {
+  margin: 0;
+  color: #14532d;
+  font-size: 24px;
+}
+
+.success-modal-content p {
+  margin: 0.5rem 0 0;
+  color: #4b5563;
+  font-size: 15px;
+}
+
+.success-modal-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.success-primary-btn,
+.success-secondary-btn {
+  border: none;
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.success-secondary-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.success-primary-btn {
+  background: #2563eb;
+  color: #fff;
+}
+
+.success-primary-btn:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 560px) {
+  .onboarding-card {
+    padding: 0.95rem;
+  }
+
+  .onboarding-actions {
+    flex-direction: column;
+  }
+
+  .success-modal-actions {
+    flex-direction: column;
+  }
+}

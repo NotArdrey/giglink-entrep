@@ -1,0 +1,62 @@
+/* App.css - Main Application Container */
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Default tokens. These are overridden by theme classes on body. */
+body {
+  --bg-page: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-soft: #f1f5f9;
+  --border-default: #dbe3ee;
+  --text-primary: #1f2937;
+  --text-secondary: #64748b;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --input-placeholder: #9ca3af;
+  --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+body.app-theme-light {
+  color-scheme: light;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* Softer gray dark palette for eye comfort. */
+body.app-theme-dark {
+  --bg-page: #2f343c;
+  --bg-surface: #3a414b;
+  --bg-surface-soft: #464e5a;
+  --border-default: #5f6875;
+  --text-primary: #e9edf4;
+  --text-secondary: #c2cbd8;
+  --input-bg: #464e5a;
+  --input-border: #707b8b;
+  --input-placeholder: #c0c8d4;
+  --shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+body.app-theme-light #root,
+body.app-theme-dark #root {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+.seller-onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.58);
+  backdrop-filter: blur(2px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+

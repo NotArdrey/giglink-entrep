@@ -1,0 +1,153 @@
+.account-settings-page {
+  min-height: 100vh;
+  background: #f9f9f9;
+  padding: 28px 16px;
+  display: flex;
+  justify-content: center;
+  color: #1f2937;
+}
+
+.account-settings-page.dark-mode {
+  background: #111827;
+  color: #f3f4f6;
+}
+
+.account-settings-card {
+  width: min(820px, 100%);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px rgba(44, 62, 80, 0.08);
+  padding: 22px;
+}
+
+.account-settings-page.dark-mode .account-settings-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.back-profile-btn {
+  border: 1px solid #2c3e50;
+  color: #2c3e50;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.account-settings-page.dark-mode .back-profile-btn {
+  border-color: #93c5fd;
+  color: #93c5fd;
+}
+
+.account-settings-card h1 {
+  margin: 14px 0 18px;
+  color: #2c3e50;
+}
+
+.account-owner {
+  margin: -8px 0 14px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.account-settings-page.dark-mode .account-settings-card h1 {
+  color: #dbeafe;
+}
+
+.account-settings-page.dark-mode .account-owner {
+  color: #94a3b8;
+}
+
+.settings-section {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  display: grid;
+  gap: 8px;
+}
+
+.account-settings-page.dark-mode .settings-section {
+  background: #111827;
+  border-color: #374151;
+}
+
+.settings-section h2 {
+  margin: 0 0 4px;
+  color: #2c3e50;
+  font-size: 18px;
+}
+
+.account-settings-page.dark-mode .settings-section h2 {
+  color: #dbeafe;
+}
+
+.settings-section label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.account-settings-page.dark-mode .settings-section label {
+  color: #cbd5e1;
+}
+
+.settings-section input,
+.settings-section select {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
+  font-family: inherit;
+}
+
+.account-settings-page.dark-mode .settings-section input,
+.account-settings-page.dark-mode .settings-section select {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #f3f4f6;
+}
+
+.error-text {
+  margin: 0;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.primary-action-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #27ae60;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-action-btn:hover {
+  background: #219653;
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.success-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: #27ae60;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}

@@ -1,0 +1,300 @@
+/* BookingCalendarModal.css - Client booking calendar and slots */
+
+.calendar-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 330;
+}
+
+.calendar-modal-content {
+  position: relative;
+  width: min(980px, 96vw);
+  max-height: 94vh;
+  overflow: auto;
+  background: var(--bg-surface);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: var(--text-primary);
+}
+
+@media (min-width: 1100px) {
+  .calendar-modal-content {
+    width: min(1080px, 95vw);
+    padding: 1.8rem;
+  }
+}
+
+.calendar-close-button {
+  position: absolute;
+  right: 0.8rem;
+  top: 0.8rem;
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.calendar-title {
+  margin: 0 0 0.95rem;
+  color: var(--text-primary);
+}
+
+.month-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.month-heading {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.month-nav-btn {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--bg-surface-soft);
+  color: var(--text-primary);
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+}
+
+.calendar-grid-wrap {
+  background: var(--bg-surface-soft);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 0.95rem;
+}
+
+.calendar-week-headings,
+.calendar-date-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.calendar-week-heading {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.calendar-day-cell {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 0.45rem;
+  min-height: 76px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.calendar-day-cell .day-number {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.calendar-day-cell .day-slots {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #27ae60;
+}
+
+.calendar-day-cell.adjacent-month {
+  opacity: 0.45;
+}
+
+.calendar-day-cell.selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.calendar-day-cell.disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.calendar-day-cell.disabled .day-slots {
+  color: var(--text-secondary);
+}
+
+.selected-date-label {
+  margin: 0.75rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.manual-scheduling-note {
+  margin-top: 1rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.slot-section {
+  margin-top: 1rem;
+}
+
+.slot-section h3 {
+  margin: 0 0 0.55rem;
+  color: var(--text-primary);
+}
+
+.slot-helper-text {
+  margin: 0.45rem 0;
+  color: var(--text-secondary);
+}
+
+.slot-list-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+}
+
+.calendar-slot {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.78rem 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.calendar-slot.available {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.calendar-slot.full {
+  background: var(--bg-surface-soft);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.calendar-slot.selected {
+  background: #065f46;
+  border-color: #064e3b;
+  box-shadow: 0 0 0 3px rgba(6, 95, 70, 0.34);
+}
+
+.calendar-slot-label {
+  display: inline-block;
+}
+
+.calendar-slot-check {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.calendar-confirm-button {
+  margin-top: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calendar-confirm-button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.booking-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 340;
+}
+
+.booking-confirm-content {
+  width: min(560px, 90vw);
+  background: var(--bg-surface);
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  padding: 1.25rem;
+  color: var(--text-primary);
+}
+
+.booking-confirm-content h3 {
+  margin: 0 0 0.8rem;
+  font-size: 22px;
+}
+
+.booking-confirm-content p {
+  margin: 0.5rem 0;
+  font-size: 15px;
+}
+
+.confirm-note {
+  color: var(--text-secondary);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.confirm-cancel-btn,
+.confirm-submit-btn {
+  border: none;
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 0.62rem 1rem;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirm-cancel-btn {
+  background: var(--bg-surface-soft);
+  color: var(--text-primary);
+}
+
+.confirm-submit-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+@media (max-width: 720px) {
+  .calendar-day-cell {
+    min-height: 56px;
+    padding: 0.35rem;
+  }
+
+  .calendar-day-cell .day-slots {
+    font-size: 0.64rem;
+  }
+}

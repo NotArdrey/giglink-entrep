@@ -1,0 +1,239 @@
+.portfolio-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1100;
+}
+
+.portfolio-modal-card {
+  width: min(980px, 96vw);
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow: hidden;
+}
+
+.portfolio-modal-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.portfolio-modal-header h3 {
+  margin: 0;
+  font-size: 24px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.portfolio-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.portfolio-modal-close:hover {
+  color: #1f2937;
+}
+
+.portfolio-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 700px) {
+  .portfolio-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Preview Card */
+.portfolio-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.preview-header-section {
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #2563eb;
+  margin-bottom: 12px;
+}
+
+.preview-header-section h2 {
+  margin: 0 0 4px;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.preview-service {
+  margin: 0 0 4px;
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.preview-rating {
+  margin: 0;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.preview-section {
+  margin-bottom: 12px;
+}
+
+.preview-section h4 {
+  margin: 0 0 4px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.preview-section p {
+  margin: 0;
+  color: #374151;
+  font-size: 11px;
+}
+
+.preview-section.qr-section {
+  text-align: center;
+  margin: 12px 0;
+}
+
+.preview-qr {
+  width: 100px;
+  height: 100px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+.preview-footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 9px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+/* Info Box */
+.portfolio-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+
+.portfolio-info-box p {
+  margin: 0;
+  font-size: 14px;
+  color: #1e40af;
+  line-height: 1.5;
+}
+
+.portfolio-info-box p strong {
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+/* Modal Actions */
+.portfolio-modal-actions {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.portfolio-cancel-btn,
+.portfolio-download-btn {
+  border: none;
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.portfolio-cancel-btn {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.portfolio-cancel-btn:hover {
+  background: #d1d5db;
+}
+
+.portfolio-download-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.portfolio-download-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+@media (max-width: 600px) {
+  .portfolio-modal-card {
+    width: 100%;
+    max-height: none;
+  }
+
+  .portfolio-modal-body {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .portfolio-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .portfolio-cancel-btn,
+  .portfolio-download-btn {
+    width: 100%;
+  }
+}

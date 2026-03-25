@@ -1,0 +1,222 @@
+/* WorkerDetailModal.css - Worker Detail Modal Styling */
+
+.worker-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 250;
+}
+
+.worker-modal-content {
+  background-color: #ffffff;
+  border-radius: 0.8rem;
+  max-width: 820px;
+  width: min(94vw, 820px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  animation: slideInModal 0.3s ease;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+@keyframes slideInModal {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Close Button */
+.worker-modal-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.3s ease;
+  z-index: 10;
+}
+
+.worker-modal-close-button:hover {
+  color: #1f2937;
+}
+
+/* Worker Photo */
+.worker-modal-image-container {
+  width: 100%;
+  height: 350px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+}
+
+.worker-modal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Worker Details */
+.worker-modal-details {
+  padding: 2.2rem;
+}
+
+.worker-modal-name {
+  font-size: 1.8rem;
+  color: #1f2937;
+  margin: 0 0 0.5rem 0;
+  font-weight: 700;
+}
+
+.worker-modal-service {
+  font-size: 1.18rem;
+  color: #6b7280;
+  margin: 0 0 1rem 0;
+  font-weight: 500;
+}
+
+/* Rating */
+.worker-modal-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.worker-modal-stars {
+  color: #fbbf24;
+  font-size: 1rem;
+  letter-spacing: 2px;
+}
+
+.worker-modal-rating-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.worker-modal-reviews {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+/* Rate Basis Badge */
+.worker-modal-rate-badge {
+  margin-bottom: 1.5rem;
+}
+
+.badge-per-hour,
+.badge-per-day,
+.badge-per-project {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-per-hour {
+  background-color: #3b82f6;
+}
+
+.badge-per-day {
+  background-color: #10b981;
+}
+
+.badge-per-project {
+  background-color: #f59e0b;
+}
+
+/* Description */
+.worker-modal-description {
+  font-size: 1.06rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+/* Info Rows */
+.worker-modal-info {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 1rem;
+}
+
+.worker-modal-label {
+  font-weight: 600;
+  color: #374151;
+}
+
+.worker-modal-value {
+  color: #6b7280;
+}
+
+/* Book Now Button */
+.worker-modal-book-button {
+  width: 100%;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  min-height: 48px;
+  padding: 0.95rem 1rem;
+  border-radius: 0.4rem;
+  font-size: 1.08rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 2rem;
+}
+
+.worker-modal-book-button:hover {
+  background-color: #1d4ed8;
+  transform: scale(1.02);
+}
+
+.worker-modal-book-button:active {
+  transform: scale(0.98);
+}
+
+/* Responsive: Mobile */
+@media (max-width: 480px) {
+  .worker-modal-content {
+    width: 95%;
+  }
+
+  .worker-modal-image-container {
+    height: 250px;
+  }
+
+  .worker-modal-details {
+    padding: 1.5rem;
+  }
+
+  .worker-modal-name {
+    font-size: 1.5rem;
+  }
+
+  .worker-modal-service {
+    font-size: 1rem;
+  }
+
+  .worker-modal-book-button {
+    padding: 0.8rem;
+    font-size: 1rem;
+  }
+}

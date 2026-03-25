@@ -1,0 +1,577 @@
+/**
+ * SimulatedChat.css
+ * 
+ * Quick-chat interface styling for responding to inquiries
+ * Navy Blue (#2C3E50) + Emerald Green (#27AE60) theme
+ */
+
+/* ============ OVERLAY ============ */
+
+.chat-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 999;
+  padding: 0;
+  animation: fadeInOverlay 0.3s ease;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chat-modal {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 500px;
+  width: 100%;
+  height: 80vh;
+  max-height: 80vh;
+  animation: slideUpModal 0.4s ease;
+}
+
+@keyframes slideUpModal {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 768px) {
+  .chat-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  
+  .chat-modal {
+    border-radius: 16px;
+    height: auto;
+    max-height: 600px;
+  }
+}
+
+/* ============ HEADER ============ */
+
+.chat-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid #eceff1;
+  flex-shrink: 0;
+}
+
+.chat-client-info {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.chat-client-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.chat-client-info h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.chat-client-info p {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin: 2px 0 0 0;
+}
+
+.chat-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.chat-close-btn:hover {
+  color: #2c3e50;
+  transform: scale(1.1);
+}
+
+/* ============ MESSAGES ============ */
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f9f9f9;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  animation: messageSlideIn 0.3s ease;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-client {
+  align-self: flex-start;
+}
+
+.message-seller {
+  align-self: flex-end;
+}
+
+.message-text {
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.message-client .message-text {
+  background: white;
+  color: #333;
+  border: 1px solid #eceff1;
+}
+
+.message-seller .message-text {
+  background: #27ae60;
+  color: white;
+}
+
+.message-time {
+  font-size: 11px;
+  color: #95a5a6;
+  margin-top: 4px;
+  padding: 0 12px;
+}
+
+.message-client .message-time {
+  text-align: left;
+}
+
+.message-seller .message-time {
+  text-align: right;
+}
+
+/* ============ QUICK REPLIES ============ */
+
+.quick-replies {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+  border-top: 1px solid #eceff1;
+  flex-shrink: 0;
+}
+
+@media (max-width: 500px) {
+  .quick-replies {
+    grid-template-columns: 1fr;
+  }
+}
+
+.quick-reply-btn {
+  padding: 8px 12px;
+  background: #f0f0f0;
+  color: #2c3e50;
+  border: 1px solid #eceff1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-reply-btn:hover {
+  background: #27ae60;
+  color: white;
+  border-color: #27ae60;
+}
+
+/* ============ INPUT AREA ============ */
+
+.chat-input-area {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: white;
+  border-top: 1px solid #eceff1;
+  flex-shrink: 0;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #eceff1;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: #27ae60;
+  box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.1);
+}
+
+.chat-input::placeholder {
+  color: #95a5a6;
+}
+
+.chat-send-btn {
+  padding: 10px 16px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chat-send-btn:hover:not(:disabled) {
+  background: #229954;
+}
+
+.chat-send-btn:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+/* ============ SCROLLBAR ============ */
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #bdc3c7;
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #95a5a6;
+}
+
+/* ============ QUOTE MESSAGE ============ */
+
+.quote-message {
+  background: linear-gradient(135deg, #f9f9f9 0%, #ffffff 100%);
+  border: 2px solid #27ae60;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quote-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #27ae60;
+  font-size: 13px;
+}
+
+.quote-icon {
+  font-size: 16px;
+}
+
+.quote-label {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quote-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quote-amount {
+  font-size: 20px;
+  font-weight: 700;
+  color: #27ae60;
+}
+
+.quote-description {
+  font-size: 13px;
+  color: #555;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ============ QUOTE MODAL OVERLAY ============ */
+
+.quote-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeInOverlay 0.3s ease;
+}
+
+.quote-modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideUpModal 0.3s ease;
+}
+
+/* ============ QUOTE MODAL HEADER ============ */
+
+.quote-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eceff1;
+  flex-shrink: 0;
+}
+
+.quote-modal-header h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.quote-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #7f8c8d;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.quote-modal-close:hover {
+  color: #2c3e50;
+  transform: scale(1.1);
+}
+
+/* ============ QUOTE MODAL CONTENT ============ */
+
+.quote-modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.quote-input,
+.quote-textarea {
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid #eceff1;
+  border-radius: 6px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.quote-textarea {
+  min-height: 120px;
+}
+
+.quote-input:focus,
+.quote-textarea:focus {
+  outline: none;
+  border-color: #27ae60;
+  box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+}
+
+.quote-textarea::placeholder,
+.quote-input::placeholder {
+  color: #95a5a6;
+}
+
+/* ============ QUOTE PREVIEW ============ */
+
+.quote-preview {
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #eceff1;
+}
+
+.preview-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.3px;
+}
+
+.quote-preview-card {
+  background: white;
+  border: 2px solid #27ae60;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preview-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: #27ae60;
+}
+
+.preview-desc {
+  font-size: 13px;
+  color: #555;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ============ QUOTE MODAL ACTIONS ============ */
+
+.quote-modal-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f9f9f9;
+  border-top: 1px solid #eceff1;
+  flex-shrink: 0;
+}
+
+.btn-cancel,
+.btn-send-quote {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-cancel {
+  background: #eceff1;
+  color: #2c3e50;
+}
+
+.btn-cancel:hover {
+  background: #bdc3c7;
+}
+
+.btn-send-quote {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-send-quote:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-send-quote:disabled {
+  background: #bdc3c7;
+  color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* ============ SEND QUOTE BUTTON STYLING ============ */
+
+.send-quote-btn {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.send-quote-btn:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}

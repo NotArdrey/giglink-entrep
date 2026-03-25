@@ -1,0 +1,94 @@
+/* BookingNotification.css - Booking Notification Styling */
+
+.booking-notification {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  animation: slideInTopBooking 0.35s ease;
+}
+
+@keyframes slideInTopBooking {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -18px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.booking-notification-content {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  padding: 1.2rem 1.8rem;
+  border-radius: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  box-shadow: 0 8px 16px rgba(16, 185, 129, 0.4);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.booking-notification-icon {
+  font-size: 1.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+}
+
+.booking-notification-message {
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Responsive: Tablet */
+@media (max-width: 768px) {
+  .booking-notification {
+    top: 1rem;
+    width: calc(100% - 2rem);
+  }
+
+  .booking-notification-content {
+    padding: 1rem 1.5rem;
+    font-size: 0.9rem;
+    gap: 1rem;
+  }
+
+  .booking-notification-icon {
+    font-size: 1.5rem;
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Responsive: Mobile */
+@media (max-width: 480px) {
+  .booking-notification {
+    top: 0.8rem;
+    left: 1rem;
+    transform: none;
+    width: calc(100% - 2rem);
+  }
+
+  .booking-notification-content {
+    padding: 0.9rem 1.2rem;
+    font-size: 0.85rem;
+    gap: 0.8rem;
+  }
+
+  .booking-notification-icon {
+    font-size: 1.3rem;
+    width: 26px;
+    height: 26px;
+  }
+}
