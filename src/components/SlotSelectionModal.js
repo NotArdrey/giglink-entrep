@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/SlotSelectionModal.css';
+
 
 /**
  * SlotSelectionModal Component
@@ -23,6 +23,7 @@ import '../styles/SlotSelectionModal.css';
 const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
   const [selectedDate, setSelectedDate] = useState(''); // ISO format: YYYY-MM-DD
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
+  const [hoveredKey, setHoveredKey] = useState('');
   
   // ============ SIMULATED DATA ============
   // In production, this would come from the worker's SellerScheduleModal data
@@ -158,31 +159,168 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
   const availableSlots = getAvailableSlotsForSelected();
   const dateRange = getDateRange();
   const dayName = selectedDate ? getDayName(selectedDate) : '';
+
+  const styles = {
+    overlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.54)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 280,
+      padding: '1rem',
+    },
+    card: {
+      width: 'min(96vw, 980px)',
+      maxHeight: '94vh',
+      overflowY: 'auto',
+      borderRadius: '0.9rem',
+      border: '1px solid #e2e8f0',
+      backgroundColor: '#ffffff',
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.25)',
+    },
+    header: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0.85rem 1rem',
+      borderBottom: '1px solid #e2e8f0',
+      backgroundColor: '#f8fafc',
+    },
+    subtitle: { margin: '0.2rem 0 0', color: '#64748b' },
+    closeButton: {
+      width: '34px',
+      height: '34px',
+      borderRadius: '999px',
+      border: '1px solid #cbd5e1',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+    },
+    content: {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(260px, 1fr) minmax(320px, 1.2fr)',
+      gap: '0.8rem',
+      padding: '1rem',
+    },
+    section: {
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.65rem',
+      backgroundColor: '#ffffff',
+      padding: '0.75rem',
+    },
+    dateGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(74px, 1fr))',
+      gap: '0.45rem',
+      marginTop: '0.55rem',
+    },
+    dateButton: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.55rem',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+      padding: '0.45rem',
+      textAlign: 'center',
+      color: '#1e293b',
+    },
+    dateDay: { fontSize: '0.78rem', color: '#64748b' },
+    dateNum: { fontSize: '1.05rem', fontWeight: 700 },
+    noSlots: {
+      border: '1px dashed #cbd5e1',
+      borderRadius: '0.55rem',
+      padding: '0.8rem',
+      color: '#64748b',
+      textAlign: 'center',
+    },
+    hint: { marginTop: '0.2rem', fontSize: '0.86rem' },
+    slotList: { display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.55rem' },
+    slotButton: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.55rem',
+      backgroundColor: '#ffffff',
+      padding: '0.6rem',
+      cursor: 'pointer',
+      textAlign: 'left',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '0.5rem',
+    },
+    slotTime: { fontWeight: 700, color: '#0f172a' },
+    slotInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
+    slotsCount: { color: '#166534', fontSize: '0.84rem' },
+    selectedIndicator: { color: '#166534', fontWeight: 700, fontSize: '0.82rem' },
+    fullText: { color: '#64748b', fontWeight: 700 },
+    placeholder: {
+      border: '1px dashed #cbd5e1',
+      borderRadius: '0.55rem',
+      minHeight: '180px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#64748b',
+      textAlign: 'center',
+      padding: '0.8rem',
+    },
+    confirmationBar: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '0.5rem',
+      flexWrap: 'wrap',
+      borderTop: '1px solid #e2e8f0',
+      backgroundColor: '#eff6ff',
+      padding: '0.8rem 1rem',
+      alignItems: 'center',
+    },
+    confirmButton: {
+      border: 'none',
+      borderRadius: '0.55rem',
+      backgroundColor: '#2563eb',
+      color: '#ffffff',
+      fontWeight: 700,
+      cursor: 'pointer',
+      padding: '0.55rem 0.85rem',
+    },
+    hintBar: {
+      borderTop: '1px solid #e2e8f0',
+      backgroundColor: '#f8fafc',
+      color: '#64748b',
+      padding: '0.7rem 1rem',
+      fontWeight: 600,
+    },
+  };
   
   return (
-    <div className="slot-selection-overlay">
-      <div className="slot-selection-card">
+    <div style={styles.overlay}>
+      <div style={styles.card}>
         {/* Header */}
-        <div className="slot-header">
+        <div style={styles.header}>
           <h2>Select a Slot</h2>
-          <p className="slot-subtitle">Choose your preferred date and time</p>
-          <button className="slot-close-btn" onClick={onCancel}>✕</button>
+          <p style={styles.subtitle}>Choose your preferred date and time</p>
+          <button style={styles.closeButton} onClick={onCancel}>✕</button>
         </div>
         
         {/* Main Content */}
-        <div className="slot-content">
+        <div style={styles.content}>
           {/* LEFT: Calendar Date Picker */}
-          <div className="slot-calendar-section">
+          <div style={styles.section}>
             <h3>Select Date</h3>
-            <div className="date-picker-grid">
+            <div style={styles.dateGrid}>
               {dateRange.map((dateString) => (
                 <button
                   key={dateString}
-                  className={`date-picker-btn ${selectedDate === dateString ? 'active' : ''}`}
+                  style={{
+                    ...styles.dateButton,
+                    ...(selectedDate === dateString ? { backgroundColor: '#dbeafe', borderColor: '#2563eb' } : {}),
+                    ...(hoveredKey === `date-${dateString}` && selectedDate !== dateString ? { backgroundColor: '#f8fafc' } : {}),
+                  }}
                   onClick={() => handleDateSelect(dateString)}
+                  onMouseEnter={() => setHoveredKey(`date-${dateString}`)}
+                  onMouseLeave={() => setHoveredKey('')}
                 >
-                  <div className="date-day">{getDayName(dateString).substring(0, 3)}</div>
-                  <div className="date-num">
+                  <div style={styles.dateDay}>{getDayName(dateString).substring(0, 3)}</div>
+                  <div style={styles.dateNum}>
                     {new Date(dateString + 'T00:00:00').getUTCDate()}
                   </div>
                 </button>
@@ -191,48 +329,48 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
           </div>
           
           {/* RIGHT: Time Slot Selector */}
-          <div className="slot-timeslot-section">
+          <div style={styles.section}>
             {selectedDate ? (
               <>
                 <h3>Available Slots on {formatDate(selectedDate)}</h3>
                 
                 {availableSlots.length === 0 ? (
-                  <div className="no-slots-message">
+                  <div style={styles.noSlots}>
                     <p>No available slots on {dayName}</p>
-                    <p className="hint">Please select another date</p>
+                    <p style={styles.hint}>Please select another date</p>
                   </div>
                 ) : (
-                  <div className="timeslot-list">
+                  <div style={styles.slotList}>
                     {availableSlots.map((timeBlock) => (
                       // Show explicit selected state so users can clearly see chosen slot.
                       <button
                         key={timeBlock.id}
-                        className={`timeslot-btn ${
-                          timeBlock.slotsLeft === 0 ? 'full' : 'available'
-                        } ${
-                          selectedTimeSlot?.id === timeBlock.id ? 'selected' : ''
-                        }`}
+                        style={{
+                          ...styles.slotButton,
+                          ...(timeBlock.slotsLeft === 0 ? { backgroundColor: '#f1f5f9', color: '#94a3b8', cursor: 'not-allowed' } : { backgroundColor: '#ecfdf5', borderColor: '#86efac' }),
+                          ...(selectedTimeSlot?.id === timeBlock.id ? { borderColor: '#16a34a', boxShadow: 'inset 0 0 0 1px #16a34a' } : {}),
+                        }}
                         onClick={() => handleSlotSelect(timeBlock)}
                         disabled={timeBlock.slotsLeft === 0}
                         aria-pressed={selectedTimeSlot?.id === timeBlock.id}
                       >
-                        <div className="timeslot-time">
+                        <div style={styles.slotTime}>
                           {timeBlock.startTime} - {timeBlock.endTime}
                         </div>
-                        <div className="timeslot-slots">
+                        <div style={styles.slotInfo}>
                           {timeBlock.slotsLeft > 0 ? (
                             <>
-                              <span className="slots-count">
+                              <span style={styles.slotsCount}>
                                 {timeBlock.slotsLeft} of {timeBlock.capacity} slots left
                               </span>
                               {selectedTimeSlot?.id === timeBlock.id && (
-                                <span className="slot-selected-indicator" aria-hidden="true">
+                                <span style={styles.selectedIndicator} aria-hidden="true">
                                   ✓ Selected
                                 </span>
                               )}
                             </>
                           ) : (
-                            <span className="slots-full">FULL</span>
+                            <span style={styles.fullText}>FULL</span>
                           )}
                         </div>
                       </button>
@@ -241,7 +379,7 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
                 )}
               </>
             ) : (
-              <div className="slot-placeholder">
+              <div style={styles.placeholder}>
                 <p>👈 Select a date to view available slots</p>
               </div>
             )}
@@ -250,16 +388,21 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
         
         {/* Selection Summary and Confirm Button */}
         {selectedDate && selectedTimeSlot && (
-          <div className="slot-confirmation-bar">
-            <div className="confirmation-summary">
+          <div style={styles.confirmationBar}>
+            <div>
               <p>
                 <strong>✓ Selected:</strong> {formatDate(selectedDate)} at{' '}
                 {selectedTimeSlot.startTime}
               </p>
             </div>
             <button
-              className="btn-confirm-slot"
+              style={{
+                ...styles.confirmButton,
+                backgroundColor: hoveredKey === 'confirm-slot' ? '#1d4ed8' : '#2563eb',
+              }}
               onClick={handleConfirm}
+              onMouseEnter={() => setHoveredKey('confirm-slot')}
+              onMouseLeave={() => setHoveredKey('')}
             >
               Confirm & Continue to Payment
             </button>
@@ -268,7 +411,7 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
         
         {/* Show message if partial selection */}
         {selectedDate && !selectedTimeSlot && (
-          <div className="slot-hint-bar">
+          <div style={styles.hintBar}>
             <p>⏰ Please select a time slot above</p>
           </div>
         )}

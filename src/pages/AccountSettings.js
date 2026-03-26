@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import '../styles/AccountSettings.css';
+
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 const BULACAN_CODE = '031400000';
@@ -33,6 +33,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
   const [passwordError, setPasswordError] = useState('');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [hoveredButton, setHoveredButton] = useState('');
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -132,17 +133,96 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
     setTimeout(() => setShowSuccessToast(false), 2400);
   };
 
+  const styles = {
+    page: {
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      padding: '1rem',
+    },
+    card: {
+      width: 'min(96vw, 760px)',
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.8rem',
+      boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+      padding: '1rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1rem',
+    },
+    backButton: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.5rem',
+      backgroundColor: '#ffffff',
+      padding: '0.5rem 0.7rem',
+      cursor: 'pointer',
+      width: 'fit-content',
+      fontWeight: 600,
+    },
+    ownerText: { margin: 0, color: '#64748b' },
+    section: {
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.65rem',
+      padding: '0.9rem',
+      backgroundColor: '#f8fafc',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.45rem',
+    },
+    input: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.45rem',
+      padding: '0.5rem 0.58rem',
+      backgroundColor: '#ffffff',
+      fontSize: '0.95rem',
+    },
+    errorText: {
+      color: '#b91c1c',
+      backgroundColor: '#fee2e2',
+      borderRadius: '0.4rem',
+      padding: '0.35rem 0.5rem',
+      margin: 0,
+      fontSize: '0.9rem',
+    },
+    actionButton: {
+      border: 'none',
+      borderRadius: '0.5rem',
+      backgroundColor: '#2563eb',
+      color: '#ffffff',
+      padding: '0.58rem 0.85rem',
+      fontWeight: 700,
+      cursor: 'pointer',
+      width: 'fit-content',
+      marginTop: '0.2rem',
+    },
+    toast: {
+      position: 'fixed',
+      bottom: '1rem',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      borderRadius: '0.6rem',
+      backgroundColor: '#16a34a',
+      color: '#ffffff',
+      padding: '0.65rem 0.95rem',
+      fontWeight: 700,
+      zIndex: 200,
+    },
+  };
+
   return (
-    <div className="account-settings-page">
-      <div className="account-settings-card">
-        <button className="back-profile-btn" onClick={onBackToProfile}>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <button style={styles.backButton} onClick={onBackToProfile}>
           ← Back to Profile
         </button>
 
         <h1>Account & Privacy Settings</h1>
-        <p className="account-owner">Managing account for: {profileName}</p>
+        <p style={styles.ownerText}>Managing account for: {profileName}</p>
 
-        <section className="settings-section">
+        <section style={styles.section}>
           <h2>Personal Info</h2>
           <label htmlFor="email">Email</label>
           <input
@@ -150,6 +230,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            style={styles.input}
           />
 
           <label htmlFor="phone">Phone</label>
@@ -158,10 +239,11 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             type="tel"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
+            style={styles.input}
           />
 
           <label htmlFor="city">City (Bulacan API)</label>
-          <select id="city" value={selectedCityCode} onChange={handleCityChange}>
+          <select id="city" value={selectedCityCode} onChange={handleCityChange} style={styles.input}>
             <option value="">Select city</option>
             {cities.map((item) => (
               <option key={item.code} value={item.code}>
@@ -176,6 +258,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             value={selectedBarangayCode}
             onChange={handleBarangayChange}
             disabled={!selectedCityCode}
+            style={styles.input}
           >
             <option value="">{selectedCityCode ? 'Select barangay' : 'Select city first'}</option>
             {barangays.map((item) => (
@@ -185,14 +268,19 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             ))}
           </select>
 
-          {locationError && <p className="error-text">{locationError}</p>}
+          {locationError && <p style={styles.errorText}>{locationError}</p>}
 
-          <button className="primary-action-btn" onClick={handleSavePersonalInfo}>
+          <button
+            style={{ ...styles.actionButton, backgroundColor: hoveredButton === 'save-personal' ? '#1d4ed8' : '#2563eb' }}
+            onMouseEnter={() => setHoveredButton('save-personal')}
+            onMouseLeave={() => setHoveredButton('')}
+            onClick={handleSavePersonalInfo}
+          >
             Save Changes
           </button>
         </section>
 
-        <section className="settings-section">
+        <section style={styles.section}>
           <h2>Privacy & Security</h2>
 
           <label htmlFor="currentPassword">Current Password</label>
@@ -201,6 +289,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             type="password"
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
+            style={styles.input}
           />
 
           <label htmlFor="newPassword">New Password</label>
@@ -209,6 +298,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             type="password"
             value={newPassword}
             onChange={(event) => setNewPassword(event.target.value)}
+            style={styles.input}
           />
 
           <label htmlFor="confirmNewPassword">Confirm New Password</label>
@@ -217,11 +307,17 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
             type="password"
             value={confirmNewPassword}
             onChange={(event) => setConfirmNewPassword(event.target.value)}
+            style={styles.input}
           />
 
-          {passwordError && <p className="error-text">{passwordError}</p>}
+          {passwordError && <p style={styles.errorText}>{passwordError}</p>}
 
-          <button className="primary-action-btn" onClick={handlePasswordUpdate}>
+          <button
+            style={{ ...styles.actionButton, backgroundColor: hoveredButton === 'update-password' ? '#1d4ed8' : '#2563eb' }}
+            onMouseEnter={() => setHoveredButton('update-password')}
+            onMouseLeave={() => setHoveredButton('')}
+            onClick={handlePasswordUpdate}
+          >
             Update Password
           </button>
         </section>
@@ -229,7 +325,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
       </div>
 
       {showSuccessToast && (
-        <div className="success-toast">{successMessage}</div>
+        <div style={styles.toast}>{successMessage}</div>
       )}
     </div>
   );

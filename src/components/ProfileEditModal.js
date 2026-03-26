@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/ProfileEditModal.css';
+
 
 /**
  * ProfileEditModal Component
@@ -31,6 +31,7 @@ const ProfileEditModal = ({
   const [afterServicePaymentType, setAfterServicePaymentType] = useState('both');
   const [gcashNumber, setGcashNumber] = useState('');
   const [error, setError] = useState('');
+  const [hoveredButton, setHoveredButton] = useState('');
 
   useEffect(() => {
     if (profileData && isOpen) {
@@ -113,19 +114,96 @@ const ProfileEditModal = ({
 
   if (!isOpen) return null;
 
+  const styles = {
+    overlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.52)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 270,
+      padding: '1rem',
+    },
+    modal: {
+      width: 'min(95vw, 760px)',
+      maxHeight: '94vh',
+      overflowY: 'auto',
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.85rem',
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.25)',
+    },
+    header: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0.8rem 1rem',
+      borderBottom: '1px solid #e2e8f0',
+      backgroundColor: '#f8fafc',
+    },
+    close: {
+      width: '32px',
+      height: '32px',
+      borderRadius: '999px',
+      border: '1px solid #cbd5e1',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+    },
+    body: { padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' },
+    error: {
+      borderRadius: '0.45rem',
+      backgroundColor: '#fee2e2',
+      color: '#b91c1c',
+      padding: '0.45rem 0.6rem',
+      fontSize: '0.9rem',
+    },
+    field: { display: 'flex', flexDirection: 'column', gap: '0.3rem' },
+    input: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', padding: '0.5rem 0.55rem' },
+    textarea: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', padding: '0.5rem 0.55rem', resize: 'vertical' },
+    section: {
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.65rem',
+      backgroundColor: '#f8fafc',
+      padding: '0.75rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.55rem',
+    },
+    radioGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '0.5rem' },
+    optionLabel: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '0.45rem',
+      border: '1px solid #cbd5e1',
+      backgroundColor: '#ffffff',
+      borderRadius: '0.45rem',
+      padding: '0.4rem 0.5rem',
+    },
+    actions: {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: '0.5rem',
+      borderTop: '1px solid #e2e8f0',
+      padding: '0.75rem 1rem',
+    },
+    cancel: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600 },
+    save: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700 },
+  };
+
   return (
-    <div className="profile-edit-modal-overlay">
-      <div className="profile-edit-modal">
-        <div className="profile-edit-header">
+    <div style={styles.overlay}>
+      <div style={styles.modal}>
+        <div style={styles.header}>
           <h2>Edit Service Profile</h2>
-          <button className="profile-edit-close" onClick={onClose}>✕</button>
+          <button style={styles.close} onClick={onClose}>✕</button>
         </div>
 
-        <div className="profile-edit-body">
-          {error && <div className="profile-edit-error">{error}</div>}
+        <div style={styles.body}>
+          {error && <div style={styles.error}>{error}</div>}
 
           {/* Service Type */}
-          <div className="profile-edit-field">
+          <div style={styles.field}>
             <label htmlFor="edit-service-type">Service Type</label>
             <input
               id="edit-service-type"
@@ -133,11 +211,12 @@ const ProfileEditModal = ({
               value={serviceType}
               onChange={(e) => setServiceType(e.target.value)}
               placeholder="e.g., Math Tutoring, Laptop Repair"
+              style={styles.input}
             />
           </div>
 
           {/* Description */}
-          <div className="profile-edit-field">
+          <div style={styles.field}>
             <label htmlFor="edit-description">Service Description</label>
             <textarea
               id="edit-description"
@@ -145,14 +224,15 @@ const ProfileEditModal = ({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe your service and what you offer..."
               rows="4"
+              style={styles.textarea}
             />
           </div>
 
           {/* Pricing Section */}
-          <div className="profile-edit-section">
+          <div style={styles.section}>
             <h3>Pricing Model</h3>
-            <div className="pricing-model-options">
-              <label className="pricing-option">
+            <div style={styles.radioGrid}>
+              <label style={styles.optionLabel}>
                 <input
                   type="radio"
                   name="pricingModel"
@@ -162,7 +242,7 @@ const ProfileEditModal = ({
                 />
                 <span>Fixed Price</span>
               </label>
-              <label className="pricing-option">
+              <label style={styles.optionLabel}>
                 <input
                   type="radio"
                   name="pricingModel"
@@ -172,7 +252,7 @@ const ProfileEditModal = ({
                 />
                 <span>Hourly Rate</span>
               </label>
-              <label className="pricing-option">
+              <label style={styles.optionLabel}>
                 <input
                   type="radio"
                   name="pricingModel"
@@ -182,7 +262,7 @@ const ProfileEditModal = ({
                 />
                 <span>Daily Rate</span>
               </label>
-              <label className="pricing-option">
+              <label style={styles.optionLabel}>
                 <input
                   type="radio"
                   name="pricingModel"
@@ -192,7 +272,7 @@ const ProfileEditModal = ({
                 />
                 <span>Weekly Rate</span>
               </label>
-              <label className="pricing-option">
+              <label style={styles.optionLabel}>
                 <input
                   type="radio"
                   name="pricingModel"
@@ -205,7 +285,7 @@ const ProfileEditModal = ({
             </div>
 
             {pricingModel === 'fixed' && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-fixed-price">Fixed Price (₱)</label>
                 <input
                   id="edit-fixed-price"
@@ -215,12 +295,13 @@ const ProfileEditModal = ({
                   value={fixedPrice}
                   onChange={(e) => setFixedPrice(e.target.value)}
                   placeholder="e.g., 500"
+                  style={styles.input}
                 />
               </div>
             )}
 
             {pricingModel === 'hourly' && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-hourly-rate">Hourly Rate (₱/hour)</label>
                 <input
                   id="edit-hourly-rate"
@@ -230,12 +311,13 @@ const ProfileEditModal = ({
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(e.target.value)}
                   placeholder="e.g., 250"
+                  style={styles.input}
                 />
               </div>
             )}
 
             {pricingModel === 'daily' && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-daily-rate">Daily Rate (₱/day)</label>
                 <input
                   id="edit-daily-rate"
@@ -245,12 +327,13 @@ const ProfileEditModal = ({
                   value={dailyRate}
                   onChange={(e) => setDailyRate(e.target.value)}
                   placeholder="e.g., 1500"
+                  style={styles.input}
                 />
               </div>
             )}
 
             {pricingModel === 'weekly' && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-weekly-rate">Weekly Rate (₱/week)</label>
                 <input
                   id="edit-weekly-rate"
@@ -260,12 +343,13 @@ const ProfileEditModal = ({
                   value={weeklyRate}
                   onChange={(e) => setWeeklyRate(e.target.value)}
                   placeholder="e.g., 3000"
+                  style={styles.input}
                 />
               </div>
             )}
 
             {pricingModel === 'monthly' && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-monthly-rate">Monthly Rate (₱/month)</label>
                 <input
                   id="edit-monthly-rate"
@@ -275,16 +359,17 @@ const ProfileEditModal = ({
                   value={monthlyRate}
                   onChange={(e) => setMonthlyRate(e.target.value)}
                   placeholder="e.g., 12000"
+                  style={styles.input}
                 />
               </div>
             )}
           </div>
 
           {/* Payment Methods */}
-          <div className="profile-edit-section">
+          <div style={styles.section}>
             <h3>Payment Methods</h3>
-            <div className="payment-methods">
-              <label className="payment-method">
+            <div style={styles.radioGrid}>
+              <label style={styles.optionLabel}>
                 <input
                   type="checkbox"
                   checked={paymentAdvance}
@@ -292,7 +377,7 @@ const ProfileEditModal = ({
                 />
                 <span>GCash Advance (Upfront)</span>
               </label>
-              <label className="payment-method">
+              <label style={styles.optionLabel}>
                 <input
                   type="checkbox"
                   checked={paymentAfterService}
@@ -303,12 +388,13 @@ const ProfileEditModal = ({
             </div>
 
             {paymentAfterService && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-after-service-type">After Service Payment Type</label>
                 <select
                   id="edit-after-service-type"
                   value={afterServicePaymentType}
                   onChange={(e) => setAfterServicePaymentType(e.target.value)}
+                  style={styles.input}
                 >
                   <option value="both">Cash or GCash</option>
                   <option value="cash-only">Cash Only</option>
@@ -318,7 +404,7 @@ const ProfileEditModal = ({
             )}
 
             {(paymentAdvance || (paymentAfterService && afterServicePaymentType !== 'cash-only')) && (
-              <div className="profile-edit-field">
+              <div style={styles.field}>
                 <label htmlFor="edit-gcash">GCash Number</label>
                 <input
                   id="edit-gcash"
@@ -326,17 +412,23 @@ const ProfileEditModal = ({
                   value={gcashNumber}
                   onChange={(e) => setGcashNumber(e.target.value)}
                   placeholder="e.g., 09123456789"
+                  style={styles.input}
                 />
               </div>
             )}
           </div>
         </div>
 
-        <div className="profile-edit-actions">
-          <button className="profile-edit-cancel" onClick={onClose}>
+        <div style={styles.actions}>
+          <button style={styles.cancel} onClick={onClose}>
             Cancel
           </button>
-          <button className="profile-edit-save" onClick={handleSave}>
+          <button
+            style={{ ...styles.save, backgroundColor: hoveredButton === 'save-profile' ? '#1d4ed8' : '#2563eb' }}
+            onMouseEnter={() => setHoveredButton('save-profile')}
+            onMouseLeave={() => setHoveredButton('')}
+            onClick={handleSave}
+          >
             Save Changes
           </button>
         </div>

@@ -13,7 +13,7 @@ import {
   HOURLY_CALENDAR,
   COMPREHENSIVE_TRANSACTIONS,
 } from '../data/MockWorkers';
-import '../styles/MyWork.css';
+
 
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
@@ -161,6 +161,117 @@ const INITIAL_TRANSACTIONS = [
   { id: 'sub-after-4', clientName: 'Diana Ng', service: 'Monthly Tutor Plan', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 3, recurringCycle: 'monthly', subscriptionId: 'monthly-diana-2026-03', cycleOrder: 4, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
 ];
 
+const classStyles = {
+  'my-work-page': { minHeight: '100vh', background: '#f9f9f9', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
+  'my-work-header-bar': { background: 'white', borderBottom: '1px solid #eceff1', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' },
+  'my-work-title': { fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0, flex: 1, textAlign: 'center' },
+  'back-to-dashboard-btn': { padding: '10px 16px', background: 'white', color: '#2c3e50', border: '1px solid #eceff1', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'logout-btn': { padding: '10px 16px', background: 'white', color: '#e74c3c', border: '1px solid #f5c6cb', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'my-work-main': { maxWidth: '1400px', margin: '0 auto', padding: '40px 24px' },
+  'empty-state-banner': { background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fcd34d', borderRadius: '12px', padding: '40px 24px', textAlign: 'center', marginBottom: '32px' },
+  'profile-summary-card': { background: 'white', borderRadius: '12px', padding: '28px', marginBottom: '32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', alignItems: 'start' },
+  'profile-info': { display: 'flex', gap: '20px', alignItems: 'flex-start' },
+  'profile-avatar': { width: '80px', height: '80px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 700, flexShrink: 0 },
+  'profile-name-link': { border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer', fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' },
+  'service-type': { fontSize: '14px', color: '#2563eb', fontWeight: 600, margin: '0 0 8px 0' },
+  location: { fontSize: '14px', color: '#7f8c8d', margin: 0 },
+  'service-mode-tag': { margin: '8px 0 0', fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', display: 'inline-block', padding: '4px 8px', borderRadius: '999px' },
+  'profile-stats': { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
+  stat: { textAlign: 'center', padding: '16px', background: '#f9f9f9', borderRadius: '8px' },
+  'stat-number': { display: 'block', fontSize: '24px', fontWeight: 700, color: '#2563eb', marginBottom: '4px' },
+  'stat-label': { display: 'block', fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  'inquiries-section': { marginBottom: '48px' },
+  'section-header': { marginBottom: '24px' },
+  'section-subtitle': { fontSize: '14px', color: '#7f8c8d', margin: 0 },
+  'inquiries-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' },
+  'inquiry-card': { background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', transition: 'all 0.3s ease', border: '1px solid transparent' },
+  'inquiry-header': { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
+  'client-info': { display: 'flex', gap: '12px', flex: 1 },
+  'client-photo': { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 },
+  'client-rating': { fontSize: '12px', color: '#f59e0b', margin: '4px 0 0 0' },
+  'status-badge': { display: 'inline-block', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' },
+  'status-pending': { background: '#fef3c7', color: '#92400e' },
+  'status-waiting': { background: '#dbeafe', color: '#1e40af' },
+  'status-negotiating': { background: '#fecdd3', color: '#831843' },
+  'status-default': { background: '#e5e7eb', color: '#374151' },
+  'inquiry-body': { marginBottom: '16px' },
+  'inquiry-service': { fontSize: '15px', fontWeight: 600, color: '#2563eb', margin: '0 0 8px 0' },
+  'inquiry-description': { fontSize: '14px', color: '#555', margin: '0 0 12px 0', lineHeight: 1.5 },
+  'inquiry-meta': { display: 'flex', gap: '16px', fontSize: '12px', color: '#7f8c8d' },
+  'inquiry-actions': { display: 'flex', gap: '8px' },
+  'btn-respond': { flex: 1, padding: '10px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'schedule-section': { marginBottom: '48px' },
+  'week-slider': { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px' },
+  'week-nav-btn': { border: '1px solid #cbd5e1', background: '#f8fafc', color: '#1f2937', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
+  'week-range': { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', color: '#1f2937' },
+  'calendar-availability-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' },
+  'calendar-day-card': { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '16px' },
+  'calendar-date': { margin: '0 0 6px', color: '#1f2937', fontSize: '17px' },
+  'calendar-booked': { margin: '0 0 4px', color: '#166534', fontSize: '13px', fontWeight: 700 },
+  'calendar-note': { margin: 0, color: '#6b7280', fontSize: '13px' },
+  'calendar-bookings-list': { marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #d1d5db', display: 'grid', gap: '6px' },
+  'schedule-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' },
+  'schedule-day-card': { background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' },
+  'day-header': { fontSize: '18px', fontWeight: 700, color: '#2c3e50', margin: 0, paddingBottom: '12px', borderBottom: '2px solid #2563eb' },
+  'day-date': { margin: '8px 0 12px', fontSize: '12px', color: '#64748b' },
+  'no-slots': { fontSize: '14px', color: '#95a5a6', textAlign: 'center', padding: '20px 0', margin: 0 },
+  'time-blocks': { display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' },
+  'time-block': { padding: '16px', border: '1px solid #eceff1', borderRadius: '8px', background: '#f9f9f9', position: 'relative', transition: 'all 0.3s ease' },
+  'slot-available': { borderColor: '#bfdbfe', background: '#eff6ff' },
+  'slot-half': { borderColor: '#fef3c7', background: '#fffbeb' },
+  'slot-full': { borderColor: '#fecaca', background: '#fef2f2', opacity: 0.7 },
+  'block-time': { fontSize: '15px', fontWeight: 700, color: '#2c3e50', marginBottom: '8px' },
+  'block-status': { marginBottom: '8px' },
+  'slots-counter': { display: 'block', fontSize: '12px', color: '#555', marginBottom: '4px' },
+  'status-bar': { width: '100%', height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' },
+  'filled-bar': { height: '100%', background: 'linear-gradient(90deg, #2563eb, #1d4ed8)', transition: 'width 0.3s ease' },
+  'bookings-preview': { fontSize: '12px', color: '#555', margin: '8px 0', padding: '8px', background: 'rgba(0, 0, 0, 0.03)', borderRadius: '4px', display: 'grid', gap: '6px' },
+  'booking-item': { padding: 0, margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', minHeight: '24px' },
+  'booking-name': { fontWeight: 600, color: '#1f2937', fontSize: '12px', flexShrink: 0, minWidth: 'fit-content' },
+  'booking-inline-actions': { display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 },
+  'recurring-cycle-pill': { display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: '999px', background: '#dbeafe', color: '#1e3a8a', fontSize: '11px', fontWeight: 700, height: '24px', whiteSpace: 'nowrap' },
+  'lock-hint': { fontSize: '11px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' },
+  'booking-item-checks': { fontSize: '11px', color: '#374151', whiteSpace: 'nowrap' },
+  'check-toggle': { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', fontWeight: 600, color: '#374151' },
+  compact: { fontSize: '11px', padding: 0, height: '24px', display: 'flex', alignItems: 'center', gap: '4px' },
+  'mark-done-btn': { border: 'none', background: '#27ae60', color: '#fff', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+  'done-pill': { display: 'inline-flex', alignItems: 'center', background: '#dcfce7', color: '#166534', border: '1px solid #86efac', borderRadius: '999px', padding: '4px 8px', fontSize: '11px', fontWeight: 700, height: '24px', whiteSpace: 'nowrap' },
+  'block-actions': { display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' },
+  'action-btn': { width: '28px', height: '28px', padding: 0, background: 'white', border: '1px solid #eceff1', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  'btn-add-slot': { width: '100%', padding: '10px', background: 'white', color: '#2563eb', border: '2px dashed #2563eb', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'stats-footer': { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop: '48px' },
+  'stat-card': { background: 'white', borderRadius: '12px', padding: '24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' },
+  'stat-value': { fontSize: '32px', fontWeight: 700, color: '#2563eb', margin: '0 0 4px 0' },
+  'stat-desc': { fontSize: '12px', color: '#95a5a6', margin: 0 },
+  'done-confirm-overlay': { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '14px' },
+  'done-confirm-modal': { width: 'min(620px, 92vw)', background: '#ffffff', borderRadius: '12px', padding: '22px', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)' },
+  'done-confirm-note': { marginTop: '10px', fontSize: '13px' },
+  'done-confirm-actions': { marginTop: '14px', display: 'flex', justifyContent: 'flex-end', gap: '8px' },
+  'done-cancel-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#e5e7eb', color: '#111827' },
+  'done-confirm-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#16a34a', color: '#fff' },
+  'delete-confirm-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#dc2626', color: '#fff' },
+  'gcash-qr-btn': { border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  'profile-gcash-btn': { marginTop: '8px' },
+  'gcash-preview-modal': { width: 'min(520px, 92vw)' },
+  'gcash-preview-body': { marginTop: '12px', display: 'flex', gap: '14px', alignItems: 'flex-start' },
+  'gcash-preview-qr': { width: '170px', height: '170px', borderRadius: '8px', border: '1px solid #d1d5db' },
+};
+
+const hoverStyles = {
+  backButton: { background: '#f9f9f9', borderColor: '#2563eb', color: '#2563eb' },
+  logoutButton: { background: '#fee', borderColor: '#e74c3c' },
+  profileName: { color: '#1d4ed8', textDecoration: 'underline' },
+  inquiryCard: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', borderColor: '#2563eb', transform: 'translateY(-2px)' },
+  respondButton: { background: '#1d4ed8', transform: 'translateY(-1px)' },
+  weekNav: { background: '#eef2ff', borderColor: '#818cf8' },
+  gcashButton: { background: '#dbeafe', borderColor: '#93c5fd' },
+  markDone: { background: '#219653' },
+  addSlot: { background: '#eff6ff', borderColor: '#1d4ed8', color: '#1d4ed8' },
+  editAction: { background: '#dbeafe', borderColor: '#2563eb' },
+  deleteAction: { background: '#fecaca', borderColor: '#e74c3c' },
+  deleteConfirm: { background: '#b91c1c' },
+};
+
 /**
  * MyWork Component
  * 
@@ -221,6 +332,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
   const [selectedWorkerIndex, setSelectedWorkerIndex] = useState(0);
+  const [hoverKey, setHoverKey] = useState('');
   
   // Helper function to get the appropriate schedule based on worker index
   const getWorkerScheduleData = (workerIndex) => {
@@ -693,6 +805,11 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
     setIsGcashPreviewOpen(false);
   };
 
+  const sx = (...names) =>
+    names.reduce((acc, name) => ({ ...acc, ...(classStyles[name] || {}) }), {});
+
+  const isHovered = (key) => hoverKey === key;
+
   const gcashNumber = currentProfile?.gcashNumber || '09054891105';
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
   
@@ -733,114 +850,134 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
   // ============ RENDER ============
   
   return (
-    <div className="my-work-page">
-      {/* HEADER BAR */}
-      <div className="my-work-header-bar">
-        <button className="back-to-dashboard-btn" onClick={onBackToDashboard}>
+    <div style={sx('my-work-page')}>
+      <div style={sx('my-work-header-bar')}>
+        <button
+          style={{ ...sx('back-to-dashboard-btn'), ...(isHovered('back-to-dashboard') ? hoverStyles.backButton : {}) }}
+          onMouseEnter={() => setHoverKey('back-to-dashboard')}
+          onMouseLeave={() => setHoverKey('')}
+          onClick={onBackToDashboard}
+        >
           ← Back to Dashboard
         </button>
-        <h1 className="my-work-title">My Work Portal</h1>
-        <button className="logout-btn" onClick={() => setIsLogoutConfirmOpen(true)}>Logout</button>
+        <h1 style={sx('my-work-title')}>My Work Portal</h1>
+        <button
+          style={{ ...sx('logout-btn'), ...(isHovered('logout-btn') ? hoverStyles.logoutButton : {}) }}
+          onMouseEnter={() => setHoverKey('logout-btn')}
+          onMouseLeave={() => setHoverKey('')}
+          onClick={() => setIsLogoutConfirmOpen(true)}
+        >
+          Logout
+        </button>
       </div>
       
-      {/* MAIN CONTENT */}
-      <main className="my-work-main">
+      <main style={sx('my-work-main')}>
         
-        {/* CONDITIONAL: EMPTY STATE */}
         {!hasService && (
-          <div className="empty-state-banner">
-            <h2>Welcome! Setup your profile</h2>
-            <p>Complete your service profile to start receiving inquiries from clients.</p>
-            <button className="btn-primary">Edit Profile</button>
+          <div style={sx('empty-state-banner')}>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
+            <p style={{ fontSize: '16px', color: '#92400e', margin: '0 0 20px 0' }}>Complete your service profile to start receiving inquiries from clients.</p>
+            <button style={{ padding: '12px 28px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Edit Profile</button>
           </div>
         )}
         
-        {/* CONDITIONAL: ACTIVE STATE */}
         {hasService && (
           <>
-            {/* PROFILE SUMMARY CARD */}
-            <div className="profile-summary-card">
-              <div className="profile-info">
-                <div className="profile-avatar">
+            <div style={sx('profile-summary-card')}>
+              <div style={sx('profile-info')}>
+                <div style={sx('profile-avatar')}>
                   {currentProfile?.fullName?.charAt(0) || '?'}
                 </div>
-                <div className="profile-details">
+                <div>
                   <button
-                    className="profile-name-link"
+                    style={{ ...sx('profile-name-link'), ...(isHovered('profile-name') ? hoverStyles.profileName : {}) }}
+                    onMouseEnter={() => setHoverKey('profile-name')}
+                    onMouseLeave={() => setHoverKey('')}
                     onClick={handleOpenProfileEdit}
                     title="Edit profile details"
                   >
                     {currentProfile?.fullName || 'Service Provider'}
                   </button>
-                  <p className="service-type">{currentProfile?.serviceType || 'Service Type'}</p>
-                  <p className="location">
+                  <p style={sx('service-type')}>{currentProfile?.serviceType || 'Service Type'}</p>
+                  <p style={sx('location')}>
                     📍 {currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
                   </p>
-                  <p className="service-mode-tag">
+                  <p style={sx('service-mode-tag')}>
                     Scheduling: {scheduleMode === 'calendar-only' ? 'Calendar Only' : 'With Slots'}
                   </p>
-                  <button className="gcash-qr-btn profile-gcash-btn" onClick={handleOpenGcashPreview}>
+                  <button
+                    style={{ ...sx('gcash-qr-btn', 'profile-gcash-btn'), ...(isHovered('profile-gcash-btn') ? hoverStyles.gcashButton : {}) }}
+                    onMouseEnter={() => setHoverKey('profile-gcash-btn')}
+                    onMouseLeave={() => setHoverKey('')}
+                    onClick={handleOpenGcashPreview}
+                  >
                     GCash QR
                   </button>
                 </div>
               </div>
-              <div className="profile-stats">
-                <div className="stat">
-                  <span className="stat-number">{dummyInquiries.length}</span>
-                  <span className="stat-label">Active Inquiries</span>
+              <div style={sx('profile-stats')}>
+                <div style={sx('stat')}>
+                  <span style={sx('stat-number')}>{dummyInquiries.length}</span>
+                  <span style={sx('stat-label')}>Active Inquiries</span>
                 </div>
-                <div className="stat">
-                  <span className="stat-number">4.8</span>
-                  <span className="stat-label">Avg Rating</span>
+                <div style={sx('stat')}>
+                  <span style={sx('stat-number')}>4.8</span>
+                  <span style={sx('stat-label')}>Avg Rating</span>
                 </div>
-                <div className="stat">
-                  <span className="stat-number">{weekTransactions.filter((txn) => txn.isDone).length}</span>
-                  <span className="stat-label">Completed</span>
+                <div style={sx('stat')}>
+                  <span style={sx('stat-number')}>{weekTransactions.filter((txn) => txn.isDone).length}</span>
+                  <span style={sx('stat-label')}>Completed</span>
                 </div>
               </div>
             </div>
             
-            {/* SECTION: ACTIVE INQUIRIES */}
-            <section className="inquiries-section">
-              <div className="section-header">
-                <h2>Active Inquiries ({dummyInquiries.length})</h2>
-                <p className="section-subtitle">Clients waiting for your response</p>
+            <section style={sx('inquiries-section')}>
+              <div style={sx('section-header')}>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Active Inquiries ({dummyInquiries.length})</h2>
+                <p style={sx('section-subtitle')}>Clients waiting for your response</p>
               </div>
               
-              <div className="inquiries-grid">
+              <div style={sx('inquiries-grid')}>
                 {dummyInquiries.map(inquiry => (
-                  <div key={inquiry.id} className="inquiry-card">
-                    <div className="inquiry-header">
-                      <div className="client-info">
+                  <div
+                    key={inquiry.id}
+                    style={{ ...sx('inquiry-card'), ...(isHovered(`inquiry-${inquiry.id}`) ? hoverStyles.inquiryCard : {}) }}
+                    onMouseEnter={() => setHoverKey(`inquiry-${inquiry.id}`)}
+                    onMouseLeave={() => setHoverKey('')}
+                  >
+                    <div style={sx('inquiry-header')}>
+                      <div style={sx('client-info')}>
                         <img
                           src={inquiry.clientPhoto}
                           alt={inquiry.clientName}
-                          className="client-photo"
+                          style={sx('client-photo')}
                         />
                         <div>
-                          <h3>{inquiry.clientName}</h3>
-                          <p className="client-rating">
+                          <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#2c3e50', margin: 0 }}>{inquiry.clientName}</h3>
+                          <p style={sx('client-rating')}>
                             ⭐ {inquiry.clientRating} rating
                           </p>
                         </div>
                       </div>
-                      <span className={`status-badge ${getStatusBadgeColor(inquiry.status)}`}>
+                      <span style={sx('status-badge', getStatusBadgeColor(inquiry.status))}>
                         {inquiry.status}
                       </span>
                     </div>
                     
-                    <div className="inquiry-body">
-                      <p className="inquiry-service">{inquiry.service}</p>
-                      <p className="inquiry-description">{inquiry.description}</p>
-                      <div className="inquiry-meta">
+                    <div style={sx('inquiry-body')}>
+                      <p style={sx('inquiry-service')}>{inquiry.service}</p>
+                      <p style={sx('inquiry-description')}>{inquiry.description}</p>
+                      <div style={sx('inquiry-meta')}>
                         <span>💰 {inquiry.proposedBudget}</span>
                         <span>📅 {inquiry.requestDate}</span>
                       </div>
                     </div>
                     
-                    <div className="inquiry-actions">
+                    <div style={sx('inquiry-actions')}>
                       <button
-                        className="btn-respond"
+                        style={{ ...sx('btn-respond'), ...(isHovered(`respond-${inquiry.id}`) ? hoverStyles.respondButton : {}) }}
+                        onMouseEnter={() => setHoverKey(`respond-${inquiry.id}`)}
+                        onMouseLeave={() => setHoverKey('')}
                         onClick={() => handleRespondClick(inquiry.id)}
                       >
                         💬 Respond {inquiry.messages > 0 && `(${inquiry.messages})`}
@@ -851,32 +988,41 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
               </div>
             </section>
             
-            {/* SECTION: WEEKLY SCHEDULE */}
-            <section className="schedule-section">
-              <div className="section-header">
-                <h2>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
-                <p className="section-subtitle">
+            <section style={sx('schedule-section')}>
+              <div style={sx('section-header')}>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
+                <p style={sx('section-subtitle')}>
                   {scheduleMode === 'calendar-only'
                     ? 'Manage available dates for manual coordination'
                     : 'Manage your availability and time-slot bookings'}
                 </p>
               </div>
 
-              <div className="week-slider">
-                <button className="week-nav-btn" onClick={() => setWeekOffset((prev) => prev - 1)}>
+              <div style={sx('week-slider')}>
+                <button
+                  style={{ ...sx('week-nav-btn'), ...(isHovered('prev-week') ? hoverStyles.weekNav : {}) }}
+                  onMouseEnter={() => setHoverKey('prev-week')}
+                  onMouseLeave={() => setHoverKey('')}
+                  onClick={() => setWeekOffset((prev) => prev - 1)}
+                >
                   ← Previous Week
                 </button>
-                <div className="week-range">
+                <div style={sx('week-range')}>
                   <strong>{weekRangeLabel}</strong>
-                  <span>{weekOffset === 0 ? 'Current Week' : `${weekOffset > 0 ? '+' : ''}${weekOffset} week`}</span>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>{weekOffset === 0 ? 'Current Week' : `${weekOffset > 0 ? '+' : ''}${weekOffset} week`}</span>
                 </div>
-                <button className="week-nav-btn" onClick={() => setWeekOffset((prev) => prev + 1)}>
+                <button
+                  style={{ ...sx('week-nav-btn'), ...(isHovered('next-week') ? hoverStyles.weekNav : {}) }}
+                  onMouseEnter={() => setHoverKey('next-week')}
+                  onMouseLeave={() => setHoverKey('')}
+                  onClick={() => setWeekOffset((prev) => prev + 1)}
+                >
                   Next Week →
                 </button>
               </div>
 
               {scheduleMode === 'calendar-only' ? (
-                <div className="calendar-availability-grid">
+                <div style={sx('calendar-availability-grid')}>
                   {calendarAvailability
                     .filter((entry) => {
                       const entryDate = new Date(`${entry.date}T00:00:00`);
@@ -885,39 +1031,42 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                     .map((entry) => {
                       const entryTransactions = weekTransactions.filter((txn) => txn.scheduleRef === entry.id);
                       return (
-                        <div key={entry.id} className="calendar-day-card">
-                          <h3 className="calendar-date">📅 {entry.date}</h3>
-                          <p className="calendar-booked">Booked: {entry.booked}/{entry.maxBookings}</p>
-                          <p className="calendar-note">{entry.note || 'No notes added'}</p>
+                        <div key={entry.id} style={sx('calendar-day-card')}>
+                          <h3 style={sx('calendar-date')}>📅 {entry.date}</h3>
+                          <p style={sx('calendar-booked')}>Booked: {entry.booked}/{entry.maxBookings}</p>
+                          <p style={sx('calendar-note')}>{entry.note || 'No notes added'}</p>
 
                           {entryTransactions.length > 0 && (
-                            <div className="calendar-bookings-list">
+                            <div style={sx('calendar-bookings-list')}>
                               {entryTransactions.map((txn) => (
-                                <div key={txn.id} className="booking-item">
-                                  <span className="booking-name">👤 {txn.clientName}</span>
+                                <div key={txn.id} style={sx('booking-item')}>
+                                  <span style={sx('booking-name')}>👤 {txn.clientName}</span>
                                   {isMonthlyRecurringTxn(txn) && (
-                                    <span className="recurring-cycle-pill">
+                                    <span style={sx('recurring-cycle-pill')}>
                                       Monthly {txn.cycleOrder}/4 ({txn.cycleStart} to {txn.cycleEnd})
                                     </span>
                                   )}
-                                  <div className="booking-inline-actions">
-                                    <label className="check-toggle compact">
+                                  <div style={sx('booking-inline-actions')}>
+                                    <label style={sx('check-toggle', 'compact')}>
                                       <input
                                         type="checkbox"
                                         checked={txn.isPaid}
                                         disabled={!canTogglePaid(txn)}
                                         onChange={() => handleTogglePaid(txn.id)}
+                                        style={{ margin: 0, padding: 0 }}
                                       />
                                       <span>{txn.isPaid ? '✅ Paid' : '⬜ Paid'}</span>
                                     </label>
                                     {isMonthlyRecurringTxn(txn) && !canTogglePaid(txn) && (
-                                      <span className="lock-hint">🔒 Locked for monthly cycle</span>
+                                      <span style={sx('lock-hint')}>🔒 Locked for monthly cycle</span>
                                     )}
                                     {txn.isDone ? (
-                                      <span className="done-pill">✅ Done</span>
+                                      <span style={sx('done-pill')}>✅ Done</span>
                                     ) : (
                                       <button
-                                        className="mark-done-btn"
+                                        style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${txn.id}`) ? hoverStyles.markDone : {}), ...( !canMarkDone(txn) ? { background: '#9ca3af', cursor: 'not-allowed' } : {}) }}
+                                        onMouseEnter={() => setHoverKey(`mark-done-${txn.id}`)}
+                                        onMouseLeave={() => setHoverKey('')}
                                         disabled={!canMarkDone(txn)}
                                         onClick={() => handleOpenDoneModal(txn)}
                                       >
@@ -925,7 +1074,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                                       </button>
                                     )}
                                     {isMonthlyRecurringTxn(txn) && txn.paymentMode === 'After Service' && !isLastCycleEntry(txn) && (
-                                      <span className="lock-hint">Finalize on last cycle entry</span>
+                                      <span style={sx('lock-hint')}>Finalize on last cycle entry</span>
                                     )}
                                   </div>
                                 </div>
@@ -933,16 +1082,20 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                             </div>
                           )}
 
-                          <div className="block-actions">
+                          <div style={sx('block-actions')}>
                             <button
-                              className="action-btn edit-btn"
+                              style={{ ...sx('action-btn'), ...(isHovered(`cal-edit-${entry.id}`) ? hoverStyles.editAction : {}) }}
+                              onMouseEnter={() => setHoverKey(`cal-edit-${entry.id}`)}
+                              onMouseLeave={() => setHoverKey('')}
                               title="Edit date"
                               onClick={() => handleEditSlot(null, entry.id)}
                             >
                               ✏️
                             </button>
                             <button
-                              className="action-btn delete-btn"
+                              style={{ ...sx('action-btn'), ...(isHovered(`cal-delete-${entry.id}`) ? hoverStyles.deleteAction : {}) }}
+                              onMouseEnter={() => setHoverKey(`cal-delete-${entry.id}`)}
+                              onMouseLeave={() => setHoverKey('')}
                               title="Delete date"
                               onClick={() => handleDeleteSlot(null, entry.id)}
                             >
@@ -952,42 +1105,46 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                         </div>
                       );
                     })}
-                  <button className="btn-add-slot" onClick={() => handleAddSlot('calendar')}>
+                  <button
+                    style={{ ...sx('btn-add-slot'), ...(isHovered('add-date') ? hoverStyles.addSlot : {}) }}
+                    onMouseEnter={() => setHoverKey('add-date')}
+                    onMouseLeave={() => setHoverKey('')}
+                    onClick={() => handleAddSlot('calendar')}
+                  >
                     + Add Available Date
                   </button>
                 </div>
               ) : (
-                <div className="schedule-grid">
+                <div style={sx('schedule-grid')}>
                   {dayKeys.map((dayKey) => {
                     const timeBlocks = weeklySchedule[dayKey] || [];
                     return (
-                      <div key={dayKey} className="schedule-day-card">
-                        <h3 className="day-header">{dayKey}</h3>
-                        <p className="day-date">{formatDateLong(weekDateByDay[dayKey])}</p>
+                      <div key={dayKey} style={sx('schedule-day-card')}>
+                        <h3 style={sx('day-header')}>{dayKey}</h3>
+                        <p style={sx('day-date')}>{formatDateLong(weekDateByDay[dayKey])}</p>
 
                         {timeBlocks.length === 0 ? (
-                          <p className="no-slots">No slots scheduled</p>
+                          <p style={sx('no-slots')}>No slots scheduled</p>
                         ) : (
-                          <div className="time-blocks">
+                          <div style={sx('time-blocks')}>
                             {timeBlocks.map((block) => (
                               <div
                                 key={block.id}
-                                className={`time-block ${getSlotStatusColor(block.slotsLeft, block.capacity)}`}
+                                style={sx('time-block', getSlotStatusColor(block.slotsLeft, block.capacity))}
                               >
-                                <div className="block-time">
+                                <div style={sx('block-time')}>
                                   <strong>
                                     {block.startTime} - {block.endTime}
                                   </strong>
                                 </div>
 
-                                <div className="block-status">
-                                  <span className="slots-counter">
+                                <div style={sx('block-status')}>
+                                  <span style={sx('slots-counter')}>
                                     {block.capacity - block.slotsLeft}/{block.capacity} Filled
                                   </span>
-                                  <div className="status-bar">
+                                  <div style={sx('status-bar')}>
                                     <div
-                                      className="filled-bar"
-                                      style={{
+                                      style={{ ...sx('filled-bar'),
                                         width: `${((block.capacity - block.slotsLeft) / block.capacity) * 100}%`,
                                       }}
                                     ></div>
@@ -995,36 +1152,39 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                                 </div>
 
                                 {block.bookings.length > 0 && (
-                                  <div className="bookings-preview">
+                                  <div style={sx('bookings-preview')}>
                                     {block.bookings.map((booking, idx) => {
                                       const bookingTxn = getTransactionForBooking(block.id, booking.clientName);
                                       return (
-                                        <div key={idx} className="booking-item">
-                                          <span className="booking-name">👤 {booking.clientName}</span>
+                                        <div key={idx} style={sx('booking-item')}>
+                                          <span style={sx('booking-name')}>👤 {booking.clientName}</span>
                                           {bookingTxn ? (
-                                            <div className="booking-inline-actions">
+                                            <div style={sx('booking-inline-actions')}>
                                               {isMonthlyRecurringTxn(bookingTxn) && (
-                                                <span className="recurring-cycle-pill">
+                                                <span style={sx('recurring-cycle-pill')}>
                                                   Monthly {bookingTxn.cycleOrder}/4 ({bookingTxn.cycleStart} to {bookingTxn.cycleEnd})
                                                 </span>
                                               )}
-                                              <label className="check-toggle compact">
+                                              <label style={sx('check-toggle', 'compact')}>
                                                 <input
                                                   type="checkbox"
                                                   checked={bookingTxn.isPaid}
                                                   disabled={!canTogglePaid(bookingTxn)}
                                                   onChange={() => handleTogglePaid(bookingTxn.id)}
+                                                  style={{ margin: 0, padding: 0 }}
                                                 />
                                                 <span>{bookingTxn.isPaid ? '✅ Paid' : '⬜ Paid'}</span>
                                               </label>
                                               {isMonthlyRecurringTxn(bookingTxn) && !canTogglePaid(bookingTxn) && (
-                                                <span className="lock-hint">🔒 Locked for monthly cycle</span>
+                                                <span style={sx('lock-hint')}>🔒 Locked for monthly cycle</span>
                                               )}
                                               {bookingTxn.isDone ? (
-                                                <span className="done-pill">✅ Done</span>
+                                                <span style={sx('done-pill')}>✅ Done</span>
                                               ) : (
                                                 <button
-                                                  className="mark-done-btn"
+                                                  style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${bookingTxn.id}`) ? hoverStyles.markDone : {}), ...(!canMarkDone(bookingTxn) ? { background: '#9ca3af', cursor: 'not-allowed' } : {}) }}
+                                                  onMouseEnter={() => setHoverKey(`mark-done-${bookingTxn.id}`)}
+                                                  onMouseLeave={() => setHoverKey('')}
                                                   disabled={!canMarkDone(bookingTxn)}
                                                   onClick={() => handleOpenDoneModal(bookingTxn)}
                                                 >
@@ -1032,11 +1192,11 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                                                 </button>
                                               )}
                                               {isMonthlyRecurringTxn(bookingTxn) && bookingTxn.paymentMode === 'After Service' && !isLastCycleEntry(bookingTxn) && (
-                                                <span className="lock-hint">Finalize on last cycle entry</span>
+                                                <span style={sx('lock-hint')}>Finalize on last cycle entry</span>
                                               )}
                                             </div>
                                           ) : (
-                                            <span className="booking-item-checks">No transaction record</span>
+                                            <span style={sx('booking-item-checks')}>No transaction record</span>
                                           )}
                                         </div>
                                       );
@@ -1044,16 +1204,20 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                                   </div>
                                 )}
 
-                                <div className="block-actions">
+                                <div style={sx('block-actions')}>
                                   <button
-                                    className="action-btn edit-btn"
+                                    style={{ ...sx('action-btn'), ...(isHovered(`slot-edit-${block.id}`) ? hoverStyles.editAction : {}) }}
+                                    onMouseEnter={() => setHoverKey(`slot-edit-${block.id}`)}
+                                    onMouseLeave={() => setHoverKey('')}
                                     title="Edit slot"
                                     onClick={() => handleEditSlot(dayKey, block.id)}
                                   >
                                     ✏️
                                   </button>
                                   <button
-                                    className="action-btn delete-btn"
+                                    style={{ ...sx('action-btn'), ...(isHovered(`slot-delete-${block.id}`) ? hoverStyles.deleteAction : {}) }}
+                                    onMouseEnter={() => setHoverKey(`slot-delete-${block.id}`)}
+                                    onMouseLeave={() => setHoverKey('')}
                                     title="Delete slot"
                                     onClick={() => handleDeleteSlot(dayKey, block.id)}
                                   >
@@ -1065,7 +1229,12 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                           </div>
                         )}
 
-                        <button className="btn-add-slot" onClick={() => handleAddSlot(dayKey)}>
+                        <button
+                          style={{ ...sx('btn-add-slot'), ...(isHovered(`add-slot-${dayKey}`) ? hoverStyles.addSlot : {}) }}
+                          onMouseEnter={() => setHoverKey(`add-slot-${dayKey}`)}
+                          onMouseLeave={() => setHoverKey('')}
+                          onClick={() => handleAddSlot(dayKey)}
+                        >
                           + Add Slot
                         </button>
                       </div>
@@ -1075,22 +1244,21 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
               )}
             </section>
             
-            {/* STATS FOOTER */}
-            <section className="stats-footer">
-              <div className="stat-card">
-                <h4>Response Rate</h4>
-                <p className="stat-value">92%</p>
-                <p className="stat-desc">Avg response within 2 hours</p>
+            <section style={sx('stats-footer')}>
+              <div style={sx('stat-card')}>
+                <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>Response Rate</h4>
+                <p style={sx('stat-value')}>92%</p>
+                <p style={sx('stat-desc')}>Avg response within 2 hours</p>
               </div>
-              <div className="stat-card">
-                <h4>This Week</h4>
-                <p className="stat-value">8 hours</p>
-                <p className="stat-desc">Total scheduled time</p>
+              <div style={sx('stat-card')}>
+                <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>This Week</h4>
+                <p style={sx('stat-value')}>8 hours</p>
+                <p style={sx('stat-desc')}>Total scheduled time</p>
               </div>
-              <div className="stat-card">
-                <h4>Earnings</h4>
-                <p className="stat-value">₱3,600</p>
-                <p className="stat-desc">Pending completion</p>
+              <div style={sx('stat-card')}>
+                <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>Earnings</h4>
+                <p style={sx('stat-value')}>₱3,600</p>
+                <p style={sx('stat-desc')}>Pending completion</p>
               </div>
             </section>
           </>
@@ -1098,20 +1266,25 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
       </main>
 
       {doneConfirmTarget && (
-        <div className="done-confirm-overlay">
-          <div className="done-confirm-modal">
-            <h3>Confirm Service Completion</h3>
+        <div style={sx('done-confirm-overlay')}>
+          <div style={sx('done-confirm-modal')}>
+            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Confirm Service Completion</h3>
             <p>
               Mark <strong>{doneConfirmTarget.clientName}</strong> as completed?
             </p>
-            <p className="done-confirm-note">
+            <p style={sx('done-confirm-note')}>
               This confirms that the worker has completed the service for this transaction.
             </p>
-            <div className="done-confirm-actions">
-              <button className="done-cancel-btn" onClick={() => setDoneConfirmTarget(null)}>
+            <div style={sx('done-confirm-actions')}>
+              <button style={sx('done-cancel-btn')} onClick={() => setDoneConfirmTarget(null)}>
                 Cancel
               </button>
-              <button className="done-confirm-btn" onClick={handleConfirmDone}>
+              <button
+                style={{ ...sx('done-confirm-btn'), ...(isHovered('confirm-done') ? hoverStyles.markDone : {}) }}
+                onMouseEnter={() => setHoverKey('confirm-done')}
+                onMouseLeave={() => setHoverKey('')}
+                onClick={handleConfirmDone}
+              >
                 Confirm Done
               </button>
             </div>
@@ -1120,20 +1293,25 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
       )}
 
       {deleteConfirmTarget && (
-        <div className="done-confirm-overlay">
-          <div className="done-confirm-modal">
-            <h3>Confirm Deletion</h3>
+        <div style={sx('done-confirm-overlay')}>
+          <div style={sx('done-confirm-modal')}>
+            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Confirm Deletion</h3>
             <p>
               Delete <strong>{deleteConfirmTarget.label}</strong>?
             </p>
-            <p className="done-confirm-note">
+            <p style={sx('done-confirm-note')}>
               This action cannot be undone.
             </p>
-            <div className="done-confirm-actions">
-              <button className="done-cancel-btn" onClick={() => setDeleteConfirmTarget(null)}>
+            <div style={sx('done-confirm-actions')}>
+              <button style={sx('done-cancel-btn')} onClick={() => setDeleteConfirmTarget(null)}>
                 Cancel
               </button>
-              <button className="delete-confirm-btn" onClick={handleConfirmDelete}>
+              <button
+                style={{ ...sx('delete-confirm-btn'), ...(isHovered('confirm-delete') ? hoverStyles.deleteConfirm : {}) }}
+                onMouseEnter={() => setHoverKey('confirm-delete')}
+                onMouseLeave={() => setHoverKey('')}
+                onClick={handleConfirmDelete}
+              >
                 Delete
               </button>
             </div>
@@ -1142,23 +1320,23 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
       )}
 
       {isGcashPreviewOpen && (
-        <div className="done-confirm-overlay">
-          <div className="done-confirm-modal gcash-preview-modal">
-            <h3>GCash Face-to-Face Payment</h3>
-            <p>Show this QR to your client during meetup.</p>
+        <div style={sx('done-confirm-overlay')}>
+          <div style={sx('done-confirm-modal', 'gcash-preview-modal')}>
+            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>GCash Face-to-Face Payment</h3>
+            <p style={{ margin: 0, color: '#4b5563', fontSize: '15px', lineHeight: 1.45 }}>Show this QR to your client during meetup.</p>
 
-            <div className="gcash-preview-body">
-              <img src={gcashQrImageUrl} alt="GCash QR" className="gcash-preview-qr" />
-              <div className="gcash-preview-details">
+            <div style={sx('gcash-preview-body')}>
+              <img src={gcashQrImageUrl} alt="GCash QR" style={sx('gcash-preview-qr')} />
+              <div>
                 <p><strong>GCash Number:</strong> {gcashNumber}</p>
-                <p className="done-confirm-note">
+                <p style={sx('done-confirm-note')}>
                   Ask your client to scan this QR or send payment to the number above.
                 </p>
               </div>
             </div>
 
-            <div className="done-confirm-actions">
-              <button className="done-cancel-btn" onClick={handleCloseGcashPreview}>
+            <div style={sx('done-confirm-actions')}>
+              <button style={sx('done-cancel-btn')} onClick={handleCloseGcashPreview}>
                 Close
               </button>
             </div>

@@ -6,7 +6,7 @@ import WorkerDetailModal from '../components/WorkerDetailModal';
 import BookingNotification from '../components/BookingNotification';
 import LogoutConfirmModal from '../components/LogoutConfirmModal';
 import { MOCK_WORKERS } from '../data/MockWorkers';
-import '../styles/HomeDashboard.css';
+
 
 function HomeDashboard({ onLogout }) {
   // Note: Comprehensive mock data with multiple rate basis types
@@ -102,7 +102,7 @@ function HomeDashboard({ onLogout }) {
   const [bookingMessage, setBookingMessage] = useState('');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
-  // Note: camelCase for event handlers
+  const [logoutBtnHovered, setLogoutBtnHovered] = useState(false);
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -150,41 +150,165 @@ function HomeDashboard({ onLogout }) {
   // Note: Extract unique locations and service categories
   const locations = ['All', ...new Set(dummyProviders.map((p) => p.location))];
   const categories = ['All', ...new Set(dummyProviders.map((p) => p.serviceType))];
+  const styles = {
+    homeDashboard: {
+      width: '100%',
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+    },
+    dashboardHeader: {
+      backgroundColor: '#ffffff',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+    },
+    dashboardHeaderContent: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '1.5rem 2rem',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    dashboardTitle: {
+      fontSize: '1.8rem',
+      color: '#1f2937',
+      margin: 0,
+      fontWeight: 700,
+    },
+    dashboardLogoutButton: {
+      backgroundColor: logoutBtnHovered ? '#dc2626' : '#ef4444',
+      color: '#ffffff',
+      border: 'none',
+      padding: '0.6rem 1.2rem',
+      borderRadius: '0.4rem',
+      cursor: 'pointer',
+      fontWeight: 600,
+      transition: 'background-color 0.3s ease',
+    },
+    dashboardMain: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '2rem',
+    },
+    searchFilterSection: {
+      backgroundColor: '#ffffff',
+      padding: '1.5rem',
+      borderRadius: '0.8rem',
+      marginBottom: '2rem',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    },
+    searchContainer: {
+      marginBottom: '1.5rem',
+    },
+    searchInput: {
+      width: '100%',
+      padding: '0.9rem 1rem',
+      border: '1px solid #d1d5db',
+      borderRadius: '0.4rem',
+      fontSize: '1rem',
+      fontFamily: 'inherit',
+      transition: 'all 0.3s ease',
+      backgroundColor: '#ffffff',
+      color: '#000',
+    },
+    filterContainer: {
+      display: 'flex',
+      gap: '1rem',
+      flexWrap: 'wrap',
+    },
+    filterDropdown: {
+      flex: 1,
+      minWidth: '200px',
+      padding: '0.7rem 1rem',
+      border: '1px solid #d1d5db',
+      borderRadius: '0.4rem',
+      fontSize: '0.95rem',
+      fontFamily: 'inherit',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      color: '#000',
+    },
+    resultsInfo: {
+      marginBottom: '1.5rem',
+    },
+    resultsCount: {
+      fontSize: '1rem',
+      color: '#6b7280',
+      margin: 0,
+      fontWeight: 500,
+    },
+    servicesGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 1fr)',
+      gap: '2rem',
+      animation: 'fadeIn 0.3s ease',
+    },
+    noResults: {
+      gridColumn: '1 / -1',
+      textAlign: 'center',
+      padding: '3rem 2rem',
+      backgroundColor: '#ffffff',
+      borderRadius: '0.8rem',
+      color: '#6b7280',
+    },
+    noResultsP: {
+      fontSize: '1.1rem',
+      margin: 0,
+    },
+  };
 
   return (
-    <div className="home-dashboard">
-      {/* Header with Logout */}
-      <div className="dashboard-header">
-        <div className="dashboard-header-content">
-          <h1 className="dashboard-title">Browse Services</h1>
-          <button onClick={() => setIsLogoutConfirmOpen(true)} className="dashboard-logout-button">
+    <div style={styles.homeDashboard}>
+      <div style={styles.dashboardHeader}>
+        <div style={styles.dashboardHeaderContent}>
+          <h1 style={styles.dashboardTitle}>Browse Services</h1>
+          <button
+            onClick={() => setIsLogoutConfirmOpen(true)}
+            style={styles.dashboardLogoutButton}
+            onMouseEnter={() => setLogoutBtnHovered(true)}
+            onMouseLeave={() => setLogoutBtnHovered(false)}
+          >
             Logout
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="dashboard-main">
-        {/* Search & Filter Section */}
-        <section className="search-filter-section">
-          {/* Search Bar */}
-          <div className="search-container">
+      <main style={styles.dashboardMain}>
+        <section style={styles.searchFilterSection}>
+          <div style={styles.searchContainer}>
             <input
               type="text"
               placeholder="Search by name or service..."
               value={searchQuery}
               onChange={handleSearchChange}
-              className="search-input"
+              style={styles.searchInput}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d1d5db';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
-          {/* Filter Dropdowns */}
-          <div className="filter-container">
-            {/* Location Filter */}
+          <div style={styles.filterContainer}>
             <select
               value={selectedLocation}
               onChange={handleLocationChange}
-              className="filter-dropdown"
+              style={styles.filterDropdown}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d1d5db';
+                e.target.style.boxShadow = 'none';
+              }}
             >
               {locations.map((location) => (
                 <option key={location} value={location}>
@@ -193,11 +317,18 @@ function HomeDashboard({ onLogout }) {
               ))}
             </select>
 
-            {/* Category Filter */}
             <select
               value={selectedCategory}
               onChange={handleCategoryChange}
-              className="filter-dropdown"
+              style={styles.filterDropdown}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d1d5db';
+                e.target.style.boxShadow = 'none';
+              }}
             >
               {categories.map((category) => (
                 <option key={category} value={category}>
@@ -208,16 +339,13 @@ function HomeDashboard({ onLogout }) {
           </div>
         </section>
 
-        {/* Results Count */}
-        <section className="results-info">
-          <p className="results-count">
+        <section style={styles.resultsInfo}>
+          <p style={styles.resultsCount}>
             Showing {filteredProviders.length} result{filteredProviders.length !== 1 ? 's' : ''}
           </p>
         </section>
 
-        {/* Service Grid */}
-        {/* Note: Using .map() to render ServiceCard for each provider */}
-        <section className="services-grid">
+        <section style={styles.servicesGrid}>
           {filteredProviders.length > 0 ? (
             filteredProviders.map((provider) => (
               <ServiceCard
@@ -227,14 +355,13 @@ function HomeDashboard({ onLogout }) {
               />
             ))
           ) : (
-            <div className="no-results">
-              <p>No services found. Try adjusting your filters.</p>
+            <div style={styles.noResults}>
+              <p style={styles.noResultsP}>No services found. Try adjusting your filters.</p>
             </div>
           )}
         </section>
       </main>
 
-      {/* Worker Detail Modal */}
       <WorkerDetailModal
         isOpen={isWorkerModalOpen}
         worker={selectedWorker}
@@ -242,7 +369,6 @@ function HomeDashboard({ onLogout }) {
         onBookNow={handleBookNow}
       />
 
-      {/* Booking Notification */}
       <BookingNotification
         message={bookingMessage}
         isVisible={showBookingNotification}

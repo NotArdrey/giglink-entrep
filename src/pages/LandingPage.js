@@ -2,8 +2,6 @@ import { useState } from 'react';
 import Navigation from '../components/Navigation';
 import HeroSlider from '../modules/HeroSlider';
 import LoginModal from '../components/LoginModal';
-import '../styles/LandingPage.css';
-import '../styles/goalssection.css';
 
 const LANDING_STATS = [
   { id: 1, value: '80+', label: 'Active service categories' },
@@ -161,21 +159,102 @@ const GOAL_CARDS = [
 function GoalCard({ icon, title, description, tag, color, onSet }) {
   const [isHovered, setIsHovered] = useState(false);
 
+  const styles = {
+    goalCard: {
+      position: 'relative',
+      backgroundColor: 'var(--bg-surface)',
+      border: isHovered ? `1px solid ${color}` : '1px solid var(--border-default)',
+      borderRadius: '16px',
+      padding: '28px 28px 24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      cursor: 'pointer',
+      transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.25s ease',
+      overflow: 'hidden',
+      transform: isHovered ? 'translateY(-6px)' : 'translateY(0)',
+      background: isHovered ? 'var(--bg-surface-soft)' : 'var(--bg-surface)',
+      boxShadow: isHovered ? 'var(--shadow-soft), 0 0 0 1px ' + color + ' inset' : 'none',
+    },
+    goalCardAccentBar: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '3px',
+      background: color,
+      borderRadius: '16px 16px 0 0',
+      opacity: isHovered ? 1 : 0,
+      transform: isHovered ? 'scaleX(1)' : 'scaleX(0.4)',
+      transformOrigin: 'left',
+      transition: 'opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    },
+    goalCardIcon: {
+      fontSize: '32px',
+      lineHeight: 1,
+      marginBottom: '4px',
+    },
+    goalCardTag: {
+      fontFamily: "'DM Mono', 'Courier New', monospace",
+      fontSize: '11px',
+      letterSpacing: '0.14em',
+      textTransform: 'uppercase',
+      color: color,
+      fontWeight: 500,
+    },
+    goalCardTitle: {
+      fontFamily: "'Playfair Display', Georgia, serif",
+      fontSize: '28px',
+      fontWeight: 700,
+      color: 'var(--text-primary)',
+      margin: 0,
+      lineHeight: 1.18,
+    },
+    goalCardDescription: {
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: '16px',
+      lineHeight: 1.68,
+      color: 'var(--text-secondary)',
+      margin: 0,
+      flex: 1,
+    },
+    goalCardBtn: {
+      display: 'inlineFlex',
+      alignItems: 'center',
+      gap: isHovered ? '10px' : '6px',
+      marginTop: '12px',
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: '15px',
+      fontWeight: 700,
+      color: color,
+      background: 'transparent',
+      border: 'none',
+      padding: 0,
+      cursor: 'pointer',
+      opacity: isHovered ? 1 : 0.7,
+      transition: 'opacity 0.15s ease, gap 0.2s ease',
+      alignSelf: 'flex-start',
+    },
+    goalCardBtnSvg: {
+      width: '16px',
+      height: '16px',
+    },
+  };
+
   return (
     <div
-      className={`goal-card ${isHovered ? 'goal-card--hovered' : ''}`}
+      style={styles.goalCard}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      style={{ '--card-accent': color }}
     >
-      <div className="goal-card__accent-bar" />
-      <span className="goal-card__icon">{icon}</span>
-      <span className="goal-card__tag">{tag}</span>
-      <h3 className="goal-card__title">{title}</h3>
-      <p className="goal-card__description">{description}</p>
-      <button className="goal-card__btn" onClick={() => onSet(title)}>
+      <div style={styles.goalCardAccentBar} />
+      <span style={styles.goalCardIcon}>{icon}</span>
+      <span style={styles.goalCardTag}>{tag}</span>
+      <h3 style={styles.goalCardTitle}>{title}</h3>
+      <p style={styles.goalCardDescription}>{description}</p>
+      <button style={styles.goalCardBtn} onClick={() => onSet(title)}>
         Set This Goal
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={styles.goalCardBtnSvg}>
           <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
@@ -186,29 +265,156 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
 function GoalsSection({ onLoginClick }) {
   const [activeGoal, setActiveGoal] = useState(null);
   const [showToast, setShowToast] = useState(false);
+  const [toastYOffset, setToastYOffset] = useState(0);
 
   const handleSetGoal = (title) => {
     setActiveGoal(title);
     setShowToast(true);
+    setToastYOffset(0);
     setTimeout(() => setShowToast(false), 3000);
   };
 
+  const styles = {
+    goalsSection: {
+      position: 'relative',
+      padding: '100px 40px 80px',
+      background: 'var(--bg-surface)',
+      overflow: 'hidden',
+    },
+    goalsSectionHeaderBg: {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      background:
+        'radial-gradient(ellipse 60% 50% at 20% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 80% 100%, rgba(59, 130, 246, 0.07) 0%, transparent 70%)',
+      pointerEvents: 'none',
+    },
+    goalsSectionHeader: {
+      maxWidth: '680px',
+      margin: '0 auto 64px',
+      textAlign: 'center',
+    },
+    goalsSectionEyebrow: {
+      display: 'inlineBlock',
+      fontFamily: "'DM Mono', 'Courier New', monospace",
+      fontSize: '12px',
+      fontWeight: 500,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+      color: '#2563eb',
+      marginBottom: '16px',
+      padding: '4px 14px',
+      border: '1px solid rgba(37, 99, 235, 0.25)',
+      borderRadius: '100px',
+    },
+    goalsSectionTitle: {
+      fontFamily: "'Playfair Display', Georgia, serif",
+      fontSize: 'clamp(36px, 5vw, 56px)',
+      fontWeight: 700,
+      color: 'var(--text-primary)',
+      lineHeight: 1.15,
+      margin: '0 0 20px',
+      letterSpacing: '-0.02em',
+    },
+    goalsSectionTitleEm: {
+      fontStyle: 'italic',
+      color: '#2563eb',
+    },
+    goalsSectionSubtitle: {
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: '19px',
+      lineHeight: 1.75,
+      color: 'var(--text-secondary)',
+      margin: 0,
+    },
+    goalsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+      gap: '24px',
+      maxWidth: '1200px',
+      margin: '0 auto 72px',
+    },
+    goalsCta: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '16px',
+      flexWrap: 'wrap',
+      maxWidth: '800px',
+      margin: '0 auto',
+      paddingTop: '16px',
+      borderTop: '1px solid var(--border-default)',
+    },
+    goalsCtaText: {
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: '18px',
+      color: 'var(--text-secondary)',
+      margin: 0,
+      flex: '1 1 100%',
+      textAlign: 'center',
+    },
+    goalsCtaBtn: {
+      padding: '13px 28px',
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: '17px',
+      fontWeight: 600,
+      borderRadius: '100px',
+      cursor: 'pointer',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
+      letterSpacing: '0.01em',
+      background: 'transparent',
+      color: 'var(--text-primary)',
+      border: '1px solid var(--border-default)',
+    },
+    goalsToast: {
+      position: 'fixed',
+      bottom: '32px',
+      left: '50%',
+      transform: `translateX(-50%) translateY(${toastYOffset}px)`,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border-default)',
+      borderRadius: '100px',
+      padding: '12px 24px',
+      fontFamily: "'DM Sans', sans-serif",
+      fontSize: '16px',
+      color: 'var(--text-primary)',
+      whiteSpace: 'nowrap',
+      zIndex: 9999,
+      boxShadow: 'var(--shadow-soft)',
+      animation: 'toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+    },
+    goalsToastIcon: {
+      display: 'inlineFlex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '20px',
+      height: '20px',
+      background: '#2563eb',
+      color: '#ffffff',
+      borderRadius: '50%',
+      fontSize: '11px',
+      fontWeight: 800,
+      flexShrink: 0,
+    },
+  };
+
   return (
-    <section className="goals-section">
-      {/* Section Header */}
-      <div className="goals-section__header">
-        <span className="goals-section__eyebrow">Powered by GigLink</span>
-        <h2 className="goals-section__title">
-          Set Your <em>Professional Goals</em>
+    <section style={styles.goalsSection}>
+      <div style={styles.goalsSectionHeader}>
+        <span style={styles.goalsSectionEyebrow}>Powered by GigLink</span>
+        <h2 style={styles.goalsSectionTitle}>
+          Set Your <em style={styles.goalsSectionTitleEm}>Professional Goals</em>
         </h2>
-        <p className="goals-section__subtitle">
+        <p style={styles.goalsSectionSubtitle}>
           Turn your ambitions into milestones. Pick a goal and let GigLink connect you
           with the right opportunities, clients, and tools to get there.
         </p>
       </div>
 
-      {/* Goal Cards Grid */}
-      <div className="goals-grid">
+      <div style={styles.goalsGrid}>
         {GOAL_CARDS.map((card) => (
           <GoalCard
             key={card.id}
@@ -218,20 +424,18 @@ function GoalsSection({ onLoginClick }) {
         ))}
       </div>
 
-      {/* CTA Strip */}
-      <div className="goals-cta">
-        <p className="goals-cta__text">
+      <div style={styles.goalsCta}>
+        <p style={styles.goalsCtaText}>
           Ready to take the first step?
         </p>
-        <button className="goals-cta__btn goals-cta__btn--secondary">
+        <button style={styles.goalsCtaBtn}>
           Browse All Goals
         </button>
       </div>
 
-      {/* Toast Notification */}
       {showToast && (
-        <div className="goals-toast" role="status" aria-live="polite">
-          <span className="goals-toast__icon">✓</span>
+        <div style={styles.goalsToast} role="status" aria-live="polite">
+          <span style={styles.goalsToastIcon}>✓</span>
           <span>
             <strong>"{activeGoal}"</strong> added! Sign in to track your progress.
           </span>
@@ -243,6 +447,8 @@ function GoalsSection({ onLoginClick }) {
 
 function LandingPage({ onLogin }) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [socialLinkHovered, setSocialLinkHovered] = useState(null);
+  const [footerLinkHovered, setFooterLinkHovered] = useState(null);
 
   const handleLoginClick = () => {
     setIsLoginModalOpen(true);
@@ -257,46 +463,191 @@ function LandingPage({ onLogin }) {
     onLogin && onLogin(formData);
   };
 
+  const styles = {
+    landingPage: {
+      width: '100%',
+      minHeight: '100vh',
+      background:
+        'radial-gradient(120% 80% at 50% -20%, rgba(37, 99, 235, 0.08), transparent 60%), var(--bg-page)',
+    },
+    landingMain: {
+      width: '100%',
+    },
+    landingStatsSection: {
+      maxWidth: '1200px',
+      margin: '0 auto 2rem',
+      padding: '0 1.25rem',
+    },
+    landingStatsHeader: {
+      maxWidth: '760px',
+      margin: '0 auto 18px',
+      textAlign: 'center',
+    },
+    landingStatsHeaderSpan: {
+      display: 'inlineFlex',
+      alignItems: 'center',
+      minHeight: '28px',
+      padding: '0 10px',
+      borderRadius: '999px',
+      border: '1px solid #cbd5e1',
+      color: '#334155',
+      background: '#f8fafc',
+      fontSize: '11px',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      fontWeight: 700,
+    },
+    landingStatsHeaderH2: {
+      margin: '10px 0 6px',
+      fontSize: 'clamp(1.7rem, 3vw, 2.3rem)',
+      color: '#0f172a',
+      fontWeight: 800,
+    },
+    landingStatsHeaderP: {
+      margin: 0,
+      color: '#64748b',
+      fontSize: '1.08rem',
+    },
+    landingStatsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: '12px',
+    },
+    landingStatCard: {
+      border: '1px solid var(--border-default)',
+      borderRadius: '14px',
+      background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98))',
+      boxShadow: '0 10px 26px rgba(15, 23, 42, 0.11)',
+      padding: '16px 18px',
+      textAlign: 'center',
+    },
+    landingStatValue: {
+      margin: 0,
+      fontSize: 'clamp(1.25rem, 2vw, 1.7rem)',
+      fontWeight: 800,
+      letterSpacing: '-0.01em',
+      color: '#0f172a',
+    },
+    landingStatLabel: {
+      margin: '4px 0 0',
+      fontSize: '1rem',
+      color: '#475569',
+    },
+    landingLinksSection: {
+      maxWidth: '1320px',
+      margin: '2.4rem auto 0',
+      padding: '2rem 1.25rem 1.35rem',
+      borderTop: '1px solid var(--border-default)',
+    },
+    landingLinksGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gap: '20px',
+    },
+    landingLinksColumn: {
+      h3: {
+        margin: '0 0 10px',
+        fontSize: '1.26rem',
+        fontWeight: 700,
+        color: 'var(--text-primary)',
+      },
+      ul: {
+        listStyle: 'none',
+        margin: 0,
+        padding: 0,
+        display: 'grid',
+        gap: '8px',
+      },
+      a: (isHovered) => ({
+        color: isHovered ? '#2563eb' : 'var(--text-secondary)',
+        textDecoration: 'none',
+        fontSize: '1.08rem',
+        lineHeight: 1.5,
+        fontWeight: 500,
+        transition: 'color 0.2s ease',
+        cursor: 'pointer',
+      }),
+    },
+    landingFooterBottom: {
+      marginTop: '24px',
+      paddingTop: '14px',
+      borderTop: '1px solid var(--border-default)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+    },
+    landingCopyright: {
+      margin: 0,
+      fontSize: '1.04rem',
+      fontWeight: 600,
+      color: 'var(--text-secondary)',
+    },
+    landingSocialLinks: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    landingSocialLink: (id) => ({
+      width: '38px',
+      height: '38px',
+      borderRadius: '999px',
+      border: socialLinkHovered === id ? '1px solid #111827' : '1px solid #d1d5db',
+      display: 'inlineFlex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#111827',
+      textDecoration: 'none',
+      transition: 'transform 0.18s ease, border-color 0.2s ease, color 0.2s ease',
+      transform: socialLinkHovered === id ? 'translateY(-2px)' : 'translateY(0)',
+    }),
+    landingSocialLinkSvg: {
+      width: '17px',
+      height: '17px',
+      display: 'block',
+    },
+  };
+
   return (
-    <div className="landing-page">
-      {/* Navigation Component */}
+    <div style={styles.landingPage}>
       <Navigation onLoginClick={handleLoginClick} />
 
-      {/* Main Content */}
-      <main className="landing-main">
-        {/* Hero Slider Component */}
+      <main style={styles.landingMain}>
         <HeroSlider onGetStarted={handleLoginClick} />
 
-        {/* Goals Section */}
         <GoalsSection onLoginClick={handleLoginClick} />
 
-        {/* KPI Strip */}
-        <section className="landing-stats-section" aria-label="GigLink performance highlights">
-          <div className="landing-stats-header">
-            <span>Platform Snapshot</span>
-            <h2>Why GigLink Delivers</h2>
-            <p>Quick metrics that show activity and trust across our service marketplace.</p>
+        <section style={styles.landingStatsSection} aria-label="GigLink performance highlights">
+          <div style={styles.landingStatsHeader}>
+            <span style={styles.landingStatsHeaderSpan}>Platform Snapshot</span>
+            <h2 style={styles.landingStatsHeaderH2}>Why GigLink Delivers</h2>
+            <p style={styles.landingStatsHeaderP}>Quick metrics that show activity and trust across our service marketplace.</p>
           </div>
-          <div className="landing-stats-grid">
+          <div style={styles.landingStatsGrid}>
             {LANDING_STATS.map((item) => (
-              <article key={item.id} className="landing-stat-card">
-                <p className="landing-stat-value">{item.value}</p>
-                <p className="landing-stat-label">{item.label}</p>
+              <article key={item.id} style={styles.landingStatCard}>
+                <p style={styles.landingStatValue}>{item.value}</p>
+                <p style={styles.landingStatLabel}>{item.label}</p>
               </article>
             ))}
           </div>
         </section>
 
-        {/* Footer Links Section */}
-        <section className="landing-links-section" aria-label="GigLink quick links">
-          <div className="landing-links-grid">
+        <section style={styles.landingLinksSection} aria-label="GigLink quick links">
+          <div style={styles.landingLinksGrid}>
             {FOOTER_COLUMNS.map((column) => (
-              <div key={column.title} className="landing-links-column">
-                <h3>{column.title}</h3>
-                <ul>
+              <div key={column.title}>
+                <h3 style={styles.landingLinksColumn.h3}>{column.title}</h3>
+                <ul style={styles.landingLinksColumn.ul}>
                   {column.links.map((linkText) => (
                     <li key={linkText}>
-                      <a href="#landing-footer">{linkText}</a>
+                      <a href="#landing-footer" 
+                        style={styles.landingLinksColumn.a(footerLinkHovered === linkText)}
+                        onMouseEnter={() => setFooterLinkHovered(linkText)}
+                        onMouseLeave={() => setFooterLinkHovered(null)}
+                      >
+                        {linkText}
+                      </a>
                     </li>
                   ))}
                 </ul>
@@ -304,9 +655,9 @@ function LandingPage({ onLogin }) {
             ))}
           </div>
 
-          <div className="landing-footer-bottom" id="landing-footer">
-            <p className="landing-copyright">© GigLink 2026. All rights reserved.</p>
-            <div className="landing-social-links" aria-label="GigLink social media">
+          <div style={styles.landingFooterBottom} id="landing-footer">
+            <p style={styles.landingCopyright}>© GigLink 2026. All rights reserved.</p>
+            <div style={styles.landingSocialLinks} aria-label="GigLink social media">
               {SOCIAL_LINKS.map((social) => (
                 <a
                   key={social.id}
@@ -315,7 +666,9 @@ function LandingPage({ onLogin }) {
                   rel="noreferrer"
                   aria-label={social.label}
                   title={social.label}
-                  className="landing-social-link"
+                  style={styles.landingSocialLink(social.id)}
+                  onMouseEnter={() => setSocialLinkHovered(social.id)}
+                  onMouseLeave={() => setSocialLinkHovered(null)}
                 >
                   <SocialIcon id={social.id} />
                 </a>
@@ -325,7 +678,6 @@ function LandingPage({ onLogin }) {
         </section>
       </main>
 
-      {/* Login Modal Component */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={handleCloseModal}

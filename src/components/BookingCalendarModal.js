@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 // Note: Nested data structure is read as schedule.dayBlocks[dayKey] where each block stores capacity and slotsLeft.
 // Note: Available slots use Emerald Green and full slots use Light Gray per requirement.
-import '../styles/BookingCalendarModal.css';
+
 
 const DAY_KEYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -116,6 +116,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedBlockId, setSelectedBlockId] = useState('');
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [hoveredButton, setHoveredButton] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -169,18 +170,133 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
     setIsConfirmModalOpen(true);
   };
 
+  const styles = {
+    overlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.55)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 260,
+      padding: '1rem',
+    },
+    content: {
+      width: 'min(95vw, 860px)',
+      maxHeight: '92vh',
+      overflowY: 'auto',
+      backgroundColor: '#ffffff',
+      borderRadius: '0.9rem',
+      boxShadow: '0 20px 42px rgba(15, 23, 42, 0.28)',
+      padding: '0.8rem',
+      position: 'relative',
+      color: '#0f172a',
+    },
+    close: {
+      position: 'absolute',
+      right: '0.75rem',
+      top: '0.75rem',
+      width: '32px',
+      height: '32px',
+      borderRadius: '999px',
+      border: '1px solid #cbd5e1',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+    },
+    title: { marginTop: '0.1rem', marginBottom: '0.6rem' },
+    monthNavRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem' },
+    monthButton: {
+      width: '36px',
+      height: '36px',
+      borderRadius: '999px',
+      border: '1px solid #cbd5e1',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+      fontWeight: 700,
+    },
+    monthHeading: { margin: 0 },
+    gridWrap: { marginTop: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.65rem', overflow: 'hidden' },
+    weekHeadings: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', backgroundColor: '#f8fafc' },
+    weekHeading: { padding: '0.35rem', fontWeight: 700, fontSize: '0.78rem', textAlign: 'center', color: '#334155' },
+    dateGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' },
+    dayCell: {
+      minHeight: '64px',
+      border: '1px solid #f1f5f9',
+      backgroundColor: '#ffffff',
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      padding: '0.3rem',
+    },
+    dayNumber: { fontWeight: 700 },
+    daySlots: { fontSize: '0.72rem', color: '#334155' },
+    selectedDateLabel: { margin: '0.55rem 0', color: '#334155' },
+    note: { borderRadius: '0.6rem', backgroundColor: '#eff6ff', color: '#1e3a8a', padding: '0.65rem 0.75rem' },
+    slotSection: { borderTop: '1px solid #e2e8f0', paddingTop: '0.55rem' },
+    helper: { color: '#64748b', margin: '0.3rem 0' },
+    slotGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.45rem', marginTop: '0.45rem' },
+    slotButton: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.5rem',
+      backgroundColor: '#ffffff',
+      padding: '0.6rem',
+      textAlign: 'left',
+      cursor: 'pointer',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.25rem',
+    },
+    confirmButton: {
+      marginTop: '0.6rem',
+      width: '100%',
+      border: 'none',
+      borderRadius: '0.55rem',
+      padding: '0.62rem 0.85rem',
+      fontWeight: 700,
+      color: '#ffffff',
+      cursor: 'pointer',
+      backgroundColor: '#2563eb',
+      position: 'sticky',
+      bottom: 0,
+      zIndex: 2,
+      boxShadow: '0 -6px 14px rgba(15, 23, 42, 0.06)',
+    },
+    confirmOverlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.45)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem',
+      zIndex: 280,
+    },
+    confirmContent: {
+      width: 'min(92vw, 470px)',
+      backgroundColor: '#ffffff',
+      borderRadius: '0.75rem',
+      border: '1px solid #e2e8f0',
+      padding: '1rem',
+    },
+    confirmActions: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.8rem' },
+    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.5rem', backgroundColor: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
+    submitButton: { border: 'none', borderRadius: '0.5rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
+  };
+
   return (
-    <div className="calendar-modal-overlay">
-      <div className="calendar-modal-content">
-        <button className="calendar-close-button" onClick={onClose} aria-label="Close booking calendar">
-          x
+    <div style={styles.overlay}>
+      <div style={styles.content}>
+        <button style={styles.close} onClick={onClose} aria-label="Close booking calendar">
+          {'\u00D7'}
         </button>
 
-        <h2 className="calendar-title">Book with {worker.name}</h2>
+        <h2 style={styles.title}>Book with {worker.name}</h2>
 
-        <div className="month-nav-row">
+        <div style={styles.monthNavRow}>
           <button
-            className="month-nav-btn"
+            style={styles.monthButton}
             onClick={() => {
               const prev = new Date(visibleMonth);
               prev.setMonth(prev.getMonth() - 1);
@@ -189,9 +305,9 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
           >
             ←
           </button>
-          <h3 className="month-heading">{formatMonthHeading(visibleMonth)}</h3>
+          <h3 style={styles.monthHeading}>{formatMonthHeading(visibleMonth)}</h3>
           <button
-            className="month-nav-btn"
+            style={styles.monthButton}
             onClick={() => {
               const next = new Date(visibleMonth);
               next.setMonth(next.getMonth() + 1);
@@ -202,14 +318,14 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
           </button>
         </div>
 
-        <div className="calendar-grid-wrap">
-          <div className="calendar-week-headings">
+        <div style={styles.gridWrap}>
+          <div style={styles.weekHeadings}>
             {DAY_LABELS.map((dayLabel) => (
-              <div key={dayLabel} className="calendar-week-heading">{dayLabel}</div>
+              <div key={dayLabel} style={styles.weekHeading}>{dayLabel}</div>
             ))}
           </div>
 
-          <div className="calendar-date-grid">
+          <div style={styles.dateGrid}>
             {monthCells.map((cell) => {
               const dateValue = formatDateValue(cell.date);
               const dateMeta = getDateMeta(schedule, dateValue);
@@ -220,14 +336,17 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
               return (
                 <button
                   key={dateValue}
-                  className={`calendar-day-cell ${
-                    cell.isCurrentMonth ? 'current-month' : 'adjacent-month'
-                  } ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                  style={{
+                    ...styles.dayCell,
+                    ...(cell.isCurrentMonth ? {} : { backgroundColor: '#f8fafc', color: '#94a3b8' }),
+                    ...(isSelected ? { border: '1px solid #2563eb', backgroundColor: '#dbeafe' } : {}),
+                    ...(isDisabled ? { cursor: 'not-allowed', opacity: 0.6 } : {}),
+                  }}
                   disabled={isDisabled}
                   onClick={() => selectDateFromCell(dateValue)}
                 >
-                  <span className="day-number">{cell.date.getDate()}</span>
-                  <span className="day-slots">
+                  <span style={styles.dayNumber}>{cell.date.getDate()}</span>
+                  <span style={styles.daySlots}>
                     {dateMeta.manualScheduling ? 'Open' : `${dateMeta.slotCount} slots`}
                   </span>
                 </button>
@@ -236,41 +355,45 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
           </div>
         </div>
 
-        <p className="selected-date-label">
+        <p style={styles.selectedDateLabel}>
           {selectedDate ? `Selected Date: ${formatLongDate(selectedDate)}` : 'Select an available date to continue.'}
         </p>
 
         {schedule.manualScheduling ? (
-          <div className="manual-scheduling-note">
+          <div style={styles.note}>
             Worker uses manual scheduling. Pick a date and they will confirm an exact time via chat.
           </div>
         ) : (
-          <div className="slot-section">
+          <div style={styles.slotSection}>
             <h3>Available Time Slots</h3>
-            {!selectedDate && <p className="slot-helper-text">Pick a date to view available slots.</p>}
+            {!selectedDate && <p style={styles.helper}>Pick a date to view available slots.</p>}
             {selectedDate && !isOperatingDay && (
-              <p className="slot-helper-text">No availability on this day.</p>
+              <p style={styles.helper}>No availability on this day.</p>
             )}
             {selectedDate && isOperatingDay && dayBlocks.length === 0 && (
-              <p className="slot-helper-text">No time blocks configured for this day.</p>
+              <p style={styles.helper}>No time blocks configured for this day.</p>
             )}
 
-            <div className="slot-list-grid">
+            <div style={styles.slotGrid}>
               {dayBlocks.map((block) => {
                 const isFull = block.slotsLeft <= 0;
                 const isSelected = selectedBlockId === block.id;
                 return (
                   <button
                     key={block.id}
-                    className={`calendar-slot ${isFull ? 'full' : 'available'} ${isSelected ? 'selected' : ''}`}
+                    style={{
+                      ...styles.slotButton,
+                      ...(isFull ? { backgroundColor: '#f1f5f9', color: '#94a3b8' } : { backgroundColor: '#ecfdf5', borderColor: '#86efac' }),
+                      ...(isSelected ? { borderColor: '#16a34a', boxShadow: 'inset 0 0 0 1px #16a34a' } : {}),
+                    }}
                     disabled={isFull}
                     onClick={() => setSelectedBlockId(block.id)}
                     aria-pressed={isSelected}
                   >
-                    <span className="calendar-slot-label">
+                    <span>
                       {formatTime(block.startTime)} - {formatTime(block.endTime)} [{block.slotsLeft} slots left]
                     </span>
-                    {isSelected && <span className="calendar-slot-check">✓ Selected</span>}
+                    {isSelected && <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Selected</span>}
                   </button>
                 );
               })}
@@ -279,16 +402,21 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
         )}
 
         <button
-          className="calendar-confirm-button"
+          style={{
+            ...styles.confirmButton,
+            ...(canOpenConfirm ? { backgroundColor: hoveredButton === 'confirm' ? '#1d4ed8' : '#2563eb' } : { backgroundColor: '#94a3b8', cursor: 'not-allowed' }),
+          }}
           onClick={handleOpenConfirm}
           disabled={!canOpenConfirm}
+          onMouseEnter={() => setHoveredButton('confirm')}
+          onMouseLeave={() => setHoveredButton('')}
         >
           Confirm Booking
         </button>
 
         {isConfirmModalOpen && (
-          <div className="booking-confirm-overlay">
-            <div className="booking-confirm-content">
+          <div style={styles.confirmOverlay}>
+            <div style={styles.confirmContent}>
               <h3>Confirm Booking Request</h3>
               <p>
                 <strong>Worker:</strong> {worker.name}
@@ -302,14 +430,14 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
                 </p>
               )}
               {schedule.manualScheduling && (
-                <p className="confirm-note">Time slot will be confirmed by the worker via chat.</p>
+                <p style={styles.note}>Time slot will be confirmed by the worker via chat.</p>
               )}
 
-              <div className="confirm-actions">
-                <button className="confirm-cancel-btn" onClick={() => setIsConfirmModalOpen(false)}>
+              <div style={styles.confirmActions}>
+                <button style={styles.cancelButton} onClick={() => setIsConfirmModalOpen(false)}>
                   Cancel
                 </button>
-                <button className="confirm-submit-btn" onClick={handleConfirm}>
+                <button style={styles.submitButton} onClick={handleConfirm}>
                   Submit Booking
                 </button>
               </div>

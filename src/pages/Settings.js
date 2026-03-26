@@ -1,14 +1,4 @@
 import React, { useState } from 'react';
-import '../styles/Settings.css';
-
-/**
- * Settings Page - General Settings Section
- *
- * Global Mode Integration:
- * - Theme and language are controlled at App level and passed as props.
- * - This allows one setting change to affect all pages.
- * - Save action gives user feedback while app-level persistence happens immediately.
- */
 
 const Settings = ({
   onBack,
@@ -18,31 +8,24 @@ const Settings = ({
   onThemeChange,
   onLanguageChange,
 }) => {
-  // ============ STATE MANAGEMENT ============
-
   const isDarkMode = appTheme === 'dark';
   const language = appLanguage === 'fil' ? 'fil' : 'en';
-  
-  // Notification preferences
+
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
-  
-  // Save feedback
   const [saveMessage, setSaveMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  
-  // ============ TRANSLATIONS OBJECT ============
-  
-  /**
-   * Language mapping object for English and Filipino translations
-   * Structure: translations[languageCode][labelKey]
-   * Add new languages by extending this object with new language codes
-   */
+  const [isBackHovered, setIsBackHovered] = useState(false);
+  const [isLangHovered, setIsLangHovered] = useState(false);
+  const [isLangFocused, setIsLangFocused] = useState(false);
+  const [isSystemHovered, setIsSystemHovered] = useState(false);
+  const [isSaveHovered, setIsSaveHovered] = useState(false);
+
   const translations = {
     en: {
       title: 'Preferences',
       subtitle: 'Manage your preferences and account options',
-      backButton: '← Back',
+      backButton: '< Back',
       generalSettings: 'General Preferences',
       settingsSubtitle: 'Customize your experience',
       language: 'Language',
@@ -69,7 +52,7 @@ const Settings = ({
     fil: {
       title: 'Mga Preference',
       subtitle: 'Pamahalaan ang iyong mga preference at opsyon ng account',
-      backButton: '← Bumalik',
+      backButton: '< Bumalik',
       generalSettings: 'Pangkalahatang Preference',
       settingsSubtitle: 'I-customize ang iyong karanasan',
       language: 'Wika',
@@ -85,7 +68,7 @@ const Settings = ({
       notificationsDesc: 'Pamahalaan ang iyong mga kagustuhan sa notification',
       emailNotifications: 'Email Notifications',
       emailDesc: 'Makatanggap ng notification updates sa pamamagitan ng email',
-      smsAlerts: 'SMS Alerts',
+      smsAlerts: 'Makatanggap ng mahalagang alerto sa pamamagitan ng SMS',
       smsDesc: 'Makatanggap ng mahalagang alerto sa pamamagitan ng SMS',
       saveButton: 'I-save ang Mga Pagbabago',
       savingButton: 'I-save...',
@@ -94,11 +77,40 @@ const Settings = ({
       off: 'Off',
     },
   };
-  
-  // Get current translation object
+
   const t = translations[language];
-  
-  // ============ EVENT HANDLERS ============
+
+  const themeTokens = isDarkMode
+    ? {
+        bgPrimary: '#2f343c',
+        bgSecondary: '#3a414b',
+        textPrimary: '#f2f5fa',
+        textSecondary: '#c7ceda',
+        cardBg: '#3a414b',
+        inputBg: '#464e5a',
+        inputBorder: '#687282',
+        accent: '#27ae60',
+        accentHover: '#219653',
+        borderColor: '#58606c',
+        successBg: '#1b4332',
+        successText: '#a7e4c0',
+        successBorder: '#52b788',
+      }
+    : {
+        bgPrimary: '#ffffff',
+        bgSecondary: '#f9f9f9',
+        textPrimary: '#2c3e50',
+        textSecondary: '#7f8c8d',
+        cardBg: '#ffffff',
+        inputBg: '#f5f5f5',
+        inputBorder: '#d1d5db',
+        accent: '#27ae60',
+        accentHover: '#219653',
+        borderColor: '#e5e7eb',
+        successBg: '#dcfce7',
+        successText: '#166534',
+        successBorder: '#86efac',
+      };
 
   const handleLanguageChange = (e) => {
     if (onLanguageChange) {
@@ -111,158 +123,483 @@ const Settings = ({
       onThemeChange(isDarkMode ? 'light' : 'dark');
     }
   };
-  
+
   const handleEmailToggle = () => {
     setEmailNotifications(!emailNotifications);
   };
-  
+
   const handleSmsToggle = () => {
     setSmsAlerts(!smsAlerts);
   };
-  
+
   const handleSave = () => {
     setSaveMessage('');
     setIsSaving(true);
 
-    // Theme/language persist immediately in App; this only confirms to users.
     setTimeout(() => {
       setSaveMessage(t.saveSuccess);
       setIsSaving(false);
 
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSaveMessage('');
       }, 3000);
     }, 800);
   };
-  
-  // ============ RENDER ============
-  
+
+  const styles = {
+    page: {
+      minHeight: '100vh',
+      backgroundColor: themeTokens.bgPrimary,
+      color: themeTokens.textPrimary,
+      transition: 'background-color 0.3s ease, color 0.3s ease',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    header: {
+      backgroundColor: themeTokens.cardBg,
+      borderBottom: `1px solid ${themeTokens.borderColor}`,
+      padding: '16px 24px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+    },
+    backBtn: {
+      padding: '8px 14px',
+      backgroundColor: isBackHovered ? themeTokens.bgSecondary : 'transparent',
+      color: isBackHovered ? themeTokens.accent : themeTokens.textPrimary,
+      border: `1px solid ${isBackHovered ? themeTokens.accent : themeTokens.borderColor}`,
+      borderRadius: '6px',
+      fontSize: '13px',
+      fontWeight: 600,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    },
+    title: {
+      fontSize: '24px',
+      fontWeight: 700,
+      color: themeTokens.textPrimary,
+      margin: 0,
+    },
+    spacer: { width: '100px' },
+    main: {
+      maxWidth: '800px',
+      margin: '0 auto',
+      padding: '32px 16px',
+    },
+    card: {
+      backgroundColor: themeTokens.cardBg,
+      borderRadius: '12px',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+      padding: '32px',
+      border: `1px solid ${themeTokens.borderColor}`,
+    },
+    cardHeader: {
+      marginBottom: '32px',
+      borderBottom: `1px solid ${themeTokens.borderColor}`,
+      paddingBottom: '24px',
+    },
+    h2: {
+      fontSize: '22px',
+      fontWeight: 700,
+      color: themeTokens.textPrimary,
+      margin: '0 0 8px 0',
+    },
+    cardSubtitle: {
+      fontSize: '14px',
+      color: themeTokens.textSecondary,
+      margin: 0,
+    },
+    content: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '32px',
+    },
+    section: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px',
+    },
+    h3: {
+      fontSize: '16px',
+      fontWeight: 700,
+      color: themeTokens.textPrimary,
+      margin: '0 0 4px 0',
+    },
+    sectionDesc: {
+      fontSize: '13px',
+      color: themeTokens.textSecondary,
+      margin: 0,
+    },
+    settingItem: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+    },
+    languageSelect: {
+      flex: 1,
+      padding: '10px 14px',
+      backgroundColor: themeTokens.inputBg,
+      color: themeTokens.textPrimary,
+      border: `1px solid ${isLangFocused || isLangHovered ? themeTokens.accent : themeTokens.inputBorder}`,
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontFamily: 'inherit',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      outline: 'none',
+      boxShadow: isLangFocused ? '0 0 0 3px rgba(39, 174, 96, 0.1)' : 'none',
+    },
+    languageIndicator: {
+      width: '36px',
+      height: '36px',
+      borderRadius: '999px',
+      border: `1px solid ${themeTokens.inputBorder}`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: themeTokens.inputBg,
+      color: themeTokens.textPrimary,
+      flexShrink: 0,
+    },
+    themeToggleContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '20px',
+      backgroundColor: themeTokens.inputBg,
+      padding: '20px',
+      borderRadius: '10px',
+      border: `1px solid ${themeTokens.inputBorder}`,
+    },
+    themeOption: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '13px',
+      color: themeTokens.textSecondary,
+      fontWeight: 500,
+    },
+    themeIcon: {
+      width: '26px',
+      height: '26px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: themeTokens.textSecondary,
+    },
+    themeSwitch: {
+      position: 'relative',
+      display: 'inline-block',
+      width: '54px',
+      height: '28px',
+    },
+    hiddenInput: {
+      opacity: 0,
+      width: 0,
+      height: 0,
+      position: 'absolute',
+    },
+    slider: {
+      position: 'absolute',
+      cursor: 'pointer',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: isDarkMode ? themeTokens.accent : '#ccc',
+      transition: '0.3s',
+      borderRadius: '34px',
+    },
+    sliderThumb: {
+      position: 'absolute',
+      content: "''",
+      height: '22px',
+      width: '22px',
+      left: isDarkMode ? '29px' : '3px',
+      bottom: '3px',
+      backgroundColor: 'white',
+      transition: '0.3s',
+      borderRadius: '50%',
+    },
+    systemThemeBtn: {
+      marginTop: '12px',
+      width: '100%',
+      padding: '10px 12px',
+      border: `1px solid ${(themeMode === 'system' || isSystemHovered) ? themeTokens.accent : themeTokens.inputBorder}`,
+      borderRadius: '8px',
+      backgroundColor: themeMode === 'system' ? 'rgba(39, 174, 96, 0.12)' : 'transparent',
+      color: themeTokens.textPrimary,
+      fontSize: '13px',
+      fontWeight: 700,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    },
+    notificationItem: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '16px',
+      backgroundColor: themeTokens.inputBg,
+      borderRadius: '10px',
+      border: `1px solid ${themeTokens.inputBorder}`,
+      gap: '16px',
+    },
+    notificationInfo: { flex: 1 },
+    notificationLabel: {
+      display: 'block',
+      fontSize: '14px',
+      fontWeight: 600,
+      color: themeTokens.textPrimary,
+      marginBottom: '4px',
+      cursor: 'pointer',
+    },
+    notificationDesc: {
+      fontSize: '12px',
+      color: themeTokens.textSecondary,
+      margin: 0,
+    },
+    toggleSwitch: {
+      position: 'relative',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      minWidth: 'fit-content',
+    },
+    toggleSlider: {
+      position: 'relative',
+      display: 'inline-block',
+      width: '44px',
+      height: '24px',
+      backgroundColor: '#ccc',
+      borderRadius: '12px',
+      cursor: 'pointer',
+      transition: 'background-color 0.3s',
+    },
+    toggleSliderChecked: {
+      backgroundColor: themeTokens.accent,
+    },
+    toggleThumb: {
+      position: 'absolute',
+      height: '20px',
+      width: '20px',
+      left: '2px',
+      bottom: '2px',
+      backgroundColor: 'white',
+      borderRadius: '50%',
+      transition: 'transform 0.3s',
+      transform: 'translateX(0)',
+    },
+    toggleThumbChecked: {
+      transform: 'translateX(20px)',
+    },
+    toggleLabel: {
+      fontSize: '12px',
+      fontWeight: 700,
+      color: themeTokens.textPrimary,
+      minWidth: '28px',
+      textAlign: 'center',
+    },
+    saveSuccessMessage: {
+      margin: '24px 0 16px 0',
+      padding: '12px 16px',
+      backgroundColor: themeTokens.successBg,
+      color: themeTokens.successText,
+      border: `1px solid ${themeTokens.successBorder}`,
+      borderRadius: '8px',
+      fontSize: '13px',
+      fontWeight: 600,
+      textAlign: 'center',
+      transform: 'translateY(0)',
+      opacity: 1,
+      transition: 'transform 0.3s ease, opacity 0.3s ease',
+    },
+    footer: {
+      display: 'flex',
+      justifyContent: 'center',
+      marginTop: '32px',
+      paddingTop: '24px',
+      borderTop: `1px solid ${themeTokens.borderColor}`,
+    },
+    saveChangesBtn: {
+      padding: '12px 32px',
+      backgroundColor: isSaveHovered && !isSaving ? themeTokens.accentHover : themeTokens.accent,
+      color: '#ffffff',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: 700,
+      cursor: isSaving ? 'not-allowed' : 'pointer',
+      transition: 'all 0.2s ease',
+      opacity: isSaving ? 0.6 : 1,
+      transform: isSaveHovered && !isSaving ? 'translateY(-2px)' : 'translateY(0)',
+      boxShadow: isSaveHovered && !isSaving ? '0 4px 12px rgba(39, 174, 96, 0.3)' : 'none',
+    },
+  };
+
   return (
-    <div className={`settings-page ${isDarkMode ? 'dark-mode' : ''}`}>
-      {/* Header with Back Button */}
-      <div className="settings-header">
-        <button className="settings-back-btn" onClick={onBack}>
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <button
+          style={styles.backBtn}
+          onMouseEnter={() => setIsBackHovered(true)}
+          onMouseLeave={() => setIsBackHovered(false)}
+          onClick={onBack}
+        >
           {t.backButton}
         </button>
-        <h1 className="settings-title">{t.title}</h1>
-        <div style={{ width: '100px' }}></div>
+        <h1 style={styles.title}>{t.title}</h1>
+        <div style={styles.spacer}></div>
       </div>
 
-      {/* Main Content */}
-      <main className="settings-main">
-        <div className="settings-card">
-          <div className="settings-card-header">
-            <h2>{t.generalSettings}</h2>
-            <p className="settings-card-subtitle">{t.settingsSubtitle}</p>
+      <main style={styles.main}>
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <h2 style={styles.h2}>{t.generalSettings}</h2>
+            <p style={styles.cardSubtitle}>{t.settingsSubtitle}</p>
           </div>
 
-          <div className="settings-content">
-            {/* LANGUAGE SECTION */}
-            <div className="settings-section">
-              <div className="section-title">
-                <h3>{t.language}</h3>
-                <p className="section-desc">{t.languageDesc}</p>
+          <div style={styles.content}>
+            <div style={styles.section}>
+              <div>
+                <h3 style={styles.h3}>{t.language}</h3>
+                <p style={styles.sectionDesc}>{t.languageDesc}</p>
               </div>
 
-              <div className="setting-item">
+              <div style={styles.settingItem}>
                 <select
-                  className="language-select"
+                  style={styles.languageSelect}
                   value={language}
                   onChange={handleLanguageChange}
+                  onMouseEnter={() => setIsLangHovered(true)}
+                  onMouseLeave={() => setIsLangHovered(false)}
+                  onFocus={() => setIsLangFocused(true)}
+                  onBlur={() => setIsLangFocused(false)}
                 >
                   <option value="en">{t.english}</option>
                   <option value="fil">{t.tagalog}</option>
                 </select>
-                <span className={`language-indicator ${language === 'en' ? 'english' : 'tagalog'}`}>
-                  {language === 'en' ? '🇺🇸' : '🇵🇭'}
+                <span style={styles.languageIndicator} aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M2 12h20"></path>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                  </svg>
                 </span>
               </div>
             </div>
 
-            {/* THEME SECTION */}
-            <div className="settings-section">
-              <div className="section-title">
-                <h3>{t.theme}</h3>
-                <p className="section-desc">{t.themeDesc}</p>
+            <div style={styles.section}>
+              <div>
+                <h3 style={styles.h3}>{t.theme}</h3>
+                <p style={styles.sectionDesc}>{t.themeDesc}</p>
               </div>
 
-              <div className="theme-toggle-container">
-                <div className="theme-option">
-                  <span className="theme-icon light">☀️</span>
+              <div style={styles.themeToggleContainer}>
+                <div style={styles.themeOption}>
+                  <span style={styles.themeIcon} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                      <circle cx="12" cy="12" r="5"></circle>
+                      <g stroke="currentColor" strokeWidth="2" fill="none">
+                        <path d="M12 1v4"></path>
+                        <path d="M12 19v4"></path>
+                        <path d="M4.22 4.22l2.83 2.83"></path>
+                        <path d="M16.95 16.95l2.83 2.83"></path>
+                        <path d="M1 12h4"></path>
+                        <path d="M19 12h4"></path>
+                        <path d="M4.22 19.78l2.83-2.83"></path>
+                        <path d="M16.95 7.05l2.83-2.83"></path>
+                      </g>
+                    </svg>
+                  </span>
                   <span>{t.lightMode}</span>
                 </div>
 
-                <label className="theme-switch">
+                <label style={styles.themeSwitch}>
                   <input
                     type="checkbox"
                     checked={isDarkMode}
                     onChange={handleThemeToggle}
+                    style={styles.hiddenInput}
                   />
-                  <span className="slider"></span>
+                  <span style={styles.slider}>
+                    <span style={styles.sliderThumb}></span>
+                  </span>
                 </label>
 
-                <div className="theme-option">
-                  <span className="theme-icon dark">🌙</span>
+                <div style={styles.themeOption}>
+                  <span style={styles.themeIcon} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .1 0 .21 0 .31A7 7 0 0 0 20.69 13c.1 0 .21 0 .31-.01z"></path>
+                    </svg>
+                  </span>
                   <span>{t.darkMode}</span>
                 </div>
               </div>
 
               <button
                 type="button"
-                className={`system-theme-btn ${themeMode === 'system' ? 'active' : ''}`}
+                style={styles.systemThemeBtn}
+                onMouseEnter={() => setIsSystemHovered(true)}
+                onMouseLeave={() => setIsSystemHovered(false)}
                 onClick={() => onThemeChange && onThemeChange('system')}
               >
                 {t.followSystem}
               </button>
             </div>
 
-            {/* NOTIFICATIONS SECTION */}
-            <div className="settings-section">
-              <div className="section-title">
-                <h3>{t.notifications}</h3>
-                <p className="section-desc">{t.notificationsDesc}</p>
+            <div style={styles.section}>
+              <div>
+                <h3 style={styles.h3}>{t.notifications}</h3>
+                <p style={styles.sectionDesc}>{t.notificationsDesc}</p>
               </div>
 
-              {/* Email Notifications Toggle */}
-              <div className="notification-item">
-                <div className="notification-info">
-                  <label htmlFor="email-toggle" className="notification-label">
+              <div style={styles.notificationItem}>
+                <div style={styles.notificationInfo}>
+                  <label htmlFor="email-toggle" style={styles.notificationLabel}>
                     {t.emailNotifications}
                   </label>
-                  <p className="notification-desc">{t.emailDesc}</p>
+                  <p style={styles.notificationDesc}>{t.emailDesc}</p>
                 </div>
-                <label className="toggle-switch">
+                <label style={styles.toggleSwitch}>
                   <input
                     id="email-toggle"
                     type="checkbox"
                     checked={emailNotifications}
                     onChange={handleEmailToggle}
+                    style={styles.hiddenInput}
                   />
-                  <span className="toggle-slider"></span>
-                  <span className="toggle-label">
+                  <span style={{ ...styles.toggleSlider, ...(emailNotifications ? styles.toggleSliderChecked : {}) }}>
+                    <span style={{ ...styles.toggleThumb, ...(emailNotifications ? styles.toggleThumbChecked : {}) }}></span>
+                  </span>
+                  <span style={styles.toggleLabel}>
                     {emailNotifications ? t.on : t.off}
                   </span>
                 </label>
               </div>
 
-              {/* SMS Alerts Toggle */}
-              <div className="notification-item">
-                <div className="notification-info">
-                  <label htmlFor="sms-toggle" className="notification-label">
+              <div style={styles.notificationItem}>
+                <div style={styles.notificationInfo}>
+                  <label htmlFor="sms-toggle" style={styles.notificationLabel}>
                     {t.smsAlerts}
                   </label>
-                  <p className="notification-desc">{t.smsDesc}</p>
+                  <p style={styles.notificationDesc}>{t.smsDesc}</p>
                 </div>
-                <label className="toggle-switch">
+                <label style={styles.toggleSwitch}>
                   <input
                     id="sms-toggle"
                     type="checkbox"
                     checked={smsAlerts}
                     onChange={handleSmsToggle}
+                    style={styles.hiddenInput}
                   />
-                  <span className="toggle-slider"></span>
-                  <span className="toggle-label">
+                  <span style={{ ...styles.toggleSlider, ...(smsAlerts ? styles.toggleSliderChecked : {}) }}>
+                    <span style={{ ...styles.toggleThumb, ...(smsAlerts ? styles.toggleThumbChecked : {}) }}></span>
+                  </span>
+                  <span style={styles.toggleLabel}>
                     {smsAlerts ? t.on : t.off}
                   </span>
                 </label>
@@ -270,16 +607,20 @@ const Settings = ({
             </div>
           </div>
 
-          {/* Save Message */}
           {saveMessage && (
-            <div className="save-success-message">
-              ✅ {saveMessage}
+            <div style={styles.saveSuccessMessage}>
+              ? {saveMessage}
             </div>
           )}
 
-          {/* Save Button */}
-          <div className="settings-footer">
-            <button className="save-changes-btn" onClick={handleSave} disabled={isSaving}>
+          <div style={styles.footer}>
+            <button
+              style={styles.saveChangesBtn}
+              onMouseEnter={() => setIsSaveHovered(true)}
+              onMouseLeave={() => setIsSaveHovered(false)}
+              onClick={handleSave}
+              disabled={isSaving}
+            >
               {isSaving ? t.savingButton : t.saveButton}
             </button>
           </div>

@@ -3,32 +3,9 @@ import Header from '../components/Header';
 import ChatWindow from '../components/ChatWindow';
 import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
-import '../styles/MyBookings.css';
 
-/**
- * MyBookings Component
- * 
- * Manages the client's booking lifecycle with state-driven UI transitions:
- * 'list' → 'chat' → 'slots' → 'payment' → 'confirmed'
- * 
- * Each booking progresses through:
- * 1. Booking List (shows all active service requests)
- * 2. Chat & Quote Negotiation (Shopee-style messaging)
- * 3. Slot Selection (eGov-style calendar booking)
- * 4. Payment Selection (GCash Advance or After Service)
- * 5. Confirmation (transaction complete)
- */
 const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings }) => {
-  // ============ STATE MANAGEMENT ============
-  
-  // Track which booking is being viewed (null = viewing list)
   const [selectedBookingId, setSelectedBookingId] = useState(null);
-  
-  // UI state for current booking: 'chat' | 'slots' | 'payment' | 'confirmed'
-  // 'chat' = showing quote negotiation
-  // 'slots' = showing slot selection after quote approved
-  // 'payment' = showing payment method selection
-  // 'confirmed' = showing final confirmation
   const [uiState, setUiState] = useState('chat');
   const [activeFilter, setActiveFilter] = useState('all');
   const [ratingTargetId, setRatingTargetId] = useState(null);
@@ -40,6 +17,12 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
   const [referenceNo, setReferenceNo] = useState('');
   const [showPaymentStatusNotice, setShowPaymentStatusNotice] = useState(false);
   const [paymentProofError, setPaymentProofError] = useState('');
+  const [hoveredCardId, setHoveredCardId] = useState(null);
+  const [hoveredOpenChatId, setHoveredOpenChatId] = useState(null);
+  const [hoveredRateId, setHoveredRateId] = useState(null);
+  const [hoveredPayId, setHoveredPayId] = useState(null);
+  const [hoveredBackToBookings, setHoveredBackToBookings] = useState(false);
+  const [isReferenceFocused, setIsReferenceFocused] = useState(false);
 
   const parseDateOnly = (dateString) => {
     const date = new Date(dateString);
@@ -80,24 +63,16 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     return null;
   };
 
-  // Utility function to generate random Philippine GCash numbers (09XXXXXXXXX format)
-  const generateRandomGcashNumber = () => {
-    const firstDigit = Math.floor(Math.random() * 3) + 5; // 5, 6, or 7 (common prefixes)
-    const remainingDigits = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join('');
-    return `09${firstDigit}${remainingDigits}`;
-  };
-  
-  // Simulated bookings list with various statuses
   const [bookings, setBookings] = useState([
     {
       id: 1,
       workerId: 101,
       workerName: 'Maria Santos',
       serviceType: 'House Cleaning',
-      status: 'Negotiating', // Awaiting response to quote
+      status: 'Negotiating',
       requestDate: '2026-03-20',
       description: 'Full house cleaning (3 bedrooms)',
-      quoteAmount: 2500, // ₱2500 quote from worker
+      quoteAmount: 2500,
       quoteApproved: false,
       selectedSlot: null,
       paymentMethod: null,
@@ -253,17 +228,10 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
   ]);
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
-  
-  // ============ EVENT HANDLERS ============
-  
-  /**
-   * handleOpenChat()
-   * Transition: Booking List → Chat Window
-   * Sets selectedBookingId and initializes UI state to 'chat'
-   */
+
   const handleOpenChat = (bookingId) => {
     setSelectedBookingId(bookingId);
-    setUiState('chat'); // Show quote negotiation window
+    setUiState('chat');
   };
 
   const handleOpenRating = (bookingId) => {
@@ -349,24 +317,16 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     setRatingHover(0);
     setRatingComment('');
   };
-  
-  /**
-   * handleApproveQuote()
-   * Transition: Chat Window → Slot Selection
-   * Updates booking status and moves to slot selection UI
-   */
+
   const handleApproveQuote = (bookingId) => {
-    // Update booking to show quote was approved
-    setBookings(prevBookings =>
-      prevBookings.map(booking =>
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
         booking.id === bookingId
           ? { ...booking, quoteApproved: true, status: 'Awaiting Slot Selection' }
           : booking
       )
     );
-    
-    // Change UI to show slot selection modal
-    setUiState('slots'); // Show calendar and time slots
+    setUiState('slots');
   };
 
   const handleStopServiceAccepted = (bookingId) => {
@@ -386,39 +346,21 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       )
     );
   };
-  
-  /**
-   * handleConfirmSlot()
-   * Transition: Slot Selection → Payment Modal
-   * Stores selected slot (date + time block) and moves to payment method choice
-   */
+
   const handleConfirmSlot = (bookingId, slotInfo) => {
-    // slotInfo = { date, timeBlock: { id, startTime, endTime, slotsLeft } }
-    
-    // Update booking with selected slot
-    setBookings(prevBookings =>
-      prevBookings.map(booking =>
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
         booking.id === bookingId
           ? { ...booking, selectedSlot: slotInfo, status: 'Slot Selected - Payment Pending' }
           : booking
       )
     );
-    
-    // Change UI to show payment method selection
-    setUiState('payment'); // Show GCash Advance vs After Service options
+    setUiState('payment');
   };
-  
-  /**
-   * handleSelectPaymentMethod()
-   * Transition: Payment Modal → Confirmation
-   * Records payment method choice and shows confirmation
-   */
+
   const handleSelectPaymentMethod = (bookingId, paymentMethod) => {
-    // paymentMethod = 'gcash-advance' | 'after-service'
-    
-    // Update booking with payment method and mark as confirmed
-    setBookings(prevBookings =>
-      prevBookings.map(booking =>
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
         booking.id === bookingId
           ? {
               ...booking,
@@ -428,35 +370,128 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           : booking
       )
     );
-    
-    // Change UI to confirmation screen
-    setUiState('confirmed'); // Show final confirmation with booking details
+    setUiState('confirmed');
   };
-  
-  /**
-   * handleBackToList()
-   * Transition: Any modal → Booking List
-   * Returns to main booking list view
-   */
+
   const handleBackToList = () => {
     setSelectedBookingId(null);
-    setUiState('chat'); // Reset to default state
+    setUiState('chat');
   };
-  
-  /**
-   * handleNewInquiry()
-   * Transition: Confirmation → Booking List
-   * Clears selection to return to booking list after transaction completes
-   */
+
   const handleNewInquiry = () => {
     setSelectedBookingId(null);
     setUiState('chat');
   };
-  
-  // ============ RENDER LOGIC ============
-  
-  // Get currently selected booking
-  const currentBooking = bookings.find(b => b.id === selectedBookingId);
+
+  const styles = {
+    myBookings: {
+      padding: 0,
+      background: 'linear-gradient(135deg, #f8f9fa 0%, #ecf0f1 100%)',
+      minHeight: '100vh',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      width: '100%',
+      overflowX: 'hidden',
+    },
+    bookingsHeader: { maxWidth: '1200px', margin: '0 auto 40px', textAlign: 'center', padding: '32px 0' },
+    title: { fontSize: '32px', fontWeight: 700, color: '#2c3e50', margin: '0 0 8px 0' },
+    subtitle: { fontSize: '14px', color: '#7f8c8d', margin: 0 },
+    bookingsFilters: { maxWidth: '1200px', margin: '0 auto 16px', display: 'flex', gap: '8px', flexWrap: 'wrap' },
+    filterBtn: { padding: '8px 14px', borderRadius: '999px', border: '1px solid #cbd5e1', background: '#fff', color: '#334155', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
+    filterBtnActive: { background: '#1d4ed8', color: '#fff', borderColor: '#1d4ed8' },
+    bookingsList: { display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '1200px', margin: '0 auto' },
+    bookingCard: { background: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', padding: '20px', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', borderLeft: '4px solid #27ae60' },
+    bookingCardHover: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', transform: 'translateY(-2px)' },
+    bookingInfo: { flex: 1 },
+    workerName: { fontSize: '18px', fontWeight: 600, color: '#2c3e50', margin: '0 0 4px 0' },
+    serviceType: { fontSize: '14px', color: '#27ae60', fontWeight: 600, margin: '0 0 8px 0' },
+    description: { fontSize: '14px', color: '#555', margin: '0 0 12px 0', lineHeight: 1.5 },
+    bookingMeta: { display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: '#7f8c8d', alignItems: 'center' },
+    requestDate: { display: 'inline-block' },
+    billingBadge: { display: 'inline-block', padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: '#dbeafe', color: '#1e3a8a' },
+    nextChargeDate: { fontSize: '12px', color: '#1d4ed8', fontWeight: 600 },
+    statusBadge: { display: 'inline-block', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' },
+    bookingRating: { color: '#7c2d12', fontWeight: 600 },
+    bookingActions: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px', marginTop: '16px' },
+    quotePreview: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#2c3e50' },
+    quoteLabel: { fontWeight: 600 },
+    quoteAmount: { fontSize: '18px', fontWeight: 700, color: '#27ae60' },
+    gcashPreview: { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '6px 10px' },
+    gcashLabel: { color: '#065f46', fontWeight: 600 },
+    gcashNumber: { color: '#047857', fontWeight: 700, fontFamily: "'Courier New', monospace" },
+    bookingActionRow: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' },
+    openChatBtn: { padding: '10px 24px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', transform: 'scale(1)' },
+    openChatBtnHover: { background: '#229954', transform: 'scale(1.02)' },
+    rateBtn: { padding: '10px 18px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
+    rateBtnHover: { background: '#d97706' },
+    payGcashBtn: { padding: '10px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s ease' },
+    payGcashBtnHover: { background: '#1d4ed8' },
+    emptyState: { textAlign: 'center', padding: '60px 20px', color: '#7f8c8d' },
+    ratingModalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.55)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '16px' },
+    ratingModal: { width: '100%', maxWidth: '760px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', gap: '10px' },
+    paymentProofModal: { maxWidth: '900px' },
+    ratingTitle: { margin: 0, color: '#1f2937', fontSize: '26px' },
+    ratingSubtitle: { margin: '0 0 8px', color: '#6b7280', fontSize: '15px' },
+    label: { fontSize: '14px', fontWeight: 600, color: '#374151' },
+    starRating: { display: 'flex', gap: '6px', alignItems: 'center' },
+    starBtn: { border: 'none', background: 'transparent', fontSize: '30px', lineHeight: 1, color: '#d1d5db', cursor: 'pointer', transition: 'transform 0.15s ease, color 0.15s ease', padding: 0 },
+    starBtnActive: { color: '#f59e0b' },
+    starRatingValue: { margin: '2px 0 6px', fontSize: '13px', fontWeight: 600, color: '#374151' },
+    textarea: { border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '120px', padding: '12px', fontSize: '15px', fontFamily: 'inherit' },
+    ratingActions: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' },
+    btnCancelRate: { border: 'none', borderRadius: '8px', padding: '10px 14px', fontWeight: 600, cursor: 'pointer', background: '#e5e7eb', color: '#111827' },
+    btnSubmitRate: { border: 'none', borderRadius: '8px', padding: '10px 14px', fontWeight: 600, cursor: 'pointer', background: '#2563eb', color: '#fff' },
+    gcashPaymentHeader: { display: 'grid', gridTemplateColumns: '220px 1fr', gap: '16px', alignItems: 'start', marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' },
+    gcashQrImage: { width: '100%', border: '2px solid #e5e7eb', borderRadius: '8px', background: '#fff', display: 'block' },
+    gcashPaymentInfo: { display: 'flex', flexDirection: 'column', gap: '12px' },
+    paymentInfoGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
+    infoLabel: { fontSize: '12px', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 },
+    infoValue: { fontSize: '14px', color: '#111827', fontWeight: 500, margin: 0 },
+    infoValueAmount: { fontSize: '18px', fontWeight: 700, color: '#059669', margin: 0 },
+    gcashNumberGroup: { paddingTop: '8px', borderTop: '1px solid #d1d5db', marginTop: '4px' },
+    paymentProofSection: { padding: '16px', background: '#fafbfc', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '16px' },
+    h4: { margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600, color: '#111827' },
+    proofUploadGroup: { marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' },
+    fileInput: { minHeight: '46px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', fontSize: '14px', cursor: 'pointer' },
+    proofFileName: { margin: '2px 0 6px', fontSize: '12px', color: '#6b7280' },
+    referenceNumberGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
+    referenceInput: { padding: '12px 14px', fontSize: '15px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', fontFamily: 'inherit', transition: 'border-color 0.2s, box-shadow 0.2s', minHeight: '48px', width: '100%', boxSizing: 'border-box', outline: 'none' },
+    referenceInputFocused: { borderColor: '#3b82f6', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)' },
+    errorTextInline: { margin: 0, color: '#dc2626', fontSize: '13px', fontWeight: 600 },
+    paymentStatusNotice: { position: 'fixed', right: '16px', bottom: '16px', background: '#1d4ed8', color: '#fff', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', fontWeight: 600, boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)', zIndex: 1400 },
+    confirmationOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' },
+    confirmationCard: { background: '#fff', borderRadius: '16px', padding: '40px 24px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)', transition: 'transform 0.4s ease, opacity 0.4s ease' },
+    confirmationHeader: { textAlign: 'center', marginBottom: '32px' },
+    checkmarkIcon: { width: '80px', height: '80px', background: '#27ae60', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', color: '#fff', margin: '0 auto 16px' },
+    confirmationHeading: { fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0 },
+    confirmationDetails: { background: '#f8f9fa', borderRadius: '8px', padding: '24px', marginBottom: '24px' },
+    detailRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #ecf0f1' },
+    detailLabel: { fontWeight: 600, color: '#2c3e50', fontSize: '13px' },
+    detailValue: { color: '#555', fontSize: '13px' },
+    payGcashAdvance: { color: '#27ae60', fontWeight: 600 },
+    payAfterCash: { color: '#d97706', fontWeight: 600 },
+    payAfterGcash: { color: '#27ae60', fontWeight: 600 },
+    confirmationActions: { textAlign: 'center' },
+    backToBookings: { padding: '12px 32px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', marginBottom: '16px', width: '100%' },
+    backToBookingsHover: { background: '#229954' },
+    confirmationNote: { fontSize: '12px', color: '#7f8c8d', margin: 0, lineHeight: 1.5 },
+  };
+
+  const statusStyleMap = {
+    Negotiating: { background: '#fef3c7', color: '#92400e' },
+    'Awaiting Payment': { background: '#fecaca', color: '#7f1d1d' },
+    'Quote Sent': { background: '#bfdbfe', color: '#1e3a8a' },
+    'Awaiting Slot Selection': { background: '#cffafe', color: '#164e63' },
+    'Slot Selected - Payment Pending': { background: '#fecdd3', color: '#831843' },
+    'Payment Confirmed': { background: '#dcfce7', color: '#15803d' },
+    'Service Scheduled': { background: '#d1fae5', color: '#065f46' },
+    'Completed Service': { background: '#dcfce7', color: '#166534' },
+    'Awaiting GCash Payment': { background: '#fef3c7', color: '#92400e' },
+    'Active Service': { background: '#dbeafe', color: '#1e40af' },
+    'Service Stopped': { background: '#fee2e2', color: '#991b1b' },
+    'Payment Submitted': { background: '#dbeafe', color: '#1e40af' },
+  };
+
+  const currentBooking = bookings.find((b) => b.id === selectedBookingId);
   const filteredBookings = bookings.filter((booking) => {
     if (activeFilter === 'completed') {
       return booking.status === 'Completed Service' || booking.status === 'Service Stopped';
@@ -466,11 +501,10 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     }
     return true;
   });
-  
-  // If no booking selected, show booking list
+
   if (!selectedBookingId) {
     return (
-      <div className="my-bookings">
+      <div style={styles.myBookings}>
         <Header
           searchQuery=""
           onSearchChange={() => {}}
@@ -484,107 +518,75 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onOpenAccountSettings={onOpenAccountSettings}
           onOpenSettings={onOpenSettings}
         />
-
-        <div className="bookings-header">
-          <h1>My Bookings & Transactions</h1>
-          <p className="subtitle">Manage your service requests and track negotiations</p>
+        <div style={styles.bookingsHeader}>
+          <h1 style={styles.title}>My Bookings & Transactions</h1>
+          <p style={styles.subtitle}>Manage your service requests and track negotiations</p>
         </div>
-
-        <div className="bookings-filters">
-          <button
-            className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveFilter('all')}
-          >
-            All Transactions
-          </button>
-          <button
-            className={`filter-btn ${activeFilter === 'active' ? 'active' : ''}`}
-            onClick={() => setActiveFilter('active')}
-          >
-            Active
-          </button>
-          <button
-            className={`filter-btn ${activeFilter === 'completed' ? 'active' : ''}`}
-            onClick={() => setActiveFilter('completed')}
-          >
-            Done / Completed
-          </button>
+        <div style={styles.bookingsFilters}>
+          <button style={{ ...styles.filterBtn, ...(activeFilter === 'all' ? styles.filterBtnActive : {}) }} onClick={() => setActiveFilter('all')}>All Transactions</button>
+          <button style={{ ...styles.filterBtn, ...(activeFilter === 'active' ? styles.filterBtnActive : {}) }} onClick={() => setActiveFilter('active')}>Active</button>
+          <button style={{ ...styles.filterBtn, ...(activeFilter === 'completed' ? styles.filterBtnActive : {}) }} onClick={() => setActiveFilter('completed')}>Done / Completed</button>
         </div>
-        
-        <div className="bookings-list">
+        <div style={styles.bookingsList}>
           {filteredBookings.length === 0 ? (
-            <div className="empty-state">
-              <p>No transactions found for this filter.</p>
-            </div>
+            <div style={styles.emptyState}><p>No transactions found for this filter.</p></div>
           ) : (
-            filteredBookings.map(booking => (
-              <div key={booking.id} className="booking-card">
-                <div className="booking-info">
-                  <h3 className="worker-name">{booking.workerName}</h3>
-                  <p className="service-type">{booking.serviceType}</p>
-                  <p className="description">{booking.description}</p>
-                  <div className="booking-meta">
-                    <span className="request-date">Requested: {booking.requestDate}</span>
-                    {isRecurringBilling(booking) && (
-                      <span className="billing-badge">
-                        {getBillingLabel(booking)} Billing
-                      </span>
-                    )}
-                    {isRecurringBilling(booking) && booking.nextChargeDate && !isBookingStopped(booking) && (
-                      <span className="next-charge-date">
-                        Next charge: {booking.nextChargeDate}
-                      </span>
-                    )}
-                    <span className={`status-badge status-${booking.status.toLowerCase().replace(/\s+/g, '-')}`}>
-                      {booking.status}
-                    </span>
-                    {booking.rating && (
-                      <span className="booking-rating">Rating: {'★'.repeat(booking.rating)} ({booking.rating}/5)</span>
-                    )}
+            filteredBookings.map((booking) => (
+              <div
+                key={booking.id}
+                style={{ ...styles.bookingCard, ...(hoveredCardId === booking.id ? styles.bookingCardHover : {}) }}
+                onMouseEnter={() => setHoveredCardId(booking.id)}
+                onMouseLeave={() => setHoveredCardId(null)}
+              >
+                <div style={styles.bookingInfo}>
+                  <h3 style={styles.workerName}>{booking.workerName}</h3>
+                  <p style={styles.serviceType}>{booking.serviceType}</p>
+                  <p style={styles.description}>{booking.description}</p>
+                  <div style={styles.bookingMeta}>
+                    <span style={styles.requestDate}>Requested: {booking.requestDate}</span>
+                    {isRecurringBilling(booking) && <span style={styles.billingBadge}>{getBillingLabel(booking)} Billing</span>}
+                    {isRecurringBilling(booking) && booking.nextChargeDate && !isBookingStopped(booking) && <span style={styles.nextChargeDate}>Next charge: {booking.nextChargeDate}</span>}
+                    <span style={{ ...styles.statusBadge, ...(statusStyleMap[booking.status] || {}) }}>{booking.status}</span>
+                    {booking.rating && <span style={styles.bookingRating}>Rating: {'\u2605'.repeat(booking.rating)} ({booking.rating}/5)</span>}
                   </div>
                 </div>
-                
-                <div className="booking-actions">
-                  <div className="quote-preview">
-                    <span className="quote-label">Quote:</span>
-                    <span className="quote-amount">
-                      ₱{booking.quoteAmount}
-                      {isRecurringBilling(booking)
-                        ? ` / ${booking.billingCycle === 'monthly' ? 'month' : 'week'}`
-                        : ''}
-                    </span>
+                <div style={styles.bookingActions}>
+                  <div style={styles.quotePreview}>
+                    <span style={styles.quoteLabel}>Quote:</span>
+                    <span style={styles.quoteAmount}>{`\u20B1${booking.quoteAmount}`}{isRecurringBilling(booking) ? ` / ${booking.billingCycle === 'monthly' ? 'month' : 'week'}` : ''}</span>
                   </div>
                   {isGcashFlow(booking.paymentMethod) && booking.status !== 'Completed Service' && (
-                    <div className="gcash-preview">
-                      <span className="gcash-label">GCash:</span>
-                      <span className="gcash-number">{booking.gcashNumber || '09054891105'}</span>
+                    <div style={styles.gcashPreview}>
+                      <span style={styles.gcashLabel}>GCash:</span>
+                      <span style={styles.gcashNumber}>{booking.gcashNumber || '09054891105'}</span>
                     </div>
                   )}
-                  <div className="booking-action-row">
+                  <div style={styles.bookingActionRow}>
                     <button
-                      className="open-chat-btn"
+                      style={{ ...styles.openChatBtn, ...(hoveredOpenChatId === booking.id ? styles.openChatBtnHover : {}) }}
+                      onMouseEnter={() => setHoveredOpenChatId(booking.id)}
+                      onMouseLeave={() => setHoveredOpenChatId(null)}
                       onClick={() => handleOpenChat(booking.id)}
                     >
                       Open Chat
                     </button>
                     {isGcashFlow(booking.paymentMethod)
                       && booking.status !== 'Service Stopped'
-                      && (
-                        (isRecurringBilling(booking) && isRecurringChargeDue(booking))
-                        || (!isRecurringBilling(booking) && !booking.paymentProofSubmitted)
-                      ) && (
+                      && (((isRecurringBilling(booking) && isRecurringChargeDue(booking)) || (!isRecurringBilling(booking) && !booking.paymentProofSubmitted))) && (
                       <button
-                        className="pay-gcash-btn"
+                        style={{ ...styles.payGcashBtn, ...(hoveredPayId === booking.id ? styles.payGcashBtnHover : {}) }}
+                        onMouseEnter={() => setHoveredPayId(booking.id)}
+                        onMouseLeave={() => setHoveredPayId(null)}
                         onClick={() => handleOpenPaymentProofModal(booking.id)}
                       >
-                        {isRecurringBilling(booking)
-                          ? `Pay ${getBillingLabel(booking)} Charge`
-                          : 'Pay via GCash'}
+                        {isRecurringBilling(booking) ? `Pay ${getBillingLabel(booking)} Charge` : 'Pay via GCash'}
                       </button>
                     )}
                     {(booking.status === 'Completed Service' || booking.canRate || booking.paymentProofSubmitted) && (
                       <button
-                        className="rate-btn"
+                        style={{ ...styles.rateBtn, ...(hoveredRateId === booking.id ? styles.rateBtnHover : {}) }}
+                        onMouseEnter={() => setHoveredRateId(booking.id)}
+                        onMouseLeave={() => setHoveredRateId(null)}
                         onClick={() => handleOpenRating(booking.id)}
                       >
                         {booking.rating ? 'Edit Rating' : 'Rate'}
@@ -598,57 +600,51 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
         </div>
 
         {ratingTargetId && (
-          <div className="rating-modal-overlay">
-            <div className="rating-modal">
-              <h3>Rate Completed Service</h3>
-              <p className="rating-subtitle">Your feedback helps build worker ratings shown in the dashboard.</p>
-
-              <label>Rating (Tap a star)</label>
-              <div className="star-rating" onMouseLeave={() => setRatingHover(0)}>
+          <div style={styles.ratingModalOverlay}>
+            <div style={styles.ratingModal}>
+              <h3 style={styles.ratingTitle}>Rate Completed Service</h3>
+              <p style={styles.ratingSubtitle}>Your feedback helps build worker ratings shown in the dashboard.</p>
+              <label style={styles.label}>Rating (Tap a star)</label>
+              <div style={styles.starRating} onMouseLeave={() => setRatingHover(0)}>
                 {[1, 2, 3, 4, 5].map((star) => {
                   const isActive = (ratingHover || ratingValue) >= star;
                   return (
                     <button
                       key={star}
                       type="button"
-                      className={`star-btn ${isActive ? 'active' : ''}`}
+                      style={{ ...styles.starBtn, ...(isActive ? styles.starBtnActive : {}), transform: ratingHover === star ? 'scale(1.08)' : 'scale(1)' }}
                       onMouseEnter={() => setRatingHover(star)}
                       onClick={() => setRatingValue(star)}
                       aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
                     >
-                      ★
+                      {'\u2605'}
                     </button>
                   );
                 })}
               </div>
-              <p className="star-rating-value">Selected: {ratingValue}/5</p>
-
-              <label htmlFor="rating-comment">Review (optional)</label>
+              <p style={styles.starRatingValue}>Selected: {ratingValue}/5</p>
+              <label style={styles.label} htmlFor="rating-comment">Review (optional)</label>
               <textarea
                 id="rating-comment"
                 rows={4}
                 value={ratingComment}
                 onChange={(event) => setRatingComment(event.target.value)}
                 placeholder="Share your experience with this service..."
+                style={styles.textarea}
               />
-
-              <div className="rating-actions">
-                <button className="btn-cancel-rate" onClick={() => setRatingTargetId(null)}>
-                  Cancel
-                </button>
-                <button className="btn-submit-rate" onClick={handleSubmitRating}>
-                  Submit Rating
-                </button>
+              <div style={styles.ratingActions}>
+                <button style={styles.btnCancelRate} onClick={() => setRatingTargetId(null)}>Cancel</button>
+                <button style={styles.btnSubmitRate} onClick={handleSubmitRating}>Submit Rating</button>
               </div>
             </div>
           </div>
         )}
 
         {paymentProofBookingId && (
-          <div className="rating-modal-overlay">
-            <div className="rating-modal payment-proof-modal">
-              <h3>GCash Payment</h3>
-              <p className="rating-subtitle">
+          <div style={styles.ratingModalOverlay}>
+            <div style={{ ...styles.ratingModal, ...styles.paymentProofModal }}>
+              <h3 style={styles.ratingTitle}>GCash Payment</h3>
+              <p style={styles.ratingSubtitle}>
                 {(() => {
                   const targetBooking = bookings.find((booking) => booking.id === paymentProofBookingId);
                   if (targetBooking && isRecurringBilling(targetBooking)) {
@@ -665,62 +661,35 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                 if (!targetBooking) return null;
                 return (
                   <>
-                    <div className="gcash-payment-header">
-                      <img
-                        src={targetBooking.qrImageUrl}
-                        alt="GCash QR"
-                        className="gcash-qr-image"
-                      />
-                      <div className="gcash-payment-info">
-                        <div className="payment-info-group">
-                          <p className="info-label"><strong>Worker</strong></p>
-                          <p className="info-value">{targetBooking.workerName}</p>
-                        </div>
-                        <div className="payment-info-group">
-                          <p className="info-label"><strong>Service</strong></p>
-                          <p className="info-value">{targetBooking.serviceType}</p>
-                        </div>
-                        <div className="payment-info-group">
-                          <p className="info-label"><strong>Amount</strong></p>
-                          <p className="info-value amount">₱{targetBooking.quoteAmount.toLocaleString()}</p>
-                        </div>
-                        {isRecurringBilling(targetBooking) && (
-                          <div className="payment-info-group">
-                            <p className="info-label"><strong>Billing Cycle</strong></p>
-                            <p className="info-value">{getBillingLabel(targetBooking)}</p>
-                          </div>
-                        )}
-                        {isRecurringBilling(targetBooking) && targetBooking.nextChargeDate && (
-                          <div className="payment-info-group">
-                            <p className="info-label"><strong>Charge Due Date</strong></p>
-                            <p className="info-value">{targetBooking.nextChargeDate}</p>
-                          </div>
-                        )}
-                        <div className="payment-info-group gcash-number-group">
-                          <p className="info-label"><strong>GCash Number</strong></p>
-                          <p className="info-value gcash-number">{targetBooking.gcashNumber}</p>
-                        </div>
+                    <div style={styles.gcashPaymentHeader}>
+                      <img src={targetBooking.qrImageUrl} alt="GCash QR" style={styles.gcashQrImage} />
+                      <div style={styles.gcashPaymentInfo}>
+                        <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Worker</strong></p><p style={styles.infoValue}>{targetBooking.workerName}</p></div>
+                        <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Service</strong></p><p style={styles.infoValue}>{targetBooking.serviceType}</p></div>
+                        <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Amount</strong></p><p style={styles.infoValueAmount}>{`\u20B1${targetBooking.quoteAmount.toLocaleString()}`}</p></div>
+                        {isRecurringBilling(targetBooking) && <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Billing Cycle</strong></p><p style={styles.infoValue}>{getBillingLabel(targetBooking)}</p></div>}
+                        {isRecurringBilling(targetBooking) && targetBooking.nextChargeDate && <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Charge Due Date</strong></p><p style={styles.infoValue}>{targetBooking.nextChargeDate}</p></div>}
+                        <div style={{ ...styles.paymentInfoGroup, ...styles.gcashNumberGroup }}><p style={styles.infoLabel}><strong>GCash Number</strong></p><p style={{ ...styles.infoValue, ...styles.gcashNumber }}>{targetBooking.gcashNumber}</p></div>
                       </div>
                     </div>
-
-                    <div className="payment-proof-section">
-                      <h4>Payment Proof</h4>
-                      
-                      <div className="proof-upload-group">
-                        <label htmlFor="proof-upload">Upload Proof of Transaction (Optional)</label>
-                        <input id="proof-upload" type="file" accept="image/*,.pdf" onChange={handleProofFileChange} />
-                        <p className="proof-file-name">{proofFileName ? `Selected: ${proofFileName}` : 'No file selected'}</p>
+                    <div style={styles.paymentProofSection}>
+                      <h4 style={styles.h4}>Payment Proof</h4>
+                      <div style={styles.proofUploadGroup}>
+                        <label style={styles.label} htmlFor="proof-upload">Upload Proof of Transaction (Optional)</label>
+                        <input id="proof-upload" type="file" accept="image/*,.pdf" onChange={handleProofFileChange} style={styles.fileInput} />
+                        <p style={styles.proofFileName}>{proofFileName ? `Selected: ${proofFileName}` : 'No file selected'}</p>
                       </div>
-
-                      <div className="reference-number-group">
-                        <label htmlFor="reference-no">Reference Number (Optional)</label>
+                      <div style={styles.referenceNumberGroup}>
+                        <label style={styles.label} htmlFor="reference-no">Reference Number (Optional)</label>
                         <input
                           id="reference-no"
                           type="text"
                           value={referenceNo}
                           onChange={(event) => setReferenceNo(event.target.value)}
+                          onFocus={() => setIsReferenceFocused(true)}
+                          onBlur={() => setIsReferenceFocused(false)}
                           placeholder="Enter GCash reference number"
-                          className="reference-input"
+                          style={{ ...styles.referenceInput, ...(isReferenceFocused ? styles.referenceInputFocused : {}) }}
                         />
                       </div>
                     </div>
@@ -728,33 +697,22 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                 );
               })()}
 
-              {paymentProofError && <p className="error-text-inline">{paymentProofError}</p>}
-
-              <div className="rating-actions">
-                <button className="btn-cancel-rate" onClick={() => setPaymentProofBookingId(null)}>
-                  Cancel
-                </button>
-                <button className="btn-submit-rate" onClick={handleSubmitPaymentProof}>
-                  Submit Proof
-                </button>
+              {paymentProofError && <p style={styles.errorTextInline}>{paymentProofError}</p>}
+              <div style={styles.ratingActions}>
+                <button style={styles.btnCancelRate} onClick={() => setPaymentProofBookingId(null)}>Cancel</button>
+                <button style={styles.btnSubmitRate} onClick={handleSubmitPaymentProof}>Submit Proof</button>
               </div>
             </div>
           </div>
         )}
 
-        {showPaymentStatusNotice && (
-          <div className="payment-status-notice">
-            Payment proof submitted. Please check My Bookings for the updated status.
-          </div>
-        )}
+        {showPaymentStatusNotice && <div style={styles.paymentStatusNotice}>Payment proof submitted. Please check My Bookings for the updated status.</div>}
       </div>
     );
   }
-  
-  // If a booking is selected, show appropriate modal based on uiState
+
   return (
-    <div className="my-bookings">
-      {/* UI STATE: 'chat' - Quote Negotiation Window (Shopee-style) */}
+    <div style={styles.myBookings}>
       {uiState === 'chat' && (
         <ChatWindow
           booking={currentBooking}
@@ -763,8 +721,6 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onCancel={handleBackToList}
         />
       )}
-      
-      {/* UI STATE: 'slots' - Slot Selection (eGov-style calendar) */}
       {uiState === 'slots' && (
         <SlotSelectionModal
           booking={currentBooking}
@@ -772,8 +728,6 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onCancel={handleBackToList}
         />
       )}
-      
-      {/* UI STATE: 'payment' - Payment Method Selection */}
       {uiState === 'payment' && (
         <PaymentModal
           booking={currentBooking}
@@ -781,62 +735,41 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onCancel={handleBackToList}
         />
       )}
-      
-      {/* UI STATE: 'confirmed' - Booking Confirmation */}
       {uiState === 'confirmed' && (
-        <div className="confirmation-overlay">
-          <div className="confirmation-card">
-            <div className="confirmation-header">
-              <div className="checkmark-icon">✓</div>
-              <h2>Booking Confirmed!</h2>
+        <div style={styles.confirmationOverlay}>
+          <div style={styles.confirmationCard}>
+            <div style={styles.confirmationHeader}>
+              <div style={styles.checkmarkIcon}>{'\u2713'}</div>
+              <h2 style={styles.confirmationHeading}>Booking Confirmed!</h2>
             </div>
-            
-            <div className="confirmation-details">
-              <div className="detail-row">
-                <span className="label">Worker:</span>
-                <span className="value">{currentBooking.workerName}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Service:</span>
-                <span className="value">{currentBooking.serviceType}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Amount:</span>
-                <span className="value">₱{currentBooking.quoteAmount}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Scheduled Date:</span>
-                <span className="value">{currentBooking.selectedSlot?.date}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Time Slot:</span>
-                <span className="value">
-                  {currentBooking.selectedSlot?.timeBlock.startTime} - {currentBooking.selectedSlot?.timeBlock.endTime}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Payment Method:</span>
-                <span className={`value payment-${currentBooking.paymentMethod}`}>
-                  {currentBooking.paymentMethod === 'gcash-advance'
-                    ? 'GCash Advance Payment'
-                    : currentBooking.paymentMethod === 'after-service-gcash'
-                      ? 'Pay After Service (GCash)'
-                      : 'Pay After Service (Cash)'}
+            <div style={styles.confirmationDetails}>
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Worker:</span><span style={styles.detailValue}>{currentBooking.workerName}</span></div>
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Service:</span><span style={styles.detailValue}>{currentBooking.serviceType}</span></div>
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Amount:</span><span style={styles.detailValue}>{`\u20B1${currentBooking.quoteAmount}`}</span></div>
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Scheduled Date:</span><span style={styles.detailValue}>{currentBooking.selectedSlot?.date}</span></div>
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Time Slot:</span><span style={styles.detailValue}>{currentBooking.selectedSlot?.timeBlock.startTime} - {currentBooking.selectedSlot?.timeBlock.endTime}</span></div>
+              <div style={{ ...styles.detailRow, borderBottom: 'none' }}>
+                <span style={styles.detailLabel}>Payment Method:</span>
+                <span style={{
+                  ...styles.detailValue,
+                  ...(currentBooking.paymentMethod === 'gcash-advance' ? styles.payGcashAdvance : {}),
+                  ...(currentBooking.paymentMethod === 'after-service-cash' ? styles.payAfterCash : {}),
+                  ...(currentBooking.paymentMethod === 'after-service-gcash' ? styles.payAfterGcash : {}),
+                }}>
+                  {currentBooking.paymentMethod === 'gcash-advance' ? 'GCash Advance Payment' : currentBooking.paymentMethod === 'after-service-gcash' ? 'Pay After Service (GCash)' : 'Pay After Service (Cash)'}
                 </span>
               </div>
             </div>
-            
-            <div className="confirmation-actions">
+            <div style={styles.confirmationActions}>
               <button
-                className="btn-primary back-to-bookings"
+                style={{ ...styles.backToBookings, ...(hoveredBackToBookings ? styles.backToBookingsHover : {}) }}
+                onMouseEnter={() => setHoveredBackToBookings(true)}
+                onMouseLeave={() => setHoveredBackToBookings(false)}
                 onClick={handleNewInquiry}
               >
                 Back to My Bookings
               </button>
-              <p className="confirmation-note">
-                A confirmation SMS has been sent to your registered number.
-                The worker will contact you shortly to confirm the details.
-              </p>
+              <p style={styles.confirmationNote}>A confirmation SMS has been sent to your registered number. The worker will contact you shortly to confirm the details.</p>
             </div>
           </div>
         </div>

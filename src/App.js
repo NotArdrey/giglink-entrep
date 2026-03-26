@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import './App.css';
+
 // Note: Conditional rendering uses isLoggedIn to switch LandingPage and Dashboard views.
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
@@ -27,6 +27,17 @@ const getStoredThemeMode = () => {
 };
 
 function App() {
+  const styles = {
+    sellerOnboardingOverlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.5)',
+      zIndex: 150,
+      overflowY: 'auto',
+      padding: '1rem 0',
+    },
+  };
+
   // Note: isLoggedIn controls the main page view and loading state controls transition spinner.
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoadingTransition, setIsLoadingTransition] = useState(false);
@@ -184,7 +195,7 @@ function App() {
   }
 
   const sellerOnboardingOverlay = isSellerOnboardingOpen ? (
-    <div className="seller-onboarding-overlay" role="dialog" aria-modal="true">
+    <div style={styles.sellerOnboardingOverlay} role="dialog" aria-modal="true">
       <SellerOnboarding
         onBack={handleCloseSellerOnboarding}
         onComplete={handleOnboardingComplete}

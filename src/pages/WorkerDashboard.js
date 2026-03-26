@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import CalendarAvailabilityModal from '../components/CalendarAvailabilityModal';
 import SellerScheduleModal from '../components/SellerScheduleModal';
 import LogoutConfirmModal from '../components/LogoutConfirmModal';
-import '../styles/WorkerDashboard.css';
+
 
 function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
   const workerName = sellerProfile?.fullName || 'New Seller';
@@ -14,7 +14,7 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
   const barangay = sellerProfile?.barangay || 'N/A';
   const pricingModel = sellerProfile?.pricingModel === 'inquiry'
     ? 'Inquiry Based'
-    : `Fixed Price (PHP ${sellerProfile?.fixedPrice || '0'})`;
+    : `Fixed Price (₱${sellerProfile?.fixedPrice || '0'})`;
   const bookingMode = sellerProfile?.bookingMode || 'with-slots';
   const rateBasisLabelMap = {
     'per-hour': 'Per Hour Rate',
@@ -48,6 +48,7 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
   const [selectedProviderId, setSelectedProviderId] = useState(999);
   const [availableDates, setAvailableDates] = useState([]);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [hoveredButton, setHoveredButton] = useState('');
   const [schedules, setSchedules] = useState({
     999: {
       manualScheduling: sellerProfile?.pricingModel === 'inquiry',
@@ -81,23 +82,77 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
     setAvailableDates((prev) => prev.filter((existingDate) => existingDate !== date));
   };
 
+  const styles = {
+    page: { minHeight: '100vh', backgroundColor: '#f8fafc' },
+    header: {
+      backgroundColor: '#ffffff',
+      borderBottom: '1px solid #e2e8f0',
+      padding: '0.9rem 1rem',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '0.6rem',
+      flexWrap: 'wrap',
+    },
+    logo: { textDecoration: 'none', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 },
+    headerActions: { display: 'flex', gap: '0.5rem' },
+    headerButton: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.5rem',
+      backgroundColor: '#ffffff',
+      color: '#0f172a',
+      padding: '0.5rem 0.8rem',
+      cursor: 'pointer',
+      fontWeight: 600,
+    },
+    logoutButton: { backgroundColor: '#b91c1c', borderColor: '#b91c1c', color: '#ffffff' },
+    main: { maxWidth: '1050px', margin: '0 auto', padding: '1rem' },
+    card: {
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.75rem',
+      padding: '1rem',
+      marginBottom: '1rem',
+    },
+    profileGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: '0.6rem',
+      marginTop: '0.75rem',
+      color: '#334155',
+    },
+    toolsButton: {
+      border: 'none',
+      borderRadius: '0.55rem',
+      padding: '0.6rem 0.9rem',
+      backgroundColor: '#2563eb',
+      color: '#ffffff',
+      fontWeight: 700,
+      cursor: 'pointer',
+      marginTop: '0.3rem',
+    },
+  };
+
   return (
-    <div className="worker-dashboard-page">
-      <header className="worker-dashboard-header">
-        <a href="#worker-home" className="worker-logo">GigLink Worker</a>
-        <div className="worker-header-actions">
-          <button onClick={onBackToClient}>Client Dashboard</button>
-          <button onClick={() => setIsLogoutConfirmOpen(true)} className="logout">
+    <div style={styles.page}>
+      <header style={styles.header}>
+        <a href="#worker-home" style={styles.logo}>GigLink Worker</a>
+        <div style={styles.headerActions}>
+          <button style={styles.headerButton} onClick={onBackToClient}>Client Dashboard</button>
+          <button
+            style={{ ...styles.headerButton, ...styles.logoutButton }}
+            onClick={() => setIsLogoutConfirmOpen(true)}
+          >
             Logout
           </button>
         </div>
       </header>
 
-      <main className="worker-dashboard-main" id="worker-home">
-        <section className="worker-profile-card">
+      <main style={styles.main} id="worker-home">
+        <section style={styles.card}>
           <h1>Welcome, {workerName}</h1>
           <p>Professional profile is now active.</p>
-          <div className="worker-profile-grid">
+          <div style={styles.profileGrid}>
             <div>
               <strong>Service Type:</strong> {serviceType}
             </div>
@@ -122,19 +177,29 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
           </div>
         </section>
 
-        <section className="worker-tools-card">
+        <section style={styles.card}>
           <h2>Availability & Booking Setup</h2>
           {bookingMode === 'calendar-only' ? (
             <>
               <p>Set available dates only. Clients will pick a date and coordinate exact time later.</p>
-              <button className="manage-slots-button" onClick={() => setIsCalendarOnlyModalOpen(true)}>
+              <button
+                style={{ ...styles.toolsButton, backgroundColor: hoveredButton === 'calendar' ? '#1d4ed8' : '#2563eb' }}
+                onMouseEnter={() => setHoveredButton('calendar')}
+                onMouseLeave={() => setHoveredButton('')}
+                onClick={() => setIsCalendarOnlyModalOpen(true)}
+              >
                 Open Calendar Availability
               </button>
             </>
           ) : (
             <>
               <p>Configure operating days, time blocks, and slot capacities.</p>
-              <button className="manage-slots-button" onClick={() => setIsScheduleModalOpen(true)}>
+              <button
+                style={{ ...styles.toolsButton, backgroundColor: hoveredButton === 'slots' ? '#1d4ed8' : '#2563eb' }}
+                onMouseEnter={() => setHoveredButton('slots')}
+                onMouseLeave={() => setHoveredButton('')}
+                onClick={() => setIsScheduleModalOpen(true)}
+              >
                 Open Slot Manager
               </button>
             </>

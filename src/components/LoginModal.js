@@ -1,12 +1,8 @@
-import { useState, useEffect } from 'react';
-// Note: Using className for styling and camelCase for event handlers (onClick, onChange)
-// Note: External CSS imported from styles/
-import '../styles/LoginModal.css';
+import { useEffect, useState } from 'react';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
 function LoginModal({ isOpen, onClose, onSubmit }) {
-  // Note: Using React useState to manage form input state
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -18,8 +14,7 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     barangay: '',
     address: '',
   });
-  
-  // Location API state
+
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
@@ -29,19 +24,14 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingBarangays, setLoadingBarangays] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [hoveredButton, setHoveredButton] = useState('');
 
-  // Note: camelCase for event handler
-  // Fetch provinces when registration mode is opened
   useEffect(() => {
     if (isOpen && !isLoginMode) {
       fetchProvinces();
     }
   }, [isOpen, isLoginMode]);
 
-  /**
-   * fetchProvinces() - Fetch all provinces from PSGC API
-   * Public API: psgc.gitlab.io
-   */
   const fetchProvinces = async () => {
     setLoadingProvinces(true);
     setApiError('');
@@ -63,9 +53,6 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     }
   };
 
-  /**
-   * fetchCities(provinceCode) - Fetch cities/municipalities for a province
-   */
   const fetchCities = async (provinceCode) => {
     if (!provinceCode) {
       setCities([]);
@@ -79,7 +66,7 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
       if (!response.ok) throw new Error('Failed to fetch cities');
       const data = await response.json();
       setCities(data);
-      setFormData(prev => ({ ...prev, city: '', barangay: '' }));
+      setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
       setSelectedCityMunicipalityCode('');
       setBarangays([]);
     } catch (error) {
@@ -94,9 +81,6 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     }
   };
 
-  /**
-   * fetchBarangays(cityCode) - Fetch barangays for a city
-   */
   const fetchBarangays = async (cityCode) => {
     if (!cityCode) {
       setBarangays([]);
@@ -109,7 +93,7 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
       if (!response.ok) throw new Error('Failed to fetch barangays');
       const data = await response.json();
       setBarangays(data);
-      setFormData(prev => ({ ...prev, barangay: '' }));
+      setFormData((prev) => ({ ...prev, barangay: '' }));
     } catch (error) {
       console.error('Error fetching barangays:', error);
       setApiError('Could not load barangays. Using fallback data.');
@@ -122,19 +106,14 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle province selection
-  const handleProvinceChange = (e) => {
-    const provinceCode = e.target.value;
+  const handleProvinceChange = (event) => {
+    const provinceCode = event.target.value;
     const selectedProvince = provinces.find((province) => province.code === provinceCode);
-
     setSelectedProvinceCode(provinceCode);
     setFormData((prev) => ({
       ...prev,
@@ -145,11 +124,9 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     fetchCities(provinceCode);
   };
 
-  // Handle city/municipality selection
-  const handleCityChange = (e) => {
-    const cityCode = e.target.value;
+  const handleCityChange = (event) => {
+    const cityCode = event.target.value;
     const selectedCity = cities.find((city) => city.code === cityCode);
-
     setSelectedCityMunicipalityCode(cityCode);
     setFormData((prev) => ({
       ...prev,
@@ -159,9 +136,8 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     fetchBarangays(cityCode);
   };
 
-  // Handle barangay selection
-  const handleBarangayChange = (e) => {
-    const barangayCode = e.target.value;
+  const handleBarangayChange = (event) => {
+    const barangayCode = event.target.value;
     const selectedBarangay = barangays.find((barangay) => barangay.code === barangayCode);
     setFormData((prev) => ({
       ...prev,
@@ -169,16 +145,13 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
     }));
   };
 
-  // Note: Simulated form submission with state-driven UI transition
-  const handleSubmit = (e) => {
-    e.preventDefault();
-  
-    // Validate registration has location data
+  const handleSubmit = (event) => {
+    event.preventDefault();
     if (!isLoginMode && (!formData.province || !formData.city || !formData.barangay || !formData.address)) {
       setApiError('Please fill in all location fields');
       return;
     }
-  
+
     onSubmit(formData);
     setFormData({
       email: '',
@@ -197,219 +170,241 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
   };
 
   const toggleMode = () => {
-    setIsLoginMode(!isLoginMode);
+    setIsLoginMode((prev) => !prev);
   };
 
   if (!isOpen) return null;
 
+  const styles = {
+    overlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 200,
+    },
+    content: {
+      backgroundColor: '#ffffff',
+      borderRadius: '0.8rem',
+      padding: '1.5rem',
+      maxWidth: '540px',
+      width: 'min(92vw, 540px)',
+      maxHeight: '92vh',
+      overflowY: 'auto',
+      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+      position: 'relative',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    closeButton: {
+      position: 'absolute',
+      top: '1rem',
+      right: '1rem',
+      background: 'none',
+      border: 'none',
+      fontSize: '1.5rem',
+      cursor: 'pointer',
+      color: hoveredButton === 'close' ? '#111827' : '#6b7280',
+      transition: 'color 0.3s ease',
+    },
+    title: {
+      fontSize: '2.15rem',
+      color: '#111827',
+      textAlign: 'center',
+      margin: '0 0 1.15rem 0',
+      fontWeight: 700,
+    },
+    form: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.85rem',
+    },
+    group: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.5rem',
+    },
+    label: {
+      fontSize: '0.95rem',
+      fontWeight: 600,
+      color: '#111827',
+    },
+    input: {
+      minHeight: '44px',
+      height: '44px',
+      boxSizing: 'border-box',
+      padding: '0 0.85rem',
+      border: '1px solid #d1d5db',
+      borderRadius: '0.4rem',
+      fontSize: '1rem',
+      lineHeight: 1.2,
+      fontFamily: 'inherit',
+      transition: 'all 0.3s ease',
+      backgroundColor: '#ffffff',
+      color: '#111827',
+    },
+    submit: {
+      backgroundColor: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb',
+      color: '#ffffff',
+      border: 'none',
+      minHeight: '44px',
+      height: '44px',
+      boxSizing: 'border-box',
+      padding: '0 0.85rem',
+      borderRadius: '0.4rem',
+      fontSize: '1rem',
+      fontWeight: 600,
+      cursor: 'pointer',
+      transition: 'background-color 0.3s ease',
+      marginTop: '0.3rem',
+    },
+    footer: {
+      marginTop: '1.1rem',
+      textAlign: 'center',
+    },
+    toggleText: {
+      fontSize: '0.95rem',
+      color: '#4b5563',
+      margin: 0,
+    },
+    toggleLink: {
+      background: 'none',
+      border: 'none',
+      color: hoveredButton === 'toggle' ? '#1d4ed8' : '#2563eb',
+      fontWeight: 600,
+      cursor: 'pointer',
+      textDecoration: hoveredButton === 'toggle' ? 'underline' : 'none',
+      transition: 'color 0.3s ease',
+    },
+    locationHeader: {
+      marginTop: '20px',
+      paddingTop: '20px',
+      borderTop: '1px solid #e0e0e0',
+    },
+    locationLabel: {
+      fontSize: '12px',
+      fontWeight: 600,
+      color: '#7f8c8d',
+      textTransform: 'uppercase',
+      marginBottom: '12px',
+    },
+    errorBox: {
+      padding: '10px',
+      background: '#ffe6e6',
+      color: '#c33',
+      borderRadius: '4px',
+      fontSize: '12px',
+      marginTop: '10px',
+    },
+  };
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        {/* Close Button */}
+    <div style={styles.overlay}>
+      <div style={styles.content}>
         <button
           onClick={onClose}
-          className="modal-close-button"
+          style={styles.closeButton}
           aria-label="Close modal"
+          onMouseEnter={() => setHoveredButton('close')}
+          onMouseLeave={() => setHoveredButton('')}
         >
-          ✕
+          x
         </button>
 
-        {/* Modal Header */}
-        <h2 className="modal-title">
-          {isLoginMode ? 'Login' : 'Create Account'}
-        </h2>
+        <h2 style={styles.title}>{isLoginMode ? 'Login' : 'Create Account'}</h2>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="modal-form">
-          {/* Register: Name Field */}
+        <form onSubmit={handleSubmit} style={styles.form}>
           {!isLoginMode && (
-            <div className="form-group">
-              <label htmlFor="name" className="form-label">
-                Full Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="form-input"
-                placeholder="Enter your full name"
-                required
-              />
+            <div style={styles.group}>
+              <label htmlFor="name" style={styles.label}>Full Name</label>
+              <input id="name" name="name" type="text" value={formData.name} onChange={handleInputChange} style={styles.input} placeholder="Enter your full name" required />
             </div>
           )}
 
-          {/* Email Field */}
-          <div className="form-group">
-            <label htmlFor="email" className="form-label">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Enter your email"
-              required
-            />
+          <div style={styles.group}>
+            <label htmlFor="email" style={styles.label}>Email</label>
+            <input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} style={styles.input} placeholder="Enter your email" required />
           </div>
 
-          {/* Password Field */}
-          <div className="form-group">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              className="form-input"
-              placeholder="Enter your password"
-              required
-            />
+          <div style={styles.group}>
+            <label htmlFor="password" style={styles.label}>Password</label>
+            <input id="password" name="password" type="password" value={formData.password} onChange={handleInputChange} style={styles.input} placeholder="Enter your password" required />
           </div>
 
-          {/* Register: Confirm Password Field */}
           {!isLoginMode && (
-            <div className="form-group">
-              <label htmlFor="confirmPassword" className="form-label">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                className="form-input"
-                placeholder="Confirm your password"
-                required
-              />
+            <div style={styles.group}>
+              <label htmlFor="confirmPassword" style={styles.label}>Confirm Password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} placeholder="Confirm your password" required />
             </div>
           )}
 
-          {/* Register: Location Fields */}
           {!isLoginMode && (
             <>
-              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e0e0e0' }}>
-                <p style={{ fontSize: '12px', fontWeight: '600', color: '#7f8c8d', textTransform: 'uppercase', marginBottom: '12px' }}>
-                  📍 Service Location (Philippines)
-                </p>
+              <div style={styles.locationHeader}>
+                <p style={styles.locationLabel}>Service Location (Philippines)</p>
               </div>
 
-              {/* Province Dropdown */}
-              <div className="form-group">
-                <label htmlFor="province" className="form-label">
-                  Province {loadingProvinces && '(Loading...)'}
-                </label>
-                <select
-                  id="province"
-                  value={selectedProvinceCode}
-                  onChange={handleProvinceChange}
-                  className="form-input"
-                  required
-                  disabled={loadingProvinces}
-                >
+              <div style={styles.group}>
+                <label htmlFor="province" style={styles.label}>Province {loadingProvinces && '(Loading...)'}</label>
+                <select id="province" value={selectedProvinceCode} onChange={handleProvinceChange} style={styles.input} required disabled={loadingProvinces}>
                   <option value="">Select a Province</option>
-                  {provinces.map(prov => (
-                    <option key={prov.code} value={prov.code}>
-                      {prov.name}
-                    </option>
+                  {provinces.map((province) => (
+                    <option key={province.code} value={province.code}>{province.name}</option>
                   ))}
                 </select>
               </div>
 
-              {/* City/Municipality Dropdown */}
-              <div className="form-group">
-                <label htmlFor="city" className="form-label">
-                  City/Municipality {loadingCities && '(Loading...)'}
-                </label>
-                <select
-                  id="city"
-                  value={selectedCityMunicipalityCode}
-                  onChange={handleCityChange}
-                  className="form-input"
-                  required
-                  disabled={!selectedProvinceCode || loadingCities}
-                >
-                  <option value="">
-                    {!selectedProvinceCode ? 'Select Province First' : 'Select City/Municipality'}
-                  </option>
-                  {cities.map(city => (
-                    <option key={city.code} value={city.code}>
-                      {city.name}
-                    </option>
+              <div style={styles.group}>
+                <label htmlFor="city" style={styles.label}>City/Municipality {loadingCities && '(Loading...)'}</label>
+                <select id="city" value={selectedCityMunicipalityCode} onChange={handleCityChange} style={styles.input} required disabled={!selectedProvinceCode || loadingCities}>
+                  <option value="">{!selectedProvinceCode ? 'Select Province First' : 'Select City/Municipality'}</option>
+                  {cities.map((city) => (
+                    <option key={city.code} value={city.code}>{city.name}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Barangay Dropdown */}
-              <div className="form-group">
-                <label htmlFor="barangay" className="form-label">
-                  Barangay {loadingBarangays && '(Loading...)'}
-                </label>
-                <select
-                  id="barangay"
-                  value={formData.barangay ? (barangays.find((barangay) => barangay.name === formData.barangay)?.code || '') : ''}
-                  onChange={handleBarangayChange}
-                  className="form-input"
-                  required
-                  disabled={!selectedCityMunicipalityCode || loadingBarangays}
-                >
-                  <option value="">
-                    {!selectedCityMunicipalityCode ? 'Select City First' : 'Select Barangay'}
-                  </option>
-                  {barangays.map(barangay => (
-                    <option key={barangay.code} value={barangay.code}>
-                      {barangay.name}
-                    </option>
+              <div style={styles.group}>
+                <label htmlFor="barangay" style={styles.label}>Barangay {loadingBarangays && '(Loading...)'}</label>
+                <select id="barangay" value={formData.barangay ? (barangays.find((barangay) => barangay.name === formData.barangay)?.code || '') : ''} onChange={handleBarangayChange} style={styles.input} required disabled={!selectedCityMunicipalityCode || loadingBarangays}>
+                  <option value="">{!selectedCityMunicipalityCode ? 'Select City First' : 'Select Barangay'}</option>
+                  {barangays.map((barangay) => (
+                    <option key={barangay.code} value={barangay.code}>{barangay.name}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Specific Address */}
-              <div className="form-group">
-                <label htmlFor="address" className="form-label">
-                  Specific Address
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="e.g., 123 Main St, Blk 5, Senior Citizen Village"
-                  required
-                />
+              <div style={styles.group}>
+                <label htmlFor="address" style={styles.label}>Specific Address</label>
+                <input id="address" name="address" type="text" value={formData.address} onChange={handleInputChange} style={styles.input} placeholder="e.g., 123 Main St, Blk 5" required />
               </div>
 
-              {apiError && (
-                <div style={{ padding: '10px', background: '#ffe6e6', color: '#c33', borderRadius: '4px', fontSize: '12px', marginTop: '10px' }}>
-                  ⚠️ {apiError}
-                </div>
-              )}
+              {apiError && <div style={styles.errorBox}>{apiError}</div>}
             </>
           )}
 
-          {/* Submit Button */}
-          <button type="submit" className="form-submit-button">
+          <button
+            type="submit"
+            style={styles.submit}
+            onMouseEnter={() => setHoveredButton('submit')}
+            onMouseLeave={() => setHoveredButton('')}
+          >
             {isLoginMode ? 'Login' : 'Create Account'}
           </button>
         </form>
 
-        {/* Toggle Between Login and Register */}
-        <div className="modal-footer">
-          <p className="modal-toggle-text">
+        <div style={styles.footer}>
+          <p style={styles.toggleText}>
             {isLoginMode ? "Don't have an account? " : 'Already have an account? '}
             <button
               onClick={toggleMode}
-              className="modal-toggle-link"
+              style={styles.toggleLink}
+              onMouseEnter={() => setHoveredButton('toggle')}
+              onMouseLeave={() => setHoveredButton('')}
             >
               {isLoginMode ? 'Register' : 'Login'}
             </button>

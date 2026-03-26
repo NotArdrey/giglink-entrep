@@ -5,8 +5,9 @@ import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
 import WorkerDetailModal from '../components/WorkerDetailModal';
 import BookingCalendarModal from '../components/BookingCalendarModal';
+import PaymentModal from '../components/PaymentModal';
 import BookingNotification from '../components/BookingNotification';
-import '../styles/Dashboard.css';
+
 
 function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
   const providers = [
@@ -102,8 +103,11 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
   const [isBookingCalendarOpen, setIsBookingCalendarOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [pendingBooking, setPendingBooking] = useState(null);
   const [showBookingNotification, setShowBookingNotification] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
+  const [hoveredChip, setHoveredChip] = useState('');
 
   // Note: Nested scheduling structure is Provider > Days > Time Blocks > Slot Capacity.
   const [schedulesByProvider, setSchedulesByProvider] = useState(() => {
@@ -205,45 +209,94 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     setSelectedWorker(null);
   };
 
-  const handleUpdateSchedule = (providerId, updatedSchedule) => {
-    setSchedulesByProvider((prev) => ({
-      ...prev,
-      [providerId]: updatedSchedule,
-    }));
-  };
-
-  const handleConfirmBooking = ({ workerId, dayKey, blockId, manualScheduling }) => {
+  const handleConfirmBooking = ({ workerId, date, dayKey, blockId, manualScheduling }) => {
     if (manualScheduling) {
       setBookingMessage('Manual schedule request sent! Worker will confirm via chat.');
-    } else {
-      setSchedulesByProvider((prev) => {
-        const providerSchedule = prev[workerId];
-        const currentBlocks = providerSchedule?.dayBlocks?.[dayKey] || [];
-        const updatedBlocks = currentBlocks.map((block) => {
-          if (block.id !== blockId) return block;
-          return {
-            ...block,
-            slotsLeft: Math.max(0, block.slotsLeft - 1),
-          };
-        });
+      setIsBookingCalendarOpen(false);
+      setShowBookingNotification(true);
+      setSelectedWorker(null);
+      return;
+    }
 
+    const worker = providers.find((provider) => provider.id === workerId);
+    const selectedBlock = schedulesByProvider[workerId]?.dayBlocks?.[dayKey]?.find((block) => block.id === blockId);
+
+    if (!worker || !selectedBlock) {
+      setBookingMessage('Unable to continue booking. Please try again.');
+      setIsBookingCalendarOpen(false);
+      setShowBookingNotification(true);
+      setSelectedWorker(null);
+      return;
+    }
+
+    const quoteAmount = worker.hourlyRate || worker.dailyRate || worker.projectRate || 0;
+
+    setPendingBooking({
+      workerId,
+      workerName: worker.name,
+      serviceType: worker.serviceType,
+      quoteAmount,
+      selectedSlot: {
+        date,
+        dayKey,
+        blockId,
+        timeBlock: selectedBlock,
+      },
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+    });
+
+    setIsBookingCalendarOpen(false);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleSelectPayment = (selectedPaymentMethod) => {
+    if (!pendingBooking) return;
+
+    const { workerId, selectedSlot } = pendingBooking;
+    const { dayKey, blockId } = selectedSlot;
+
+    setSchedulesByProvider((prev) => {
+      const providerSchedule = prev[workerId];
+      const currentBlocks = providerSchedule?.dayBlocks?.[dayKey] || [];
+      const updatedBlocks = currentBlocks.map((block) => {
+        if (block.id !== blockId) return block;
         return {
-          ...prev,
-          [workerId]: {
-            ...providerSchedule,
-            dayBlocks: {
-              ...providerSchedule.dayBlocks,
-              [dayKey]: updatedBlocks,
-            },
-          },
+          ...block,
+          slotsLeft: Math.max(0, block.slotsLeft - 1),
         };
       });
 
-      setBookingMessage('Booking Request Sent!');
-    }
+      return {
+        ...prev,
+        [workerId]: {
+          ...providerSchedule,
+          dayBlocks: {
+            ...providerSchedule.dayBlocks,
+            [dayKey]: updatedBlocks,
+          },
+        },
+      };
+    });
 
-    setIsBookingCalendarOpen(false);
+    const paymentLabel =
+      selectedPaymentMethod === 'gcash-advance'
+        ? 'GCash advance payment'
+        : selectedPaymentMethod === 'after-service-cash'
+          ? 'Cash after-service payment'
+          : 'GCash after-service payment';
+
+    setBookingMessage(`Booking confirmed with ${paymentLabel}.`);
+    setIsPaymentModalOpen(false);
+    setPendingBooking(null);
     setShowBookingNotification(true);
+    setSelectedWorker(null);
+  };
+
+  const handleCancelPayment = () => {
+    setIsPaymentModalOpen(false);
+    setPendingBooking(null);
     setSelectedWorker(null);
   };
 
@@ -272,8 +325,63 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     return matchesSearch && matchesCategory && matchesDistrict;
   });
 
+  const styles = {
+    page: {
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc',
+    },
+    main: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '1rem',
+    },
+    filterBar: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: '0.75rem',
+      flexWrap: 'wrap',
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.7rem',
+      padding: '0.75rem',
+      marginBottom: '1rem',
+    },
+    chipGroup: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '0.5rem',
+    },
+    chip: {
+      border: '1px solid #cbd5e1',
+      borderRadius: '999px',
+      backgroundColor: '#ffffff',
+      color: '#334155',
+      padding: '0.4rem 0.8rem',
+      cursor: 'pointer',
+      fontWeight: 600,
+    },
+    chipActive: {
+      backgroundColor: '#2563eb',
+      borderColor: '#2563eb',
+      color: '#ffffff',
+    },
+    districtDropdown: {
+      minWidth: '190px',
+      border: '1px solid #cbd5e1',
+      borderRadius: '0.5rem',
+      padding: '0.45rem 0.6rem',
+      backgroundColor: '#ffffff',
+    },
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '1rem',
+    },
+  };
+
   return (
-    <div className="dashboard-page" id="dashboard-home">
+    <div style={styles.page} id="dashboard-home">
       <Header
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
@@ -287,14 +395,20 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         onOpenSettings={onOpenSettings}
       />
 
-      <main className="dashboard-main-content">
-        <section className="filter-bar">
-          <div className="chip-group">
+      <main style={styles.main}>
+        <section style={styles.filterBar}>
+          <div style={styles.chipGroup}>
             {categoryChips.map((chip) => (
               <button
                 key={chip}
-                className={`filter-chip ${activeCategory === chip ? 'active' : ''}`}
+                style={{
+                  ...styles.chip,
+                  ...(activeCategory === chip ? styles.chipActive : {}),
+                  ...(hoveredChip === chip && activeCategory !== chip ? { backgroundColor: '#f1f5f9' } : {}),
+                }}
                 onClick={() => handleCategoryClick(chip)}
+                onMouseEnter={() => setHoveredChip(chip)}
+                onMouseLeave={() => setHoveredChip('')}
               >
                 {chip}
               </button>
@@ -302,7 +416,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
           </div>
 
           <select
-            className="district-dropdown"
+            style={styles.districtDropdown}
             value={selectedDistrict}
             onChange={handleDistrictChange}
           >
@@ -314,7 +428,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
           </select>
         </section>
 
-        <section className="services-grid">
+        <section style={styles.grid}>
           {filteredProviders.map((provider) => (
             <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
           ))}
@@ -335,6 +449,14 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         schedule={selectedWorker ? schedulesByProvider[selectedWorker.id] : null}
         onConfirmBooking={handleConfirmBooking}
       />
+
+      {isPaymentModalOpen && pendingBooking && (
+        <PaymentModal
+          booking={pendingBooking}
+          onSelectPayment={handleSelectPayment}
+          onCancel={handleCancelPayment}
+        />
+      )}
 
       <BookingNotification
         message={bookingMessage}

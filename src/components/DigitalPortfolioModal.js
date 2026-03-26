@@ -1,4 +1,4 @@
-import '../styles/DigitalPortfolioModal.css';
+
 
 /**
  * DigitalPortfolioModal Component
@@ -24,6 +24,75 @@ const DigitalPortfolioModal = ({
   onClose,
 }) => {
   if (!isOpen) return null;
+
+  const styles = {
+    overlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(15, 23, 42, 0.58)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '1rem',
+      zIndex: 280,
+    },
+    card: {
+      width: 'min(96vw, 980px)',
+      maxHeight: '94vh',
+      overflowY: 'auto',
+      backgroundColor: '#ffffff',
+      borderRadius: '0.9rem',
+      border: '1px solid #e2e8f0',
+      boxShadow: '0 18px 42px rgba(15, 23, 42, 0.26)',
+    },
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '0.85rem 1rem',
+      borderBottom: '1px solid #e2e8f0',
+      backgroundColor: '#f8fafc',
+    },
+    close: { width: '32px', height: '32px', borderRadius: '999px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
+    body: {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(270px, 1.4fr) minmax(220px, 1fr)',
+      gap: '0.8rem',
+      padding: '1rem',
+      alignItems: 'start',
+    },
+    previewWrap: { width: '100%' },
+    previewCard: {
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.7rem',
+      backgroundColor: '#ffffff',
+      padding: '0.9rem',
+      color: '#0f172a',
+    },
+    previewHeader: {
+      borderBottom: '1px solid #e2e8f0',
+      paddingBottom: '0.5rem',
+      marginBottom: '0.6rem',
+    },
+    previewService: { margin: 0, color: '#2563eb', fontWeight: 700 },
+    previewRating: { margin: '0.25rem 0 0', color: '#334155' },
+    section: { marginBottom: '0.55rem' },
+    qrSection: { textAlign: 'center' },
+    qrImage: { width: '120px', height: '120px', objectFit: 'contain' },
+    previewFooter: { color: '#64748b', fontSize: '0.8rem', marginTop: '0.6rem' },
+    infoBox: {
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.7rem',
+      backgroundColor: '#f8fafc',
+      padding: '0.8rem',
+      color: '#334155',
+      fontSize: '0.92rem',
+      lineHeight: 1.45,
+    },
+    actions: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid #e2e8f0', padding: '0.75rem 1rem' },
+    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600 },
+    downloadButton: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700 },
+  };
 
   const generatePDF = async () => {
     try {
@@ -154,55 +223,55 @@ const DigitalPortfolioModal = ({
   };
 
   return (
-    <div className="portfolio-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="portfolio-modal-title">
-      <div className="portfolio-modal-card">
-        <div className="portfolio-modal-header">
+    <div style={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="portfolio-modal-title">
+      <div style={styles.card}>
+        <div style={styles.header}>
           <h3 id="portfolio-modal-title">Generate Digital Portfolio</h3>
-          <button className="portfolio-modal-close" onClick={onClose}>✕</button>
+          <button style={styles.close} onClick={onClose}>✕</button>
         </div>
 
-        <div className="portfolio-modal-body">
-          <div className="portfolio-preview">
-            <div className="preview-card">
-              <div className="preview-header-section">
+        <div style={styles.body}>
+          <div style={styles.previewWrap}>
+            <div style={styles.previewCard}>
+              <div style={styles.previewHeader}>
                 <h2>{workerName}</h2>
-                <p className="preview-service">{serviceType}</p>
-                <p className="preview-rating">⭐ {rating}/5 - GigLink Verified</p>
+                <p style={styles.previewService}>{serviceType}</p>
+                <p style={styles.previewRating}>⭐ {rating}/5 - GigLink Verified</p>
               </div>
 
-              <div className="preview-section">
+              <div style={styles.section}>
                 <h4>Professional Summary</h4>
                 <p>{bio}</p>
               </div>
 
-              <div className="preview-section">
+              <div style={styles.section}>
                 <h4>Service Location</h4>
                 <p>📍 {location}</p>
               </div>
 
-              <div className="preview-section">
+              <div style={styles.section}>
                 <h4>Payment Method</h4>
                 <p>💳 GCash: {gcashNumber}</p>
               </div>
 
-              <div className="preview-section qr-section">
+              <div style={{ ...styles.section, ...styles.qrSection }}>
                 <h4>Verification QR Code</h4>
                 <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(
                     `GigLink Profile: ${workerName} - ${serviceType}`
                   )}`}
                   alt="Profile QR Code"
-                  className="preview-qr"
+                  style={styles.qrImage}
                 />
               </div>
 
-              <p className="preview-footer">
+              <p style={styles.previewFooter}>
                 Generated by GigLink • Trusted Service Marketplace
               </p>
             </div>
           </div>
 
-          <div className="portfolio-info-box">
+          <div style={styles.infoBox}>
             <p>
               <strong>📄 PDF Resume:</strong> This professional portfolio will be downloaded as a PDF file that you can share with clients, print, or display online.
             </p>
@@ -215,11 +284,11 @@ const DigitalPortfolioModal = ({
           </div>
         </div>
 
-        <div className="portfolio-modal-actions">
-          <button className="portfolio-cancel-btn" onClick={onClose}>
+        <div style={styles.actions}>
+          <button style={styles.cancelButton} onClick={onClose}>
             Cancel
           </button>
-          <button className="portfolio-download-btn" onClick={generatePDF}>
+          <button style={styles.downloadButton} onClick={generatePDF}>
             📥 Download PDF Portfolio
           </button>
         </div>
