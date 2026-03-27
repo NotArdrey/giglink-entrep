@@ -1,6 +1,6 @@
 import { useState } from 'react';
 // Note: Nested data structure used here is Days > Time Blocks > Slot Capacity via schedules[providerId].dayBlocks[day].
-// Note: Using className and camelCase handlers with external CSS from styles/.
+// Note: Uses inline style objects and camelCase handlers for dynamic UI.
 
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

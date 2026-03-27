@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
+import SkeletonAvatar from '../components/SkeletonAvatar';
+import SkeletonText from '../components/SkeletonText';
 
 function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile }) {
   const fallbackName = 'Juan Dela Cruz';
@@ -19,6 +21,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
   const [isHeadingHovered, setIsHeadingHovered] = useState(false);
   const [isManageHovered, setIsManageHovered] = useState(false);
   const [isPortfolioHovered, setIsPortfolioHovered] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   const cameraInputRef = useRef(null);
   const deviceInputRef = useRef(null);
@@ -32,6 +35,14 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
     setProfilePhoto(nextPhoto);
     setDraftName(nextName);
     setDraftBio(nextBio);
+  }, [sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
+
+  useEffect(() => {
+    setIsProfileLoading(true);
+    const timer = setTimeout(() => {
+      setIsProfileLoading(false);
+    }, 700);
+    return () => clearTimeout(timer);
   }, [sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
 
   const localizedAddress = userLocation
@@ -81,6 +92,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
     hero: { textAlign: 'center', margin: '0 0 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' },
     profilePhotoButton: { border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' },
     profilePhoto: { width: '150px', height: '150px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #e5e7eb', display: 'block', margin: '0 auto' },
+    profileAvatarSkeleton: { width: '150px', height: '150px', borderRadius: '50%', border: '4px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' },
     profilePhotoEdit: { fontSize: '12px', fontWeight: 700, color: '#2563eb' },
     inlineEditRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', justifyContent: 'center', flexWrap: 'wrap' },
     inlineEditInput: { minWidth: '260px', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 10px', fontSize: '16px' },
@@ -128,12 +140,23 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
       <main style={styles.main}>
         <div style={styles.card}>
           <div style={styles.hero}>
-            <button style={styles.profilePhotoButton} onClick={() => setIsPhotoSourceOpen(true)}>
-              <img src={profilePhoto} alt={displayName} style={styles.profilePhoto} />
-              <span style={styles.profilePhotoEdit}>Change Photo</span>
-            </button>
+            {isProfileLoading ? (
+              <div style={styles.profilePhotoButton}>
+                <div style={styles.profileAvatarSkeleton}>
+                  <SkeletonAvatar size={142} />
+                </div>
+                <SkeletonText lines={1} width="120px" />
+              </div>
+            ) : (
+              <button style={styles.profilePhotoButton} onClick={() => setIsPhotoSourceOpen(true)}>
+                <img src={profilePhoto} alt={displayName} style={styles.profilePhoto} />
+                <span style={styles.profilePhotoEdit}>Change Photo</span>
+              </button>
+            )}
 
-            {isEditingName ? (
+            {isProfileLoading ? (
+              <SkeletonText lines={1} width="220px" />
+            ) : isEditingName ? (
               <div style={styles.inlineEditRow}>
                 <input
                   style={styles.inlineEditInput}
@@ -158,7 +181,11 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
               </h1>
             )}
 
-            {isVerifiedWorker && <span style={styles.verifiedBadge}>Verified Worker</span>}
+            {isProfileLoading ? (
+              <SkeletonText lines={1} width="130px" />
+            ) : (
+              isVerifiedWorker && <span style={styles.verifiedBadge}>Verified Worker</span>
+            )}
           </div>
 
           <section style={styles.profileSection}>
@@ -171,7 +198,9 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
               )}
             </div>
 
-            {isEditingBio ? (
+            {isProfileLoading ? (
+              <SkeletonText lines={4} width="85%" />
+            ) : isEditingBio ? (
               <div style={styles.bioEditWrap}>
                 <textarea
                   style={styles.bioEditInput}
@@ -194,7 +223,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
 
           <section style={styles.profileSection}>
             <h2 style={styles.h2}>Localized Address</h2>
-            <p style={styles.paragraph}>{localizedAddress}</p>
+            {isProfileLoading ? <SkeletonText lines={1} width="70%" /> : <p style={styles.paragraph}>{localizedAddress}</p>}
           </section>
 
           {isVerifiedWorker && (

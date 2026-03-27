@@ -1,9 +1,25 @@
+import { useEffect, useState } from 'react';
+import SkeletonAvatar from './SkeletonAvatar';
+import SkeletonText from './SkeletonText';
+
 // Note: Modal component for displaying worker details
-// Note: Using className for styling and camelCase for event handlers (onClick, onChange)
-// Note: External CSS imported from styles/
+// Note: Uses inline style objects with camelCase event handlers.
 
 
 function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
+
+  useEffect(() => {
+    if (!isOpen || !worker) return undefined;
+
+    setIsLoadingDetails(true);
+    const timer = setTimeout(() => {
+      setIsLoadingDetails(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, worker]);
+
   if (!isOpen || !worker) return null;
 
   const isInquiry = worker.actionType === 'inquire';
@@ -79,6 +95,14 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       height: '100%',
       objectFit: 'cover',
     },
+    imageSkeletonWrap: {
+      width: '100%',
+      minHeight: '280px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#e2e8f0',
+    },
     details: {
       display: 'flex',
       flexDirection: 'column',
@@ -103,6 +127,12 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
     info: { display: 'flex', gap: '0.35rem', alignItems: 'baseline' },
     label: { fontWeight: 700, color: '#1e293b' },
     value: { color: '#334155' },
+    detailsSkeletonGroup: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.7rem',
+      marginTop: '0.2rem',
+    },
     bookButton: {
       marginTop: '0.6rem',
       border: 'none',
@@ -129,73 +159,94 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
 
         {/* Worker Photo */}
         <div style={styles.imageContainer}>
-          <img
-            src={worker.photo}
-            alt={worker.name}
-            style={styles.image}
-          />
+          {isLoadingDetails ? (
+            <div style={styles.imageSkeletonWrap}>
+              <SkeletonAvatar size={132} />
+            </div>
+          ) : (
+            <img
+              src={worker.photo}
+              alt={worker.name}
+              style={styles.image}
+            />
+          )}
         </div>
 
         {/* Worker Details */}
         <div style={styles.details}>
-          {/* Name */}
-          <h2 style={styles.name}>{worker.name}</h2>
+          {isLoadingDetails ? (
+            <>
+              <SkeletonText lines={1} width="55%" />
+              <SkeletonText lines={1} width="42%" />
+              <div style={styles.detailsSkeletonGroup}>
+                <SkeletonText lines={2} width="80%" />
+                <SkeletonText lines={1} width="65%" />
+                <SkeletonText lines={1} width="72%" />
+                <SkeletonText lines={1} width="60%" />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Name */}
+              <h2 style={styles.name}>{worker.name}</h2>
 
-          {/* Service Type */}
-          <p style={styles.service}>{worker.serviceType}</p>
+              {/* Service Type */}
+              <p style={styles.service}>{worker.serviceType}</p>
 
-          {/* Rate Basis Badge */}
-          {ratingBadge && (
-            <div style={styles.rateBadge}>
-              <span
-                style={{
-                  ...styles.badge,
-                  ...(badgeColors[worker.rateBasis] || { backgroundColor: '#e2e8f0', color: '#334155' }),
-                }}
+              {/* Rate Basis Badge */}
+              {ratingBadge && (
+                <div style={styles.rateBadge}>
+                  <span
+                    style={{
+                      ...styles.badge,
+                      ...(badgeColors[worker.rateBasis] || { backgroundColor: '#e2e8f0', color: '#334155' }),
+                    }}
+                  >
+                    {ratingBadge}
+                  </span>
+                </div>
+              )}
+
+              {/* Rating */}
+              <div style={styles.rating}>
+                <span style={styles.stars}>★★★★★</span>
+                <span style={styles.ratingValue}>{worker.rating}</span>
+                <span style={styles.reviews}>({worker.reviews} reviews)</span>
+              </div>
+
+              {/* Description */}
+              <p style={styles.description}>
+                {worker.description}
+              </p>
+
+              {/* Experience */}
+              <div style={styles.info}>
+                <span style={styles.label}>Experience:</span>
+                <span style={styles.value}>{worker.experience} years</span>
+              </div>
+
+              {/* Location */}
+              <div style={styles.info}>
+                <span style={styles.label}>Location:</span>
+                <span style={styles.value}>{worker.location}</span>
+              </div>
+
+              {/* Rate */}
+              <div style={styles.info}>
+                <span style={styles.label}>Rate:</span>
+                <span style={styles.value}>{rateText}</span>
+              </div>
+
+              {/* Book/Inquire Button */}
+              {/* Note: camelCase for onClick event handler */}
+              <button
+                onClick={() => onBookNow(worker)}
+                style={styles.bookButton}
               >
-                {ratingBadge}
-              </span>
-            </div>
+                {isInquiry ? 'Inquire Now' : 'Book Now'}
+              </button>
+            </>
           )}
-
-          {/* Rating */}
-          <div style={styles.rating}>
-            <span style={styles.stars}>★★★★★</span>
-            <span style={styles.ratingValue}>{worker.rating}</span>
-            <span style={styles.reviews}>({worker.reviews} reviews)</span>
-          </div>
-
-          {/* Description */}
-          <p style={styles.description}>
-            {worker.description}
-          </p>
-
-          {/* Experience */}
-          <div style={styles.info}>
-            <span style={styles.label}>Experience:</span>
-            <span style={styles.value}>{worker.experience} years</span>
-          </div>
-
-          {/* Location */}
-          <div style={styles.info}>
-            <span style={styles.label}>Location:</span>
-            <span style={styles.value}>{worker.location}</span>
-          </div>
-
-          {/* Rate */}
-          <div style={styles.info}>
-            <span style={styles.label}>Rate:</span>
-            <span style={styles.value}>{rateText}</span>
-          </div>
-
-          {/* Book/Inquire Button */}
-          {/* Note: camelCase for onClick event handler */}
-          <button
-            onClick={() => onBookNow(worker)}
-            style={styles.bookButton}
-          >
-            {isInquiry ? 'Inquire Now' : 'Book Now'}
-          </button>
         </div>
       </div>
     </div>

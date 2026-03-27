@@ -219,7 +219,7 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
       flex: 1,
     },
     goalCardBtn: {
-      display: 'inlineFlex',
+      display: 'inline-flex',
       alignItems: 'center',
       gap: isHovered ? '10px' : '6px',
       marginTop: '12px',
@@ -387,7 +387,7 @@ function GoalsSection({ onLoginClick }) {
       animation: 'toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
     },
     goalsToastIcon: {
-      display: 'inlineFlex',
+      display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       width: '20px',
@@ -484,7 +484,7 @@ function LandingPage({ onLogin }) {
       textAlign: 'center',
     },
     landingStatsHeaderSpan: {
-      display: 'inlineFlex',
+      display: 'inline-flex',
       alignItems: 'center',
       minHeight: '28px',
       padding: '0 10px',
@@ -593,7 +593,7 @@ function LandingPage({ onLogin }) {
       height: '38px',
       borderRadius: '999px',
       border: socialLinkHovered === id ? '1px solid #111827' : '1px solid #d1d5db',
-      display: 'inlineFlex',
+      display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       color: '#111827',

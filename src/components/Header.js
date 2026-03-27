@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 // Note: Conditional rendering is used for the Profile Dropdown menu via isProfileMenuOpen state.
-// Note: Using className and camelCase handlers (onClick, onChange) with external CSS from styles/.
+// Note: Uses inline style objects and camelCase handlers (onClick, onChange).
 import LogoutConfirmModal from './LogoutConfirmModal';
 
 

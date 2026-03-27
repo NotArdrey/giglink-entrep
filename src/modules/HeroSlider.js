@@ -101,7 +101,7 @@ function HeroSlider({ onGetStarted }) {
       padding: '0 1.25rem',
     },
     sliderBadge: {
-      display: 'inlineFlex',
+      display: 'inline-flex',
       alignItems: 'center',
       minHeight: '30px',
       border: '1px solid rgba(255, 255, 255, 0.36)',
