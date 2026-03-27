@@ -150,6 +150,7 @@ const INITIAL_TRANSACTIONS = [
   { id: 'txn-8', clientName: 'Paolo Diaz', service: 'Tutoring', scheduleRef: 'fri-2', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1 },
   { id: 'txn-9', clientName: 'Rina Sy', service: 'Consultation', scheduleRef: 'cal-3', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: -1 },
   { id: 'txn-10', clientName: 'Leo Ramirez', service: 'Math Tutoring', scheduleRef: 'wed-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 950, submittedCashAmount: 950, cashConfirmationStatus: 'pending-worker-review', cashConfirmationQrId: 'CASHQR-TXN10-20260323', transactionId: '' },
+  { id: 'txn-11', clientName: 'Sarah Martinez', service: 'Graphic Design', scheduleRef: 'thu-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 1500, submittedCashAmount: 1400, cashConfirmationStatus: 'denied', cashConfirmationQrId: 'CASHQR-TXN11-20260321', transactionId: '' },
   // Monthly recurring (Advance): once first payment is checked, all cycle entries are paid and locked.
   { id: 'sub-advance-1', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 0, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 1, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
   { id: 'sub-advance-2', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 2, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
@@ -351,8 +352,10 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
   const [isCashQrPreviewOpen, setIsCashQrPreviewOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
+  const [cashDecisionTarget, setCashDecisionTarget] = useState(null);
   const [selectedWorkerIndex, setSelectedWorkerIndex] = useState(0);
   const [hoverKey, setHoverKey] = useState('');
+  const [cashPaymentView, setCashPaymentView] = useState('pending'); // 'pending' or 'history'
   
   // Helper function to get the appropriate schedule based on worker index
   const getWorkerScheduleData = (workerIndex) => {
@@ -864,6 +867,28 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
     );
   };
 
+  const handleRequestCashConfirmationReview = (transaction, decision) => {
+    setCashDecisionTarget({
+      transactionId: transaction.id,
+      clientName: transaction.clientName,
+      service: transaction.service,
+      submittedCashAmount: transaction.submittedCashAmount || 0,
+      expectedCashAmount: transaction.expectedCashAmount || 0,
+      decision,
+    });
+  };
+
+  const handleCloseCashDecisionModal = () => {
+    setCashDecisionTarget(null);
+  };
+
+  const handleConfirmCashDecision = () => {
+    if (!cashDecisionTarget) return;
+
+    handleReviewCashConfirmation(cashDecisionTarget.transactionId, cashDecisionTarget.decision);
+    setCashDecisionTarget(null);
+  };
+
   const sx = (...names) =>
     names.reduce((acc, name) => ({ ...acc, ...(classStyles[name] || {}) }), {});
 
@@ -873,7 +898,12 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
   const cashQrId = currentProfile?.cashQrId || `CASHQR-${(currentProfile?.fullName || 'WORKER').replace(/\s+/g, '-').toUpperCase()}`;
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
   const cashConfirmQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`CASH-CONFIRM-${currentProfile?.fullName || 'Worker'}-${gcashNumber}`)}`;
-  const cashConfirmationNotifications = weekTransactions.filter((txn) => txn.paymentChannel === 'cash');
+  
+  const allCashTransactions = weekTransactions.filter((txn) => txn.paymentChannel === 'cash');
+  const cashConfirmationNotifications = 
+    cashPaymentView === 'pending'
+      ? allCashTransactions.filter((txn) => txn.cashConfirmationStatus === 'pending-worker-review')
+      : allCashTransactions.filter((txn) => txn.cashConfirmationStatus === 'approved' || txn.cashConfirmationStatus === 'denied');
   
   // ============ HELPER FUNCTIONS ============
   
@@ -1062,11 +1092,43 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Payment Confirmations (Cash)</h2>
                 <p style={sx('section-subtitle')}>Worker review queue for face-to-face cash confirmations scanned via Cash QR.</p>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <button
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: cashPaymentView === 'pending' ? '#2563eb' : '#e2e8f0',
+                      color: cashPaymentView === 'pending' ? '#ffffff' : '#0f172a',
+                      border: 'none',
+                      borderRadius: '0.375rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                    }}
+                    onClick={() => setCashPaymentView('pending')}
+                  >
+                    Pending Review
+                  </button>
+                  <button
+                    style={{
+                      padding: '0.5rem 1rem',
+                      backgroundColor: cashPaymentView === 'history' ? '#2563eb' : '#e2e8f0',
+                      color: cashPaymentView === 'history' ? '#ffffff' : '#0f172a',
+                      border: 'none',
+                      borderRadius: '0.375rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                    }}
+                    onClick={() => setCashPaymentView('history')}
+                  >
+                    History
+                  </button>
+                </div>
               </div>
 
               {cashConfirmationNotifications.length === 0 ? (
                 <div style={sx('payment-confirm-card')}>
-                  <p style={{ margin: 0, color: '#64748b' }}>No cash confirmation requests for this week.</p>
+                  <p style={{ margin: 0, color: '#64748b' }}>{cashPaymentView === 'pending' ? 'No cash confirmation requests for this week.' : 'No completed cash transactions.'}</p>
                 </div>
               ) : (
                 <div style={sx('payment-confirm-grid')}>
@@ -1100,26 +1162,28 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                         <p style={{ margin: 0, color: '#0f766e', fontSize: '12px', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
                           {txn.transactionId ? `Transaction ID: ${txn.transactionId}` : 'Transaction ID: Pending approval'}
                         </p>
-                        <div style={sx('payment-confirm-actions')}>
-                          <button
-                            style={{ ...sx('btn-approve-cash'), ...(isHovered(`approve-cash-${txn.id}`) ? hoverStyles.approveCash : {}) }}
-                            onMouseEnter={() => setHoverKey(`approve-cash-${txn.id}`)}
-                            onMouseLeave={() => setHoverKey('')}
-                            onClick={() => handleReviewCashConfirmation(txn.id, 'approve')}
-                            disabled={txn.cashConfirmationStatus === 'approved'}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            style={{ ...sx('btn-deny-cash'), ...(isHovered(`deny-cash-${txn.id}`) ? hoverStyles.denyCash : {}) }}
-                            onMouseEnter={() => setHoverKey(`deny-cash-${txn.id}`)}
-                            onMouseLeave={() => setHoverKey('')}
-                            onClick={() => handleReviewCashConfirmation(txn.id, 'deny')}
-                            disabled={txn.cashConfirmationStatus === 'denied'}
-                          >
-                            Deny
-                          </button>
-                        </div>
+                        {cashPaymentView === 'pending' && (
+                          <div style={sx('payment-confirm-actions')}>
+                            <button
+                              style={{ ...sx('btn-approve-cash'), ...(isHovered(`approve-cash-${txn.id}`) ? hoverStyles.approveCash : {}) }}
+                              onMouseEnter={() => setHoverKey(`approve-cash-${txn.id}`)}
+                              onMouseLeave={() => setHoverKey('')}
+                              onClick={() => handleRequestCashConfirmationReview(txn, 'approve')}
+                              disabled={txn.cashConfirmationStatus === 'approved'}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              style={{ ...sx('btn-deny-cash'), ...(isHovered(`deny-cash-${txn.id}`) ? hoverStyles.denyCash : {}) }}
+                              onMouseEnter={() => setHoverKey(`deny-cash-${txn.id}`)}
+                              onMouseLeave={() => setHoverKey('')}
+                              onClick={() => handleRequestCashConfirmationReview(txn, 'deny')}
+                              disabled={txn.cashConfirmationStatus === 'denied'}
+                            >
+                              Deny
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1504,6 +1568,39 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
             <div style={sx('done-confirm-actions')}>
               <button style={sx('done-cancel-btn')} onClick={handleCloseCashQrPreview}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cashDecisionTarget && (
+        <div style={sx('done-confirm-overlay')}>
+          <div style={sx('done-confirm-modal')}>
+            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Confirm Cash Decision</h3>
+            <p style={{ margin: 0, color: '#374151', lineHeight: 1.5 }}>
+              Are you sure you want to <strong>{cashDecisionTarget.decision === 'approve' ? 'approve' : 'deny'}</strong> this cash confirmation?
+            </p>
+            <p style={sx('done-confirm-note')}>
+              Client: <strong>{cashDecisionTarget.clientName}</strong> | Service: <strong>{cashDecisionTarget.service}</strong>
+            </p>
+            <p style={{ margin: '8px 0 0', color: '#4b5563', fontSize: '13px' }}>
+              Submitted: ₱{cashDecisionTarget.submittedCashAmount} | Expected: ₱{cashDecisionTarget.expectedCashAmount}
+            </p>
+            {cashDecisionTarget.decision === 'deny' && (
+              <p style={{ margin: '8px 0 0', color: '#b91c1c', fontSize: '13px', fontWeight: 600 }}>
+                Denying this payment can affect transaction records. Please verify details before continuing.
+              </p>
+            )}
+            <div style={sx('done-confirm-actions')}>
+              <button style={sx('done-cancel-btn')} onClick={handleCloseCashDecisionModal}>
+                No
+              </button>
+              <button
+                style={cashDecisionTarget.decision === 'approve' ? sx('done-confirm-btn') : sx('delete-confirm-btn')}
+                onClick={handleConfirmCashDecision}
+              >
+                Yes, {cashDecisionTarget.decision === 'approve' ? 'Approve' : 'Deny'}
               </button>
             </div>
           </div>
