@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 // Note: This page is shown through isLoggedIn conditional rendering in App.js.
 // Note: Service cards are rendered dynamically with .map() and filtered via React state.
 import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
+import SkeletonServiceCard from '../components/SkeletonServiceCard';
 import WorkerDetailModal from '../components/WorkerDetailModal';
 import BookingCalendarModal from '../components/BookingCalendarModal';
 import PaymentModal from '../components/PaymentModal';
@@ -108,6 +109,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
   const [showBookingNotification, setShowBookingNotification] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
   const [hoveredChip, setHoveredChip] = useState('');
+  const [isLoadingCards, setIsLoadingCards] = useState(true);
 
   // Note: Nested scheduling structure is Provider > Days > Time Blocks > Slot Capacity.
   const [schedulesByProvider, setSchedulesByProvider] = useState(() => {
@@ -171,6 +173,14 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
 
     return initialSchedules;
   });
+
+  // Simulate initial loading of service cards with skeleton screens
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingCards(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   const categoryChips = ['All', 'Tutors', 'Technicians', 'Cleaners'];
 
@@ -429,9 +439,13 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         </section>
 
         <section style={styles.grid}>
-          {filteredProviders.map((provider) => (
-            <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
-          ))}
+          {isLoadingCards
+            ? Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonServiceCard key={`skeleton-${index}`} />
+              ))
+            : filteredProviders.map((provider) => (
+                <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
+              ))}
         </section>
       </main>
 

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import ChatWindow from '../components/ChatWindow';
 import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
+import SkeletonCard from '../components/SkeletonCard';
 
 const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings }) => {
   const [selectedBookingId, setSelectedBookingId] = useState(null);
@@ -23,6 +24,15 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
   const [hoveredPayId, setHoveredPayId] = useState(null);
   const [hoveredBackToBookings, setHoveredBackToBookings] = useState(false);
   const [isReferenceFocused, setIsReferenceFocused] = useState(false);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+
+  // Simulate initial loading of bookings with skeletons
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingBookings(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const parseDateOnly = (dateString) => {
     const date = new Date(dateString);
@@ -528,10 +538,16 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           <button style={{ ...styles.filterBtn, ...(activeFilter === 'completed' ? styles.filterBtnActive : {}) }} onClick={() => setActiveFilter('completed')}>Done / Completed</button>
         </div>
         <div style={styles.bookingsList}>
-          {filteredBookings.length === 0 ? (
-            <div style={styles.emptyState}><p>No transactions found for this filter.</p></div>
-          ) : (
-            filteredBookings.map((booking) => (
+          {isLoadingBookings
+            ? Array.from({ length: 5 }).map((_, index) => (
+                <SkeletonCard key={`skeleton-${index}`} />
+              ))
+            : filteredBookings.length === 0
+            ? (
+                <div style={styles.emptyState}><p>No transactions found for this filter.</p></div>
+              )
+            : (
+                filteredBookings.map((booking) => (
               <div
                 key={booking.id}
                 style={{ ...styles.bookingCard, ...(hoveredCardId === booking.id ? styles.bookingCardHover : {}) }}
@@ -596,7 +612,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                 </div>
               </div>
             ))
-          )}
+            )}
         </div>
 
         {ratingTargetId && (

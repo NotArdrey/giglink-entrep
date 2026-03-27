@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SkeletonChatMessage from './SkeletonChatMessage';
 
 const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted }) => {
   const [messages, setMessages] = useState([]);
@@ -209,8 +210,9 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted }
         <div style={styles.messages}>
           {isLoading ? (
             <div style={styles.loadingState}>
-              <p>Loading chat history...</p>
-              <div style={styles.spinner}></div>
+              <SkeletonChatMessage isClient={false} />
+              <SkeletonChatMessage isClient={false} />
+              <SkeletonChatMessage isClient={true} />
             </div>
           ) : (
             messages.map((msg) => (
