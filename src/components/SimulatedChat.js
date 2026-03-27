@@ -161,7 +161,7 @@ const SimulatedChat = ({ inquiry, onClose }) => {
               <p style={styles.clientService}>{inquiry.service}</p>
             </div>
           </div>
-          <button style={styles.chatCloseBtn} onMouseEnter={() => setIsCloseHovered(true)} onMouseLeave={() => setIsCloseHovered(false)} onClick={onClose}>?</button>
+          <button style={styles.chatCloseBtn} onMouseEnter={() => setIsCloseHovered(true)} onMouseLeave={() => setIsCloseHovered(false)} onClick={onClose}>{'\u00D7'}</button>
         </div>
 
         <div style={styles.chatMessages}>
@@ -177,11 +177,11 @@ const SimulatedChat = ({ inquiry, onClose }) => {
               {msg.type === 'quote' && (
                 <div style={styles.quoteMessage}>
                   <div style={styles.quoteCardHeader}>
-                    <span style={styles.quoteIcon}>??</span>
+                    <span style={styles.quoteIcon}>💬</span>
                     <span style={styles.quoteLabel}>Price Quote</span>
                   </div>
                   <div style={styles.quoteCardBody}>
-                    <div style={styles.quoteAmount}>?{msg.amount}</div>
+                    <div style={styles.quoteAmount}>₱{msg.amount}</div>
                     <p style={styles.quoteDescription}>{msg.description}</p>
                   </div>
                   <span style={styles.messageTime}>{msg.timestamp}</span>
@@ -246,12 +246,12 @@ const SimulatedChat = ({ inquiry, onClose }) => {
           <div style={styles.quoteModal}>
             <div style={styles.quoteModalHeader}>
               <h3 style={styles.quoteModalTitle}>Send Price Quote</h3>
-              <button style={styles.quoteModalClose} onClick={() => setShowQuoteModal(false)}>?</button>
+              <button style={styles.quoteModalClose} onClick={() => setShowQuoteModal(false)}>{'\u00D7'}</button>
             </div>
 
             <div style={styles.quoteModalContent}>
               <div style={styles.formGroup}>
-                <label htmlFor="quote-amount" style={styles.formLabel}>Quote Amount (?)</label>
+                <label htmlFor="quote-amount" style={styles.formLabel}>Quote Amount (₱)</label>
                 <input
                   id="quote-amount"
                   type="number"
@@ -279,7 +279,7 @@ const SimulatedChat = ({ inquiry, onClose }) => {
               <div style={styles.quotePreview}>
                 <p style={styles.previewLabel}>Preview:</p>
                 <div style={styles.quotePreviewCard}>
-                  <span style={styles.previewAmount}>?{quoteAmount || '�'}</span>
+                  <span style={styles.previewAmount}>₱{quoteAmount || '0'}</span>
                   <p style={styles.previewDesc}>{quoteDescription || `Quote for ${inquiry.service}`}</p>
                 </div>
               </div>

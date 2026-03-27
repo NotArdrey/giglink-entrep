@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import LogoutConfirmModal from './LogoutConfirmModal';
 
 
-function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
+function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings, externalNotifications = [] }) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
@@ -45,6 +45,16 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!externalNotifications || externalNotifications.length === 0) return;
+
+    setNotifications((prev) => {
+      const existingIds = new Set(prev.map((item) => item.id));
+      const incoming = externalNotifications.filter((item) => !existingIds.has(item.id));
+      return incoming.length > 0 ? [...incoming, ...prev] : prev;
+    });
+  }, [externalNotifications]);
 
   const styles = {
     header: {

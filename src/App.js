@@ -88,6 +88,32 @@ function App() {
     document.documentElement.lang = appLanguage === 'fil' ? 'fil' : 'en';
   }, [appLanguage]);
 
+  useEffect(() => {
+    // Keep full-bleed layout now that global CSS reset files are removed.
+    const previousBodyMargin = document.body.style.margin;
+    const previousBodyPadding = document.body.style.padding;
+    const previousBodyMinWidth = document.body.style.minWidth;
+    const previousBodyOverflowX = document.body.style.overflowX;
+    const previousHtmlMargin = document.documentElement.style.margin;
+    const previousHtmlPadding = document.documentElement.style.padding;
+
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.body.style.minWidth = '320px';
+    document.body.style.overflowX = 'hidden';
+
+    return () => {
+      document.documentElement.style.margin = previousHtmlMargin;
+      document.documentElement.style.padding = previousHtmlPadding;
+      document.body.style.margin = previousBodyMargin;
+      document.body.style.padding = previousBodyPadding;
+      document.body.style.minWidth = previousBodyMinWidth;
+      document.body.style.overflowX = previousBodyOverflowX;
+    };
+  }, []);
+
   // Note: camelCase for event handlers
   const handleLogin = (formData) => {
     // Show loading screen during transition

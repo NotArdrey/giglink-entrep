@@ -17,7 +17,15 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
   const [proofFileName, setProofFileName] = useState('');
   const [referenceNo, setReferenceNo] = useState('');
   const [showPaymentStatusNotice, setShowPaymentStatusNotice] = useState(false);
+  const [paymentStatusMessage, setPaymentStatusMessage] = useState('');
   const [paymentProofError, setPaymentProofError] = useState('');
+  const [headerNotifications, setHeaderNotifications] = useState([]);
+  const [cashConfirmBookingId, setCashConfirmBookingId] = useState(null);
+  const [cashEnteredAmount, setCashEnteredAmount] = useState('');
+  const [cashReviewState, setCashReviewState] = useState('idle');
+  const [cashReviewMessage, setCashReviewMessage] = useState('');
+  const [isCashAmountFocused, setIsCashAmountFocused] = useState(false);
+  const [transactionProofBookingId, setTransactionProofBookingId] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [hoveredOpenChatId, setHoveredOpenChatId] = useState(null);
   const [hoveredRateId, setHoveredRateId] = useState(null);
@@ -71,6 +79,27 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     if (booking.billingCycle === 'weekly') return 'Weekly';
     if (booking.billingCycle === 'monthly') return 'Monthly';
     return null;
+  };
+
+  const buildMockTransactionId = (bookingId, channel) => {
+    const now = new Date();
+    const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const suffix = String(Math.floor(Math.random() * 9000) + 1000);
+    return `${channel.toUpperCase()}-TRX-${dateStamp}-${bookingId}-${suffix}`;
+  };
+
+  const pushHeaderNotification = (title, message) => {
+    const id = `notif-${Date.now()}-${Math.floor(Math.random() * 999)}`;
+    setHeaderNotifications((prev) => [
+      {
+        id,
+        title,
+        message,
+        time: 'just now',
+        isRead: false,
+      },
+      ...prev,
+    ]);
   };
 
   const [bookings, setBookings] = useState([
@@ -151,7 +180,8 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       gcashNumber: '09054891105',
       qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
       paymentProofSubmitted: false,
-      paymentReference: '',
+      paymentReference: 'GCASH-TRX-20260312-4-8832',
+      transactionId: 'GCASH-TRX-20260312-4-8832',
       canRate: false,
       rating: null,
       review: '',
@@ -202,6 +232,10 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       afterServicePaymentType: 'cash-only',
       paymentProofSubmitted: false,
       paymentReference: '',
+      transactionId: '',
+      cashConfirmationStatus: 'awaiting-client-scan',
+      cashVerifierQrId: 'CASHQR-106-20260323',
+      submittedCashAmount: null,
       canRate: false,
       rating: null,
       review: '',
@@ -235,6 +269,34 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       stopRequested: false,
       workerStopApproved: false,
     },
+    {
+      id: 8,
+      workerId: 108,
+      workerName: 'Diane Flores',
+      serviceType: 'Home Plumbing Repair',
+      status: 'Completed Service',
+      requestDate: '2026-03-16',
+      description: 'Kitchen sink leak fix with valve replacement.',
+      quoteAmount: 1450,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-18',
+        timeBlock: { id: 'late-afternoon', startTime: '04:00 PM', endTime: '06:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'after-service-cash',
+      allowGcashAdvance: false,
+      allowAfterService: true,
+      afterServicePaymentType: 'cash-only',
+      paymentProofSubmitted: true,
+      paymentReference: 'CASH-TRX-20260318-8-4517',
+      transactionId: 'CASH-TRX-20260318-8-4517',
+      cashConfirmationStatus: 'approved',
+      cashVerifierQrId: 'CASHQR-108-20260318',
+      submittedCashAmount: 1450,
+      canRate: true,
+      rating: 5,
+      review: 'Secure and smooth payment confirmation flow.',
+    },
   ]);
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
@@ -256,6 +318,17 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     setProofFileName('');
     setReferenceNo('');
     setPaymentProofError('');
+  };
+
+  const handleOpenCashConfirmModal = (bookingId) => {
+    setCashConfirmBookingId(bookingId);
+    setCashEnteredAmount('');
+    setCashReviewState('idle');
+    setCashReviewMessage('');
+  };
+
+  const handleOpenTransactionProof = (bookingId) => {
+    setTransactionProofBookingId(bookingId);
   };
 
   const handleProofFileChange = (event) => {
@@ -302,8 +375,98 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     setProofFileName('');
     setReferenceNo('');
     setPaymentProofError('');
+    setPaymentStatusMessage('Payment proof submitted. Please check My Bookings for the updated status.');
     setShowPaymentStatusNotice(true);
     setTimeout(() => setShowPaymentStatusNotice(false), 2600);
+  };
+
+  const handleSubmitCashConfirmation = () => {
+    if (!cashConfirmBookingId) return;
+
+    const targetBooking = bookings.find((booking) => booking.id === cashConfirmBookingId);
+    if (!targetBooking) return;
+
+    const parsedAmount = Number(cashEnteredAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setCashReviewMessage('Enter a valid cash amount before sending for worker review.');
+      setCashReviewState('error');
+      return;
+    }
+
+    setCashReviewState('pending');
+    setCashReviewMessage('Amount sent. Waiting for worker verification...');
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === cashConfirmBookingId
+          ? {
+              ...booking,
+              cashConfirmationStatus: 'pending-worker-review',
+              submittedCashAmount: parsedAmount,
+              status: 'Cash Verification Pending',
+            }
+          : booking
+      )
+    );
+
+    setTimeout(() => {
+      const isApproved = Math.round(parsedAmount * 100) === Math.round(targetBooking.quoteAmount * 100);
+
+      if (isApproved) {
+        const transactionId = buildMockTransactionId(cashConfirmBookingId, 'cash');
+        setBookings((prevBookings) =>
+          prevBookings.map((booking) =>
+            booking.id === cashConfirmBookingId
+              ? {
+                  ...booking,
+                  cashConfirmationStatus: 'approved',
+                  paymentProofSubmitted: true,
+                  paymentReference: transactionId,
+                  transactionId,
+                  canRate: true,
+                  status: 'Completed Service',
+                }
+              : booking
+          )
+        );
+
+        pushHeaderNotification(
+          'Cash Payment Confirmed',
+          `Worker approved your cash confirmation for ${targetBooking.serviceType}. Transaction ID: ${transactionId}.`
+        );
+
+        setPaymentStatusMessage(`Cash payment approved. Transaction ID: ${transactionId}`);
+        setShowPaymentStatusNotice(true);
+        setTimeout(() => setShowPaymentStatusNotice(false), 3200);
+
+        setCashReviewState('approved');
+        setCashReviewMessage('Worker approved the cash payment. Your transaction proof is now available in My Bookings.');
+      } else {
+        setBookings((prevBookings) =>
+          prevBookings.map((booking) =>
+            booking.id === cashConfirmBookingId
+              ? {
+                  ...booking,
+                  cashConfirmationStatus: 'denied',
+                  status: 'Cash Verification Denied',
+                }
+              : booking
+          )
+        );
+
+        pushHeaderNotification(
+          'Cash Payment Denied',
+          `Worker denied the cash confirmation for ${targetBooking.serviceType} due to amount mismatch.`
+        );
+
+        setPaymentStatusMessage('Cash payment denied: submitted amount does not match the expected quote.');
+        setShowPaymentStatusNotice(true);
+        setTimeout(() => setShowPaymentStatusNotice(false), 3200);
+
+        setCashReviewState('denied');
+        setCashReviewMessage('Worker denied the payment confirmation because the submitted amount does not match the quote.');
+      }
+    }, 1600);
   };
 
   const handleSubmitRating = () => {
@@ -369,6 +532,8 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
   };
 
   const handleSelectPaymentMethod = (bookingId, paymentMethod) => {
+    const targetBooking = bookings.find((booking) => booking.id === bookingId);
+
     setBookings((prevBookings) =>
       prevBookings.map((booking) =>
         booking.id === bookingId
@@ -376,10 +541,27 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
               ...booking,
               paymentMethod,
               status: paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled',
+              cashConfirmationStatus:
+                paymentMethod === 'after-service-cash'
+                  ? 'awaiting-client-scan'
+                  : booking.cashConfirmationStatus,
+              cashVerifierQrId:
+                paymentMethod === 'after-service-cash'
+                  ? booking.cashVerifierQrId || `CASHQR-${booking.workerId || booking.id}-${booking.id}`
+                  : booking.cashVerifierQrId,
+              submittedCashAmount: paymentMethod === 'after-service-cash' ? null : booking.submittedCashAmount,
             }
           : booking
       )
     );
+
+    if (paymentMethod === 'after-service-cash' && targetBooking) {
+      pushHeaderNotification(
+        'Cash QR Ready',
+        `Worker ${targetBooking.workerName} generated a Cash Confirmation QR. Scan and submit amount after meetup.`
+      );
+    }
+
     setUiState('confirmed');
   };
 
@@ -428,6 +610,13 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     gcashPreview: { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '6px 10px' },
     gcashLabel: { color: '#065f46', fontWeight: 600 },
     gcashNumber: { color: '#047857', fontWeight: 700, fontFamily: "'Courier New', monospace" },
+    cashPreview: { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '6px 10px' },
+    cashLabel: { color: '#9a3412', fontWeight: 700 },
+    cashHint: { color: '#b45309', fontWeight: 600 },
+    cashConfirmBtn: { padding: '10px 16px', background: '#ea580c', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s ease' },
+    cashConfirmBtnHover: { background: '#c2410c' },
+    transactionProofBtn: { padding: '10px 14px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
+    transactionIdInline: { padding: '6px 10px', borderRadius: '999px', background: '#ecfeff', border: '1px solid #99f6e4', color: '#0f766e', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 },
     bookingActionRow: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' },
     openChatBtn: { padding: '10px 24px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', transform: 'scale(1)' },
     openChatBtnHover: { background: '#229954', transform: 'scale(1.02)' },
@@ -468,6 +657,20 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     referenceInputFocused: { borderColor: '#3b82f6', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)' },
     errorTextInline: { margin: 0, color: '#dc2626', fontSize: '13px', fontWeight: 600 },
     paymentStatusNotice: { position: 'fixed', right: '16px', bottom: '16px', background: '#1d4ed8', color: '#fff', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', fontWeight: 600, boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)', zIndex: 1400 },
+    cashModalHeader: { marginBottom: '10px' },
+    cashSecurityCard: { marginBottom: '14px', border: '1px solid #fed7aa', background: '#fff7ed', borderRadius: '8px', padding: '12px', display: 'grid', gridTemplateColumns: '160px 1fr', gap: '12px', alignItems: 'start' },
+    cashQrImage: { width: '100%', borderRadius: '8px', border: '1px solid #fdba74', background: '#fff' },
+    cashSecurityTitle: { margin: 0, color: '#9a3412', fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' },
+    cashSecurityText: { margin: '6px 0 0', color: '#7c2d12', fontSize: '13px', lineHeight: 1.5 },
+    cashMetaList: { margin: '8px 0 0', paddingLeft: '18px', color: '#9a3412', fontSize: '13px' },
+    cashFieldGroup: { display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' },
+    cashAmountInput: { padding: '12px 14px', fontSize: '15px', border: '1px solid #fdba74', borderRadius: '6px', background: '#fff', fontFamily: 'inherit', transition: 'border-color 0.2s, box-shadow 0.2s', minHeight: '48px', width: '100%', boxSizing: 'border-box', outline: 'none' },
+    cashAmountInputFocused: { borderColor: '#f97316', boxShadow: '0 0 0 3px rgba(249, 115, 22, 0.15)' },
+    cashReviewNotice: { margin: 0, borderRadius: '6px', padding: '9px 10px', fontSize: '13px', fontWeight: 600 },
+    cashReviewPending: { background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' },
+    cashReviewApproved: { background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' },
+    cashReviewDenied: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
+    transactionModalValue: { fontSize: '14px', color: '#0f172a', fontWeight: 700, fontFamily: "'Courier New', monospace" },
     confirmationOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' },
     confirmationCard: { background: '#fff', borderRadius: '16px', padding: '40px 24px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)', transition: 'transform 0.4s ease, opacity 0.4s ease' },
     confirmationHeader: { textAlign: 'center', marginBottom: '32px' },
@@ -499,6 +702,8 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     'Active Service': { background: '#dbeafe', color: '#1e40af' },
     'Service Stopped': { background: '#fee2e2', color: '#991b1b' },
     'Payment Submitted': { background: '#dbeafe', color: '#1e40af' },
+    'Cash Verification Pending': { background: '#ffedd5', color: '#9a3412' },
+    'Cash Verification Denied': { background: '#fee2e2', color: '#b91c1c' },
   };
 
   const currentBooking = bookings.find((b) => b.id === selectedBookingId);
@@ -527,6 +732,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onOpenProfile={onOpenProfile}
           onOpenAccountSettings={onOpenAccountSettings}
           onOpenSettings={onOpenSettings}
+          externalNotifications={headerNotifications}
         />
         <div style={styles.bookingsHeader}>
           <h1 style={styles.title}>My Bookings & Transactions</h1>
@@ -577,6 +783,21 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                       <span style={styles.gcashNumber}>{booking.gcashNumber || '09054891105'}</span>
                     </div>
                   )}
+                  {booking.paymentMethod === 'after-service-cash' && (
+                    <div style={styles.cashPreview}>
+                      <span style={styles.cashLabel}>Cash Security:</span>
+                      <span style={styles.cashHint}>
+                        {booking.cashConfirmationStatus === 'approved'
+                          ? 'Worker verified via QR confirmation'
+                          : booking.cashConfirmationStatus === 'denied'
+                            ? 'Last confirmation was denied'
+                            : 'Client must scan worker QR and submit amount'}
+                      </span>
+                    </div>
+                  )}
+                  {booking.transactionId && (
+                    <span style={styles.transactionIdInline}>Transaction ID: {booking.transactionId}</span>
+                  )}
                   <div style={styles.bookingActionRow}>
                     <button
                       style={{ ...styles.openChatBtn, ...(hoveredOpenChatId === booking.id ? styles.openChatBtnHover : {}) }}
@@ -596,6 +817,26 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                         onClick={() => handleOpenPaymentProofModal(booking.id)}
                       >
                         {isRecurringBilling(booking) ? `Pay ${getBillingLabel(booking)} Charge` : 'Pay via GCash'}
+                      </button>
+                    )}
+                    {booking.paymentMethod === 'after-service-cash'
+                      && booking.status !== 'Service Stopped'
+                      && booking.cashConfirmationStatus !== 'approved' && (
+                      <button
+                        style={{ ...styles.cashConfirmBtn, ...(hoveredPayId === booking.id ? styles.cashConfirmBtnHover : {}) }}
+                        onMouseEnter={() => setHoveredPayId(booking.id)}
+                        onMouseLeave={() => setHoveredPayId(null)}
+                        onClick={() => handleOpenCashConfirmModal(booking.id)}
+                      >
+                        Confirm Cash via Worker QR
+                      </button>
+                    )}
+                    {(booking.transactionId || booking.paymentReference) && (
+                      <button
+                        style={styles.transactionProofBtn}
+                        onClick={() => handleOpenTransactionProof(booking.id)}
+                      >
+                        View Transaction ID
                       </button>
                     )}
                     {(booking.status === 'Completed Service' || booking.canRate || booking.paymentProofSubmitted) && (
@@ -722,7 +963,115 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           </div>
         )}
 
-        {showPaymentStatusNotice && <div style={styles.paymentStatusNotice}>Payment proof submitted. Please check My Bookings for the updated status.</div>}
+        {cashConfirmBookingId && (
+          <div style={styles.ratingModalOverlay}>
+            <div style={styles.ratingModal}>
+              {(() => {
+                const targetBooking = bookings.find((booking) => booking.id === cashConfirmBookingId);
+                if (!targetBooking) return null;
+
+                const mockCashQr = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&format=png&data=CASH-CONFIRM|${targetBooking.cashVerifierQrId || `CASHQR-${targetBooking.id}`}|BOOKING-${targetBooking.id}`;
+                const reviewStyle =
+                  cashReviewState === 'approved'
+                    ? { ...styles.cashReviewNotice, ...styles.cashReviewApproved }
+                    : cashReviewState === 'denied' || cashReviewState === 'error'
+                      ? { ...styles.cashReviewNotice, ...styles.cashReviewDenied }
+                      : { ...styles.cashReviewNotice, ...styles.cashReviewPending };
+
+                return (
+                  <>
+                    <div style={styles.cashModalHeader}>
+                      <h3 style={styles.ratingTitle}>Cash Payment Confirmation (QR Security)</h3>
+                      <p style={styles.ratingSubtitle}>
+                        For in-person cash payments, scan the worker-generated QR, enter your paid amount, and wait for worker approval/denial.
+                      </p>
+                    </div>
+
+                    <div style={styles.cashSecurityCard}>
+                      <img src={mockCashQr} alt="Worker cash confirmation QR" style={styles.cashQrImage} />
+                      <div>
+                        <p style={styles.cashSecurityTitle}>Worker Verification QR</p>
+                        <p style={styles.cashSecurityText}>
+                          This QR is only for cash confirmation and is separate from GCash QR.
+                        </p>
+                        <ul style={styles.cashMetaList}>
+                          <li>Booking: #{targetBooking.id}</li>
+                          <li>Worker: {targetBooking.workerName}</li>
+                          <li>Expected Amount: ₱{targetBooking.quoteAmount.toLocaleString()}</li>
+                          <li>Verification Code: {targetBooking.cashVerifierQrId || `CASHQR-${targetBooking.id}`}</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div style={styles.cashFieldGroup}>
+                      <label style={styles.label} htmlFor="cash-amount">Amount Paid in Cash</label>
+                      <input
+                        id="cash-amount"
+                        type="number"
+                        min="1"
+                        value={cashEnteredAmount}
+                        onChange={(event) => setCashEnteredAmount(event.target.value)}
+                        onFocus={() => setIsCashAmountFocused(true)}
+                        onBlur={() => setIsCashAmountFocused(false)}
+                        placeholder="Enter the amount you paid"
+                        style={{ ...styles.cashAmountInput, ...(isCashAmountFocused ? styles.cashAmountInputFocused : {}) }}
+                        disabled={cashReviewState === 'pending'}
+                      />
+                    </div>
+
+                    {cashReviewMessage && <p style={reviewStyle}>{cashReviewMessage}</p>}
+
+                    <div style={styles.ratingActions}>
+                      <button style={styles.btnCancelRate} onClick={() => setCashConfirmBookingId(null)}>Close</button>
+                      <button
+                        style={{ ...styles.btnSubmitRate, ...(cashReviewState === 'pending' ? { background: '#94a3b8', cursor: 'not-allowed' } : {}) }}
+                        onClick={handleSubmitCashConfirmation}
+                        disabled={cashReviewState === 'pending'}
+                      >
+                        {cashReviewState === 'pending' ? 'Waiting for Worker...' : 'Submit to Worker Review'}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {transactionProofBookingId && (
+          <div style={styles.ratingModalOverlay}>
+            <div style={styles.ratingModal}>
+              {(() => {
+                const proofBooking = bookings.find((booking) => booking.id === transactionProofBookingId);
+                if (!proofBooking) return null;
+
+                return (
+                  <>
+                    <h3 style={styles.ratingTitle}>Payment Proof / Transaction ID</h3>
+                    <p style={styles.ratingSubtitle}>
+                      Use this transaction ID as proof during presentation and client-worker verification checks.
+                    </p>
+
+                    <div style={styles.paymentProofSection}>
+                      <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Booking ID</strong></p><p style={styles.infoValue}>#{proofBooking.id}</p></div>
+                      <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Worker</strong></p><p style={styles.infoValue}>{proofBooking.workerName}</p></div>
+                      <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Service</strong></p><p style={styles.infoValue}>{proofBooking.serviceType}</p></div>
+                      <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Payment Channel</strong></p><p style={styles.infoValue}>{proofBooking.paymentMethod === 'after-service-cash' ? 'Cash QR Confirmation' : 'GCash'}</p></div>
+                      <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Amount</strong></p><p style={styles.infoValueAmount}>₱{proofBooking.quoteAmount.toLocaleString()}</p></div>
+                      <div style={styles.paymentInfoGroup}><p style={styles.infoLabel}><strong>Transaction ID</strong></p><p style={styles.transactionModalValue}>{proofBooking.transactionId || proofBooking.paymentReference || 'Pending Transaction ID'}</p></div>
+                    </div>
+
+                    <div style={styles.ratingActions}>
+                      <button style={styles.btnCancelRate} onClick={() => setTransactionProofBookingId(null)}>Close</button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {showPaymentStatusNotice && <div style={styles.paymentStatusNotice}>{paymentStatusMessage || 'Payment update submitted.'}</div>}
       </div>
     );
   }

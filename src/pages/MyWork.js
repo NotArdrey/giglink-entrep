@@ -141,14 +141,15 @@ const INITIAL_CALENDAR_AVAILABILITY = [
 
 const INITIAL_TRANSACTIONS = [
   { id: 'txn-1', clientName: 'Alice Wong', service: 'Tutoring', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: true, isDone: false, weekOffset: 0 },
-  { id: 'txn-2', clientName: 'Bob Lee', service: 'Tutoring', scheduleRef: 'mon-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 0 },
+  { id: 'txn-2', clientName: 'Bob Lee', service: 'Tutoring', scheduleRef: 'mon-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 800, submittedCashAmount: 780, cashConfirmationStatus: 'pending-worker-review', cashConfirmationQrId: 'CASHQR-TXN2-20260322', transactionId: '' },
   { id: 'txn-3', clientName: 'Carol Kim', service: 'Tutoring', scheduleRef: 'tue-1', paymentMode: 'Advance', isPaid: true, isDone: true, weekOffset: 0 },
   { id: 'txn-4', clientName: 'Diana Ng', service: 'Tutoring', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 0 },
   { id: 'txn-5', clientName: 'Grace Reyes', service: 'Tutoring', scheduleRef: 'wed-2', paymentMode: 'Advance', isPaid: true, isDone: false, weekOffset: 0 },
   { id: 'txn-6', clientName: 'Mika Ramos', service: 'Consultation', scheduleRef: 'cal-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 0 },
-  { id: 'txn-7', clientName: 'Noel Santos', service: 'Consultation', scheduleRef: 'cal-2', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 0 },
+  { id: 'txn-7', clientName: 'Noel Santos', service: 'Consultation', scheduleRef: 'cal-2', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: true, isDone: true, weekOffset: 0, expectedCashAmount: 1200, submittedCashAmount: 1200, cashConfirmationStatus: 'approved', cashConfirmationQrId: 'CASHQR-TXN7-20260320', transactionId: 'CASH-TRX-20260320-TXN7-7381' },
   { id: 'txn-8', clientName: 'Paolo Diaz', service: 'Tutoring', scheduleRef: 'fri-2', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1 },
   { id: 'txn-9', clientName: 'Rina Sy', service: 'Consultation', scheduleRef: 'cal-3', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: -1 },
+  { id: 'txn-10', clientName: 'Leo Ramirez', service: 'Math Tutoring', scheduleRef: 'wed-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 950, submittedCashAmount: 950, cashConfirmationStatus: 'pending-worker-review', cashConfirmationQrId: 'CASHQR-TXN10-20260323', transactionId: '' },
   // Monthly recurring (Advance): once first payment is checked, all cycle entries are paid and locked.
   { id: 'sub-advance-1', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 0, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 1, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
   { id: 'sub-advance-2', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 2, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
@@ -255,6 +256,22 @@ const classStyles = {
   'gcash-preview-modal': { width: 'min(520px, 92vw)' },
   'gcash-preview-body': { marginTop: '12px', display: 'flex', gap: '14px', alignItems: 'flex-start' },
   'gcash-preview-qr': { width: '170px', height: '170px', borderRadius: '8px', border: '1px solid #d1d5db' },
+  'payment-confirm-section': { marginBottom: '40px' },
+  'payment-confirm-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' },
+  'payment-confirm-card': { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)', display: 'grid', gap: '8px' },
+  'payment-confirm-meta': { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  'confirm-status-pill': { display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 },
+  'confirm-status-pending': { background: '#ffedd5', color: '#9a3412' },
+  'confirm-status-approved': { background: '#dcfce7', color: '#166534' },
+  'confirm-status-denied': { background: '#fee2e2', color: '#b91c1c' },
+  'payment-confirm-actions': { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  'btn-approve-cash': { border: 'none', background: '#16a34a', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
+  'btn-deny-cash': { border: 'none', background: '#dc2626', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
+  'btn-gcash-preview': { border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px' },
+  'payment-qr-grid': { marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' },
+  'payment-qr-item': { border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px', background: '#f8fafc', textAlign: 'center' },
+  'payment-qr-title': { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
+  'payment-qr-caption': { margin: '6px 0 0', fontSize: '12px', color: '#6b7280' },
 };
 
 const hoverStyles = {
@@ -270,6 +287,8 @@ const hoverStyles = {
   editAction: { background: '#dbeafe', borderColor: '#2563eb' },
   deleteAction: { background: '#fecaca', borderColor: '#e74c3c' },
   deleteConfirm: { background: '#b91c1c' },
+  approveCash: { background: '#15803d' },
+  denyCash: { background: '#b91c1c' },
 };
 
 /**
@@ -329,6 +348,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
   const [slotModalType, setSlotModalType] = useState('edit');
   const [profileEditModalOpen, setProfileEditModalOpen] = useState(false);
   const [isGcashPreviewOpen, setIsGcashPreviewOpen] = useState(false);
+  const [isCashQrPreviewOpen, setIsCashQrPreviewOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
   const [selectedWorkerIndex, setSelectedWorkerIndex] = useState(0);
@@ -805,13 +825,55 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
     setIsGcashPreviewOpen(false);
   };
 
+  const handleOpenCashQrPreview = () => {
+    setIsCashQrPreviewOpen(true);
+  };
+
+  const handleCloseCashQrPreview = () => {
+    setIsCashQrPreviewOpen(false);
+  };
+
+  const buildCashTransactionId = (transactionId) => {
+    const now = new Date();
+    const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const suffix = String(Math.floor(Math.random() * 9000) + 1000);
+    return `CASH-TRX-${dateStamp}-${transactionId.toUpperCase()}-${suffix}`;
+  };
+
+  const handleReviewCashConfirmation = (transactionId, decision) => {
+    setTransactions((prev) =>
+      prev.map((txn) => {
+        if (txn.id !== transactionId) return txn;
+
+        if (decision === 'approve') {
+          return {
+            ...txn,
+            cashConfirmationStatus: 'approved',
+            isPaid: true,
+            transactionId: txn.transactionId || buildCashTransactionId(transactionId),
+          };
+        }
+
+        return {
+          ...txn,
+          cashConfirmationStatus: 'denied',
+          isPaid: false,
+          transactionId: '',
+        };
+      })
+    );
+  };
+
   const sx = (...names) =>
     names.reduce((acc, name) => ({ ...acc, ...(classStyles[name] || {}) }), {});
 
   const isHovered = (key) => hoverKey === key;
 
   const gcashNumber = currentProfile?.gcashNumber || '09054891105';
+  const cashQrId = currentProfile?.cashQrId || `CASHQR-${(currentProfile?.fullName || 'WORKER').replace(/\s+/g, '-').toUpperCase()}`;
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
+  const cashConfirmQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`CASH-CONFIRM-${currentProfile?.fullName || 'Worker'}-${gcashNumber}`)}`;
+  const cashConfirmationNotifications = weekTransactions.filter((txn) => txn.paymentChannel === 'cash');
   
   // ============ HELPER FUNCTIONS ============
   
@@ -913,6 +975,14 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                   >
                     GCash QR
                   </button>
+                  <button
+                    style={{ ...sx('btn-gcash-preview', 'profile-gcash-btn'), ...(isHovered('profile-cash-btn') ? hoverStyles.gcashButton : {}) }}
+                    onMouseEnter={() => setHoverKey('profile-cash-btn')}
+                    onMouseLeave={() => setHoverKey('')}
+                    onClick={handleOpenCashQrPreview}
+                  >
+                    Cash Confirm QR
+                  </button>
                 </div>
               </div>
               <div style={sx('profile-stats')}>
@@ -986,6 +1056,75 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                   </div>
                 ))}
               </div>
+            </section>
+
+            <section style={sx('payment-confirm-section')}>
+              <div style={sx('section-header')}>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Payment Confirmations (Cash)</h2>
+                <p style={sx('section-subtitle')}>Worker review queue for face-to-face cash confirmations scanned via Cash QR.</p>
+              </div>
+
+              {cashConfirmationNotifications.length === 0 ? (
+                <div style={sx('payment-confirm-card')}>
+                  <p style={{ margin: 0, color: '#64748b' }}>No cash confirmation requests for this week.</p>
+                </div>
+              ) : (
+                <div style={sx('payment-confirm-grid')}>
+                  {cashConfirmationNotifications.map((txn) => {
+                    const statusStyle =
+                      txn.cashConfirmationStatus === 'approved'
+                        ? sx('confirm-status-pill', 'confirm-status-approved')
+                        : txn.cashConfirmationStatus === 'denied'
+                          ? sx('confirm-status-pill', 'confirm-status-denied')
+                          : sx('confirm-status-pill', 'confirm-status-pending');
+
+                    return (
+                      <div key={`confirm-${txn.id}`} style={sx('payment-confirm-card')}>
+                        <div style={sx('payment-confirm-meta')}>
+                          <strong>{txn.clientName}</strong>
+                          <span style={statusStyle}>
+                            {txn.cashConfirmationStatus === 'approved'
+                              ? 'Approved'
+                              : txn.cashConfirmationStatus === 'denied'
+                                ? 'Denied'
+                                : 'Pending Review'}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, color: '#334155', fontSize: '13px' }}>{txn.service}</p>
+                        <p style={{ margin: 0, color: '#475569', fontSize: '12px' }}>
+                          QR Ref: {txn.cashConfirmationQrId || 'N/A'}
+                        </p>
+                        <p style={{ margin: 0, color: '#475569', fontSize: '12px' }}>
+                          Submitted: ₱{txn.submittedCashAmount || 0} | Expected: ₱{txn.expectedCashAmount || 0}
+                        </p>
+                        <p style={{ margin: 0, color: '#0f766e', fontSize: '12px', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
+                          {txn.transactionId ? `Transaction ID: ${txn.transactionId}` : 'Transaction ID: Pending approval'}
+                        </p>
+                        <div style={sx('payment-confirm-actions')}>
+                          <button
+                            style={{ ...sx('btn-approve-cash'), ...(isHovered(`approve-cash-${txn.id}`) ? hoverStyles.approveCash : {}) }}
+                            onMouseEnter={() => setHoverKey(`approve-cash-${txn.id}`)}
+                            onMouseLeave={() => setHoverKey('')}
+                            onClick={() => handleReviewCashConfirmation(txn.id, 'approve')}
+                            disabled={txn.cashConfirmationStatus === 'approved'}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            style={{ ...sx('btn-deny-cash'), ...(isHovered(`deny-cash-${txn.id}`) ? hoverStyles.denyCash : {}) }}
+                            onMouseEnter={() => setHoverKey(`deny-cash-${txn.id}`)}
+                            onMouseLeave={() => setHoverKey('')}
+                            onClick={() => handleReviewCashConfirmation(txn.id, 'deny')}
+                            disabled={txn.cashConfirmationStatus === 'denied'}
+                          >
+                            Deny
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
             
             <section style={sx('schedule-section')}>
@@ -1337,6 +1476,33 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
 
             <div style={sx('done-confirm-actions')}>
               <button style={sx('done-cancel-btn')} onClick={handleCloseGcashPreview}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isCashQrPreviewOpen && (
+        <div style={sx('done-confirm-overlay')}>
+          <div style={sx('done-confirm-modal', 'gcash-preview-modal')}>
+            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Cash Confirmation QR</h3>
+            <p style={{ margin: 0, color: '#4b5563', fontSize: '15px', lineHeight: 1.45 }}>
+              Let the client scan this QR after handing over cash to submit payment details for your approval.
+            </p>
+
+            <div style={sx('gcash-preview-body')}>
+              <img src={cashConfirmQrImageUrl} alt="Cash Confirmation QR" style={sx('gcash-preview-qr')} />
+              <div>
+                <p><strong>Cash QR ID:</strong> {cashQrId}</p>
+                <p style={sx('done-confirm-note')}>
+                  Client submits amount using this QR, then you approve or deny inside Payment Confirmations.
+                </p>
+              </div>
+            </div>
+
+            <div style={sx('done-confirm-actions')}>
+              <button style={sx('done-cancel-btn')} onClick={handleCloseCashQrPreview}>
                 Close
               </button>
             </div>

@@ -144,7 +144,7 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
               onClick={onBack}
               aria-label="Close seller onboarding"
             >
-              x
+              ×
             </button>
           )}
           <h1 style={styles.onboardingHeaderTitle}>Become a Seller</h1>
@@ -153,10 +153,10 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
 
         {userLocation && (
           <div style={styles.locationSummary}>
-            <p style={styles.locationLabel}>?? Service Location (from registration):</p>
+            <p style={styles.locationLabel}>Service Location (from registration):</p>
             <div style={styles.locationValue}>
               {userLocation.barangay}, {userLocation.city}
-              {userLocation.address && ` � ${userLocation.address}`}
+              {userLocation.address && ` - ${userLocation.address}`}
             </div>
           </div>
         )}
