@@ -31,6 +31,8 @@ export const useAppNavigation = () => {
     () => localStorage.getItem('giglink-language') || 'en'
   );
   const [isSellerOnboardingOpen, setIsSellerOnboardingOpen] = useState(false);
+  const [resetToken, setResetToken] = useState(null);
+  const [resetEmail, setResetEmail] = useState(null);
 
   // Theme effect
   useEffect(() => {
@@ -166,6 +168,22 @@ export const useAppNavigation = () => {
     setAppLanguage(nextLanguage === 'fil' ? 'fil' : 'en');
   };
 
+  const handleOpenForgotPassword = () => {
+    setCurrentView('forgot-password');
+  };
+
+  const handleOpenResetPassword = (token, email) => {
+    setResetToken(token);
+    setResetEmail(email);
+    setCurrentView('reset-password');
+  };
+
+  const handleBackToLogin = () => {
+    setCurrentView('client-dashboard');
+    setResetToken(null);
+    setResetEmail(null);
+  };
+
   return {
     // State
     isLoggedIn,
@@ -178,6 +196,8 @@ export const useAppNavigation = () => {
     appTheme,
     appLanguage,
     isSellerOnboardingOpen,
+    resetToken,
+    resetEmail,
 
     // Handlers
     handleLogin,
@@ -195,5 +215,8 @@ export const useAppNavigation = () => {
     handleBackFromSettings,
     handleThemeChange,
     handleLanguageChange,
+    handleOpenForgotPassword,
+    handleOpenResetPassword,
+    handleBackToLogin,
   };
 };

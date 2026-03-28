@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
-function LoginModal({ isOpen, onClose, onSubmit }) {
+function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -409,6 +409,21 @@ function LoginModal({ isOpen, onClose, onSubmit }) {
               {isLoginMode ? 'Register' : 'Login'}
             </button>
           </p>
+          {isLoginMode && (
+            <p style={styles.toggleText}>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  onForgotPassword?.();
+                }}
+                style={styles.toggleLink}
+                onMouseEnter={() => setHoveredButton('forgot')}
+                onMouseLeave={() => setHoveredButton('')}
+              >
+                Forgot Password?
+              </button>
+            </p>
+          )}
         </div>
       </div>
     </div>

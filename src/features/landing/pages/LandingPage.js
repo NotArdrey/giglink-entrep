@@ -451,7 +451,7 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
   );
 }
 
-function LandingPage({ onLogin }) {
+function LandingPage({ onLogin, onForgotPassword }) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [socialLinkHovered, setSocialLinkHovered] = useState(null);
   const [footerLinkHovered, setFooterLinkHovered] = useState(null);
@@ -484,6 +484,11 @@ function LandingPage({ onLogin }) {
   const handleLoginSubmit = (formData) => {
     setIsLoginModalOpen(false);
     onLogin && onLogin(formData);
+  };
+
+  const handleForgotPassword = () => {
+    setIsLoginModalOpen(false);
+    onForgotPassword && onForgotPassword();
   };
 
   const styles = {
@@ -706,6 +711,7 @@ function LandingPage({ onLogin }) {
         isOpen={isLoginModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleLoginSubmit}
+        onForgotPassword={handleForgotPassword}
       />
     </div>
   );

@@ -52,7 +52,7 @@ function App() {
 
   // Show landing page if not logged in
   if (!navigationContext.isLoggedIn) {
-    return <LandingPage onLogin={navigationContext.handleLogin} />;
+    return <LandingPage onLogin={navigationContext.handleLogin} onForgotPassword={navigationContext.handleOpenForgotPassword} />;
   }
 
   // Onboarding overlay
