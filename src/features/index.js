@@ -36,8 +36,8 @@ export {
 export {
   LoginModal,
   LogoutConfirmModal,
-  ForgotPasswordPage,
-  ResetPasswordPage,
+  ForgotPasswordModal,
+  ResetPasswordModal,
 } from './auth';
 
 export {

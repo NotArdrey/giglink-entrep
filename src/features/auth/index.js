@@ -1,4 +1,4 @@
 export { default as LoginModal } from './components/LoginModal';
 export { default as LogoutConfirmModal } from './components/LogoutConfirmModal';
-export { default as ForgotPasswordPage } from './pages/ForgotPasswordPage';
-export { default as ResetPasswordPage } from './pages/ResetPasswordPage';
+export { default as ForgotPasswordModal } from './components/ForgotPasswordModal';
+export { default as ResetPasswordModal } from './components/ResetPasswordModal';

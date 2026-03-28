@@ -7,7 +7,6 @@ import {
   Settings,
   WorkerDashboard,
 } from '../index';
-import { ForgotPasswordPage, ResetPasswordPage } from '../auth';
 
 // Map each view to its component and required props
 export const viewMap = {
@@ -80,20 +79,6 @@ export const viewMap = {
       sellerProfile: context.sellerProfile,
       onBackToClient: context.handleBackToClientDashboard,
       onLogout: context.handleLogout,
-    }),
-  },
-  'forgot-password': {
-    component: ForgotPasswordPage,
-    propsBuilder: (context) => ({
-      onBack: context.handleBackToLogin,
-    }),
-  },
-  'reset-password': {
-    component: ResetPasswordPage,
-    propsBuilder: (context) => ({
-      token: context.resetToken,
-      email: context.resetEmail,
-      onBack: context.handleBackToLogin,
     }),
   },
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-function ResetPasswordPage({ onBack, token, email }) {
+function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -10,21 +10,23 @@ function ResetPasswordPage({ onBack, token, email }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const styles = {
-    container: {
-      minHeight: '100vh',
+    overlay: {
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#0f172a',
-      padding: '1rem',
+      zIndex: 100,
     },
-    card: {
+    modal: {
       backgroundColor: '#1e293b',
       borderRadius: '0.5rem',
       border: '1px solid #334155',
       padding: '2rem',
       maxWidth: '400px',
-      width: '100%',
+      width: '90%',
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
     },
     heading: {
       fontSize: '1.875rem',
@@ -37,7 +39,7 @@ function ResetPasswordPage({ onBack, token, email }) {
       fontSize: '0.875rem',
       color: '#cbd5e1',
       textAlign: 'center',
-      marginBottom: '2rem',
+      marginBottom: '1.5rem',
     },
     formGroup: {
       marginBottom: '1.5rem',
@@ -91,7 +93,7 @@ function ResetPasswordPage({ onBack, token, email }) {
     buttonHover: {
       backgroundColor: '#2563eb',
     },
-    backButton: {
+    secondaryButton: {
       width: '100%',
       padding: '0.75rem',
       fontSize: '1rem',
@@ -103,10 +105,6 @@ function ResetPasswordPage({ onBack, token, email }) {
       cursor: 'pointer',
       marginTop: '1rem',
       transition: 'all 0.2s',
-    },
-    backButtonHover: {
-      backgroundColor: '#1e293b',
-      borderColor: '#475569',
     },
     successMessage: {
       backgroundColor: '#064e3b',
@@ -155,7 +153,6 @@ function ResetPasswordPage({ onBack, token, email }) {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (!password) {
       setError('Please enter a new password');
       return;
@@ -171,7 +168,6 @@ function ResetPasswordPage({ onBack, token, email }) {
       return;
     }
 
-    // Mock API call
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
@@ -179,16 +175,16 @@ function ResetPasswordPage({ onBack, token, email }) {
     }, 1500);
   };
 
+  if (!isOpen) return null;
+
   if (isSuccess) {
     return (
-      <div style={styles.container}>
-        <div style={styles.card}>
+      <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onBack()}>
+        <div style={styles.modal}>
           <div style={styles.successMessage}>
             <div style={styles.successIcon}>✓</div>
             <div style={styles.successTitle}>Password Reset Successful!</div>
-            <div style={styles.successText}>
-              Your password has been updated. You can now log in with your new password.
-            </div>
+            <div style={styles.successText}>Your password has been updated. You can now log in with your new password.</div>
             <button
               onClick={onBack}
               onMouseEnter={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
@@ -204,9 +200,9 @@ function ResetPasswordPage({ onBack, token, email }) {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.heading}>Reset Password</h1>
+    <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onBack()}>
+      <div style={styles.modal}>
+        <h2 style={styles.heading}>Reset Password</h2>
         <p style={styles.subheading}>Enter your new password below</p>
 
         {error && <div style={styles.errorMessage}>{error}</div>}
@@ -274,9 +270,9 @@ function ResetPasswordPage({ onBack, token, email }) {
 
         <button
           onClick={onBack}
-          onMouseEnter={(e) => (e.target.style.backgroundColor = styles.backButtonHover.backgroundColor)}
+          onMouseEnter={(e) => (e.target.style.backgroundColor = styles.secondaryButton.backgroundColor === 'transparent' ? '#1e293b' : styles.secondaryButton.backgroundColor)}
           onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
-          style={styles.backButton}
+          style={styles.secondaryButton}
         >
           ← Back to Login
         </button>
@@ -285,4 +281,4 @@ function ResetPasswordPage({ onBack, token, email }) {
   );
 }
 
-export default ResetPasswordPage;
+export default ResetPasswordModal;
