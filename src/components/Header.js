@@ -281,6 +281,16 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
     backgroundColor: hoveredKey === key ? '#f1f5f9' : '#ffffff',
   });
 
+  const primaryActionTheme = sellerProfile
+    ? { key: 'my-work', base: '#2563eb', hover: '#1d4ed8' }
+    : { key: 'become-seller', base: '#27ae60', hover: '#219653' };
+
+  const primaryActionStyle = {
+    ...styles.primaryButton,
+    backgroundColor:
+      hoveredKey === primaryActionTheme.key ? primaryActionTheme.hover : primaryActionTheme.base,
+  };
+
   return (
     <header style={styles.header}>
       <div style={effectiveInnerStyle}>
@@ -311,7 +321,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
         {isDesktop && <div style={styles.actions}>
           {sellerProfile ? (
             <button
-              style={{ ...styles.primaryButton, backgroundColor: hoveredKey === 'my-work' ? '#1d4ed8' : '#2563eb' }}
+              style={primaryActionStyle}
               onMouseEnter={() => setHoveredKey('my-work')}
               onMouseLeave={() => setHoveredKey('')}
               onClick={onOpenMyWork}
@@ -320,7 +330,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
             </button>
           ) : (
             <button
-              style={{ ...styles.primaryButton, backgroundColor: hoveredKey === 'become-seller' ? '#219653' : '#27ae60' }}
+              style={primaryActionStyle}
               onMouseEnter={() => setHoveredKey('become-seller')}
               onMouseLeave={() => setHoveredKey('')}
               onClick={onOpenSellerSetup}
@@ -422,11 +432,23 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
 
           <div style={styles.mobileActions}>
             {sellerProfile ? (
-              <button style={styles.primaryButton} onClick={onOpenMyWork}>
+              <button
+                style={{ ...styles.primaryButton, backgroundColor: primaryActionTheme.base }}
+                onClick={() => {
+                  closeMenus();
+                  onOpenMyWork && onOpenMyWork();
+                }}
+              >
                 My Work
               </button>
             ) : (
-              <button style={styles.primaryButton} onClick={onOpenSellerSetup}>
+              <button
+                style={{ ...styles.primaryButton, backgroundColor: primaryActionTheme.base }}
+                onClick={() => {
+                  closeMenus();
+                  onOpenSellerSetup && onOpenSellerSetup();
+                }}
+              >
                 Become a Seller
               </button>
             )}

@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import SkeletonAvatar from './SkeletonAvatar';
-import SkeletonText from './SkeletonText';
 
 // Note: Modal component for displaying worker details
 // Note: Uses inline style objects with camelCase event handlers.
@@ -103,6 +101,12 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       justifyContent: 'center',
       backgroundColor: '#e2e8f0',
     },
+    avatarPlaceholder: {
+      width: '132px',
+      height: '132px',
+      borderRadius: '999px',
+      backgroundColor: '#cbd5e1',
+    },
     details: {
       display: 'flex',
       flexDirection: 'column',
@@ -133,6 +137,11 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       gap: '0.7rem',
       marginTop: '0.2rem',
     },
+    textPlaceholder: {
+      height: '12px',
+      borderRadius: '999px',
+      backgroundColor: '#e2e8f0',
+    },
     bookButton: {
       marginTop: '0.6rem',
       border: 'none',
@@ -161,7 +170,7 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
         <div style={styles.imageContainer}>
           {isLoadingDetails ? (
             <div style={styles.imageSkeletonWrap}>
-              <SkeletonAvatar size={132} />
+              <div style={styles.avatarPlaceholder} />
             </div>
           ) : (
             <img
@@ -176,13 +185,13 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
         <div style={styles.details}>
           {isLoadingDetails ? (
             <>
-              <SkeletonText lines={1} width="55%" />
-              <SkeletonText lines={1} width="42%" />
+              <div style={{ ...styles.textPlaceholder, width: '55%' }} />
+              <div style={{ ...styles.textPlaceholder, width: '42%' }} />
               <div style={styles.detailsSkeletonGroup}>
-                <SkeletonText lines={2} width="80%" />
-                <SkeletonText lines={1} width="65%" />
-                <SkeletonText lines={1} width="72%" />
-                <SkeletonText lines={1} width="60%" />
+                <div style={{ ...styles.textPlaceholder, width: '80%' }} />
+                <div style={{ ...styles.textPlaceholder, width: '65%' }} />
+                <div style={{ ...styles.textPlaceholder, width: '72%' }} />
+                <div style={{ ...styles.textPlaceholder, width: '60%' }} />
               </div>
             </>
           ) : (

@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false }) {
   const [step, setStep] = useState(1);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hoveredButton, setHoveredButton] = useState('');
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
   const [formData, setFormData] = useState({
     fullName: '',
     serviceType: '',
@@ -27,6 +30,16 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
       [field]: value,
     }));
   };
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleNext = () => {
     if (step === 1) {
@@ -97,8 +110,8 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
   const fixedPriceLabel = rateBasisPriceLabelMap[formData.rateBasis] || 'Fixed Price (₱)';
 
   const styles = {
-    onboardingPage: { minHeight: isFloating ? 'auto' : '100vh', background: isFloating ? 'transparent' : 'linear-gradient(140deg, #f8fffb 0%, #eef5ff 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isFloating ? 0 : '1.2rem' },
-    onboardingCard: { width: isFloating ? 'min(760px, 95vw)' : 'min(760px, 96vw)', maxHeight: isFloating ? '90vh' : 'none', overflowY: isFloating ? 'auto' : 'visible', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '14px', boxShadow: '0 16px 38px rgba(15, 23, 42, 0.12)', padding: '1.2rem', position: 'relative' },
+    onboardingPage: { minHeight: isFloating ? 'auto' : '100vh', background: isFloating ? 'transparent' : 'linear-gradient(140deg, #f8fffb 0%, #eef5ff 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isFloating ? 0 : isMobile ? '0.75rem' : '1.2rem' },
+    onboardingCard: { width: isFloating ? 'min(760px, 95vw)' : 'min(760px, 96vw)', maxHeight: isFloating ? '90vh' : 'none', overflowY: isFloating ? 'auto' : 'visible', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '14px', boxShadow: '0 16px 38px rgba(15, 23, 42, 0.12)', padding: isMobile ? '0.9rem' : '1.2rem', position: 'relative' },
     onboardingHeaderTitle: { margin: 0, color: '#111827' },
     onboardingHeaderStep: { margin: '0.25rem 0 0', color: '#6b7280' },
     onboardingCloseButton: { position: 'absolute', right: '14px', top: '12px', width: '32px', height: '32px', borderRadius: '999px', border: '1px solid #d1d5db', background: hoveredButton === 'close' ? '#f3f4f6' : '#fff', color: '#374151', fontSize: '14px', fontWeight: 700, cursor: 'pointer' },
@@ -106,7 +119,7 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     locationLabel: { fontSize: '12px', color: '#7f8c8d', margin: '0 0 6px 0' },
     locationValue: { padding: '10px 12px', background: '#f0f8ff', border: '1px solid #bfd4ff', borderRadius: '6px', fontSize: '13px', color: '#2c3e50', fontWeight: 500 },
     onboardingStep: { marginTop: '1rem', display: 'grid', gap: '0.65rem' },
-    stepTitle: { margin: '0 0 0.35rem', fontSize: '1.15rem', color: '#111827' },
+    stepTitle: { margin: '0 0 0.35rem', fontSize: isMobile ? '1.05rem' : '1.15rem', color: '#111827' },
     fieldLabel: { fontSize: '0.92rem', fontWeight: 600, color: '#374151', marginTop: '0.35rem' },
     input: { border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '42px', padding: '0.58rem 0.65rem', fontFamily: 'inherit' },
     textarea: { border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '104px', padding: '0.58rem 0.65rem', fontFamily: 'inherit', resize: 'vertical' },
@@ -117,16 +130,16 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     paymentExtraFields: { marginTop: '0.4rem', padding: '0.8rem', border: '1px dashed #cbd5e1', borderRadius: '8px', background: '#f8fafc', display: 'grid', gap: '0.45rem' },
     qrUploadHint: { margin: 0, fontSize: '0.83rem', color: '#64748b' },
     setupHint: { margin: '0.4rem 0 0', fontSize: '0.9rem', color: '#4b5563' },
-    actions: { display: 'flex', justifyContent: 'space-between', gap: '0.7rem', marginTop: '1.1rem' },
-    backButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: '#e5e7eb', color: '#1f2937' },
-    nextButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'next' ? '#1d4ed8' : '#2563eb', color: '#ffffff' },
-    submitButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb', color: '#ffffff' },
+    actions: { display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '0.7rem', marginTop: '1.1rem' },
+    backButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: '#e5e7eb', color: '#1f2937', width: isMobile ? '100%' : 'auto' },
+    nextButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'next' ? '#1d4ed8' : '#2563eb', color: '#ffffff', width: isMobile ? '100%' : 'auto' },
+    submitButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb', color: '#ffffff', width: isMobile ? '100%' : 'auto' },
     onboardingError: { margin: '0.8rem 0 0', color: '#b91c1c', fontWeight: 600, fontSize: '0.9rem' },
     successModalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 420 },
     successModalContent: { width: 'min(560px, 92vw)', borderRadius: '12px', background: '#ffffff', textAlign: 'left', padding: '1.5rem' },
     successTitle: { margin: 0, color: '#14532d', fontSize: '24px' },
     successText: { margin: '0.5rem 0 0', color: '#4b5563', fontSize: '15px' },
-    successActions: { marginTop: '14px', display: 'flex', justifyContent: 'center', gap: '10px' },
+    successActions: { marginTop: '14px', display: 'flex', justifyContent: 'center', flexDirection: isMobile ? 'column' : 'row', gap: '10px' },
     successSecondaryBtn: { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 16px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#e5e7eb', color: '#111827' },
     successPrimaryBtn: { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 16px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: hoveredButton === 'success-primary' ? '#1d4ed8' : '#2563eb', color: '#fff' },
   };
@@ -215,7 +228,7 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
 
             {formData.pricingModel === 'inquiry' && (
               <div style={{ padding: '12px', background: '#e8f8f5', border: '1px solid #a3e4d7', borderRadius: '6px', fontSize: '13px', color: '#117a65', marginTop: '10px' }}>
-                ?? You'll negotiate prices with clients through the chat. Each inquiry gets a custom quote.
+                &#9432; You'll negotiate prices with clients through the chat. Each inquiry gets a custom quote.
               </div>
             )}
 

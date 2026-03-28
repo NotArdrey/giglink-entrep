@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 // Note: Service cards are rendered dynamically with .map() and filtered via React state.
 import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
-import SkeletonServiceCard from '../components/SkeletonServiceCard';
 import WorkerDetailModal from '../components/WorkerDetailModal';
 import BookingCalendarModal from '../components/BookingCalendarModal';
 import PaymentModal from '../components/PaymentModal';
@@ -110,6 +109,9 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
   const [bookingMessage, setBookingMessage] = useState('');
   const [hoveredChip, setHoveredChip] = useState('');
   const [isLoadingCards, setIsLoadingCards] = useState(true);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
 
   // Note: Nested scheduling structure is Provider > Days > Time Blocks > Slot Capacity.
   const [schedulesByProvider, setSchedulesByProvider] = useState(() => {
@@ -174,12 +176,22 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     return initialSchedules;
   });
 
-  // Simulate initial loading of service cards with skeleton screens
+  // Simulate initial loading of service cards before data is shown.
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoadingCards(false);
     }, 1200);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const categoryChips = ['All', 'Tutors', 'Technicians', 'Cleaners'];
@@ -343,12 +355,13 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     main: {
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '1rem',
+      padding: isMobile ? '0.75rem' : '1rem',
     },
     filterBar: {
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: isMobile ? 'stretch' : 'center',
+      flexDirection: isMobile ? 'column' : 'row',
       gap: '0.75rem',
       flexWrap: 'wrap',
       backgroundColor: '#ffffff',
@@ -377,7 +390,8 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       color: '#ffffff',
     },
     districtDropdown: {
-      minWidth: '190px',
+      minWidth: isMobile ? '100%' : '190px',
+      width: isMobile ? '100%' : 'auto',
       border: '1px solid #cbd5e1',
       borderRadius: '0.5rem',
       padding: '0.45rem 0.6rem',
@@ -385,8 +399,23 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     },
     grid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
       gap: '1rem',
+    },
+    loadingCard: {
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '0.75rem',
+      padding: '0.9rem',
+      minHeight: '180px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.7rem',
+    },
+    loadingLine: {
+      height: '12px',
+      borderRadius: '999px',
+      backgroundColor: '#e2e8f0',
     },
   };
 
@@ -441,7 +470,13 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         <section style={styles.grid}>
           {isLoadingCards
             ? Array.from({ length: 6 }).map((_, index) => (
-                <SkeletonServiceCard key={`skeleton-${index}`} />
+                <div key={`loading-card-${index}`} style={styles.loadingCard} aria-label="Loading service card">
+                  <div style={{ ...styles.loadingLine, width: '52%' }} />
+                  <div style={{ ...styles.loadingLine, width: '70%' }} />
+                  <div style={{ ...styles.loadingLine, width: '92%' }} />
+                  <div style={{ ...styles.loadingLine, width: '65%' }} />
+                  <div style={{ ...styles.loadingLine, width: '40%', marginTop: 'auto' }} />
+                </div>
               ))
             : filteredProviders.map((provider) => (
                 <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />

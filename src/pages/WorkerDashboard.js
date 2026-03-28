@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CalendarAvailabilityModal from '../components/CalendarAvailabilityModal';
 import SellerScheduleModal from '../components/SellerScheduleModal';
 import LogoutConfirmModal from '../components/LogoutConfirmModal';
@@ -49,6 +49,19 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
   const [availableDates, setAvailableDates] = useState([]);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [hoveredButton, setHoveredButton] = useState('');
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [schedules, setSchedules] = useState({
     999: {
       manualScheduling: sellerProfile?.pricingModel === 'inquiry',
@@ -95,7 +108,7 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
       flexWrap: 'wrap',
     },
     logo: { textDecoration: 'none', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 },
-    headerActions: { display: 'flex', gap: '0.5rem' },
+    headerActions: { display: 'flex', gap: '0.5rem', flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : 'auto' },
     headerButton: {
       border: '1px solid #cbd5e1',
       borderRadius: '0.5rem',
@@ -106,17 +119,17 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
       fontWeight: 600,
     },
     logoutButton: { backgroundColor: '#b91c1c', borderColor: '#b91c1c', color: '#ffffff' },
-    main: { maxWidth: '1050px', margin: '0 auto', padding: '1rem' },
+    main: { maxWidth: '1050px', margin: '0 auto', padding: isMobile ? '0.8rem' : '1rem' },
     card: {
       backgroundColor: '#ffffff',
       border: '1px solid #e2e8f0',
       borderRadius: '0.75rem',
-      padding: '1rem',
+      padding: isMobile ? '0.85rem' : '1rem',
       marginBottom: '1rem',
     },
     profileGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))',
       gap: '0.6rem',
       marginTop: '0.75rem',
       color: '#334155',

@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import SimulatedChat from '../components/SimulatedChat';
 import SlotEditModal from '../components/SlotEditModal';
 import ProfileEditModal from '../components/ProfileEditModal';
-import LogoutConfirmModal from '../components/LogoutConfirmModal';
 import {
   MOCK_WORKERS,
   HOURLY_WORKER_SCHEDULE,
@@ -11,7 +10,6 @@ import {
   DAILY_SLOTS_SCHEDULE,
   PROJECT_SLOTS_SCHEDULE,
   HOURLY_CALENDAR,
-  COMPREHENSIVE_TRANSACTIONS,
 } from '../data/MockWorkers';
 
 
@@ -151,6 +149,9 @@ const INITIAL_TRANSACTIONS = [
   { id: 'txn-9', clientName: 'Rina Sy', service: 'Consultation', scheduleRef: 'cal-3', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: -1 },
   { id: 'txn-10', clientName: 'Leo Ramirez', service: 'Math Tutoring', scheduleRef: 'wed-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 950, submittedCashAmount: 950, cashConfirmationStatus: 'pending-worker-review', cashConfirmationQrId: 'CASHQR-TXN10-20260323', transactionId: '' },
   { id: 'txn-11', clientName: 'Sarah Martinez', service: 'Graphic Design', scheduleRef: 'thu-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 1500, submittedCashAmount: 1400, cashConfirmationStatus: 'denied', cashConfirmationQrId: 'CASHQR-TXN11-20260321', transactionId: '' },
+  { id: 'txn-12', clientName: 'Trina Lopez', service: 'House Cleaning', scheduleRef: 'fri-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, bookingStatus: 'cancelled', cancelReason: 'Client requested cancellation before meetup.', cancelPolicy: 'Cash-only cancellation flow' },
+  { id: 'txn-13', clientName: 'Vince Ortega', service: 'Tutoring', scheduleRef: 'wed-2', paymentMode: 'Advance', paymentChannel: 'gcash', isPaid: true, isDone: false, weekOffset: 0, transactionId: 'GCASH-TRX-20260322-TXN13-7711', refundStatus: 'requested', refundAmount: 1800, refundReason: 'Worker unavailable on booked slot.', refundReference: 'REFUND-REQ-TXN13-20260325' },
+  { id: 'txn-14', clientName: 'Lianne Cruz', service: 'Consultation', scheduleRef: 'cal-1', paymentMode: 'After Service', paymentChannel: 'gcash', isPaid: true, isDone: true, weekOffset: 0, transactionId: 'GCASH-TRX-20260318-TXN14-6822', refundStatus: 'approved', refundAmount: 950, refundReason: 'Duplicate GCash payment detected.', refundReference: 'REFUND-APR-TXN14-20260323' },
   // Monthly recurring (Advance): once first payment is checked, all cycle entries are paid and locked.
   { id: 'sub-advance-1', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 0, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 1, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
   { id: 'sub-advance-2', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 2, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
@@ -164,14 +165,14 @@ const INITIAL_TRANSACTIONS = [
 ];
 
 const classStyles = {
-  'my-work-page': { minHeight: '100vh', background: '#f9f9f9', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
-  'my-work-header-bar': { background: 'white', borderBottom: '1px solid #eceff1', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' },
-  'my-work-title': { fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0, flex: 1, textAlign: 'center' },
+  'my-work-page': { minHeight: '100vh', background: '#f9f9f9', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflowX: 'hidden' },
+  'my-work-header-bar': { background: 'white', borderBottom: '1px solid #eceff1', padding: '16px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' },
+  'my-work-title': { fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0, textAlign: 'center' },
   'back-to-dashboard-btn': { padding: '10px 16px', background: 'white', color: '#2c3e50', border: '1px solid #eceff1', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
-  'logout-btn': { padding: '10px 16px', background: 'white', color: '#e74c3c', border: '1px solid #f5c6cb', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
-  'my-work-main': { maxWidth: '1400px', margin: '0 auto', padding: '40px 24px' },
+  'header-spacer': { width: '148px' },
+  'my-work-main': { width: '100%', maxWidth: '1120px', margin: '0 auto', padding: '40px 16px', boxSizing: 'border-box' },
   'empty-state-banner': { background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fcd34d', borderRadius: '12px', padding: '40px 24px', textAlign: 'center', marginBottom: '32px' },
-  'profile-summary-card': { background: 'white', borderRadius: '12px', padding: '28px', marginBottom: '32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', alignItems: 'start' },
+  'profile-summary-card': { background: 'white', borderRadius: '12px', padding: '28px', margin: '0 auto 32px', width: '100%', maxWidth: '1100px', boxSizing: 'border-box', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', alignItems: 'start' },
   'profile-info': { display: 'flex', gap: '20px', alignItems: 'flex-start' },
   'profile-avatar': { width: '80px', height: '80px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 700, flexShrink: 0 },
   'profile-name-link': { border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer', fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' },
@@ -182,11 +183,11 @@ const classStyles = {
   stat: { textAlign: 'center', padding: '16px', background: '#f9f9f9', borderRadius: '8px' },
   'stat-number': { display: 'block', fontSize: '24px', fontWeight: 700, color: '#2563eb', marginBottom: '4px' },
   'stat-label': { display: 'block', fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  'inquiries-section': { marginBottom: '48px' },
+  'inquiries-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 48px' },
   'section-header': { marginBottom: '24px' },
   'section-subtitle': { fontSize: '14px', color: '#7f8c8d', margin: 0 },
-  'inquiries-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' },
-  'inquiry-card': { background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', transition: 'all 0.3s ease', border: '1px solid transparent' },
+  'inquiries-grid': { width: '100%', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' },
+  'inquiry-card': { width: '100%', boxSizing: 'border-box', background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', transition: 'all 0.3s ease', border: '1px solid transparent' },
   'inquiry-header': { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
   'client-info': { display: 'flex', gap: '12px', flex: 1 },
   'client-photo': { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 },
@@ -202,7 +203,7 @@ const classStyles = {
   'inquiry-meta': { display: 'flex', gap: '16px', fontSize: '12px', color: '#7f8c8d' },
   'inquiry-actions': { display: 'flex', gap: '8px' },
   'btn-respond': { flex: 1, padding: '10px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
-  'schedule-section': { marginBottom: '48px' },
+  'schedule-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 48px' },
   'week-slider': { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px' },
   'week-nav-btn': { border: '1px solid #cbd5e1', background: '#f8fafc', color: '#1f2937', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
   'week-range': { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', color: '#1f2937' },
@@ -241,7 +242,7 @@ const classStyles = {
   'block-actions': { display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' },
   'action-btn': { width: '28px', height: '28px', padding: 0, background: 'white', border: '1px solid #eceff1', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   'btn-add-slot': { width: '100%', padding: '10px', background: 'white', color: '#2563eb', border: '2px dashed #2563eb', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
-  'stats-footer': { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop: '48px' },
+  'stats-footer': { width: '100%', maxWidth: '1100px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', margin: '48px auto 0' },
   'stat-card': { background: 'white', borderRadius: '12px', padding: '24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' },
   'stat-value': { fontSize: '32px', fontWeight: 700, color: '#2563eb', margin: '0 0 4px 0' },
   'stat-desc': { fontSize: '12px', color: '#95a5a6', margin: 0 },
@@ -257,7 +258,7 @@ const classStyles = {
   'gcash-preview-modal': { width: 'min(520px, 92vw)' },
   'gcash-preview-body': { marginTop: '12px', display: 'flex', gap: '14px', alignItems: 'flex-start' },
   'gcash-preview-qr': { width: '170px', height: '170px', borderRadius: '8px', border: '1px solid #d1d5db' },
-  'payment-confirm-section': { marginBottom: '40px' },
+  'payment-confirm-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 40px' },
   'payment-confirm-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' },
   'payment-confirm-card': { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)', display: 'grid', gap: '8px' },
   'payment-confirm-meta': { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
@@ -273,6 +274,17 @@ const classStyles = {
   'payment-qr-item': { border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px', background: '#f8fafc', textAlign: 'center' },
   'payment-qr-title': { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
   'payment-qr-caption': { margin: '6px 0 0', fontSize: '12px', color: '#6b7280' },
+  'section-filter-row': { display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '0 auto 18px', width: '100%', maxWidth: '1100px' },
+  'section-filter-btn': { padding: '8px 12px', borderRadius: '999px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
+  'section-filter-btn-active': { background: '#1d4ed8', color: '#ffffff', borderColor: '#1d4ed8' },
+  'refund-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 40px' },
+  'refund-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' },
+  'refund-card': { background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '10px', padding: '14px', display: 'grid', gap: '8px' },
+  'refund-actions': { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  'btn-approve-refund': { border: 'none', background: '#4f46e5', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
+  'cancelled-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 40px' },
+  'cancelled-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' },
+  'cancelled-card': { background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px', display: 'grid', gap: '8px' },
 };
 
 const hoverStyles = {
@@ -290,6 +302,7 @@ const hoverStyles = {
   deleteConfirm: { background: '#b91c1c' },
   approveCash: { background: '#15803d' },
   denyCash: { background: '#b91c1c' },
+  approveRefund: { background: '#4338ca' },
 };
 
 /**
@@ -313,7 +326,7 @@ const hoverStyles = {
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
  */
-const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
+const MyWork = ({ sellerProfile, onBackToDashboard }) => {
   // ============ STATE MANAGEMENT ============
   
   // Default Joshua Paul Santos profile if sellerProfile not provided
@@ -350,12 +363,25 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
   const [profileEditModalOpen, setProfileEditModalOpen] = useState(false);
   const [isGcashPreviewOpen, setIsGcashPreviewOpen] = useState(false);
   const [isCashQrPreviewOpen, setIsCashQrPreviewOpen] = useState(false);
-  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
   const [cashDecisionTarget, setCashDecisionTarget] = useState(null);
-  const [selectedWorkerIndex, setSelectedWorkerIndex] = useState(0);
+  const [selectedWorkerIndex] = useState(0);
   const [hoverKey, setHoverKey] = useState('');
   const [cashPaymentView, setCashPaymentView] = useState('pending'); // 'pending' or 'history'
+  const [workSectionFilter, setWorkSectionFilter] = useState('all'); // all | inquiries | cash-approvals | refunds | cancelled
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Helper function to get the appropriate schedule based on worker index
   const getWorkerScheduleData = (workerIndex) => {
@@ -414,7 +440,6 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
 
   // Get current worker data
   const currentWorkerData = getWorkerScheduleData(selectedWorkerIndex);
-  const workerProfile = currentWorkerData.profile;
   const workerBookingMode = currentWorkerData.bookingMode;
   
   const scheduleMode = workerBookingMode || 'with-slots';
@@ -889,8 +914,68 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
     setCashDecisionTarget(null);
   };
 
+  const handleApproveRefund = (transactionId) => {
+    setTransactions((prev) =>
+      prev.map((txn) => {
+        if (txn.id !== transactionId) return txn;
+        if (txn.refundStatus !== 'requested') return txn;
+
+        const now = new Date();
+        const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        return {
+          ...txn,
+          refundStatus: 'approved',
+          refundReference: `REFUND-APR-${String(transactionId).toUpperCase()}-${dateStamp}`,
+        };
+      })
+    );
+  };
+
+  const responsiveClassStyles = isMobile
+    ? {
+        'my-work-header-bar': { padding: '12px', gap: '8px', flexWrap: 'wrap' },
+        'my-work-title': { width: '100%', textAlign: 'center', fontSize: '20px', order: 2 },
+        'back-to-dashboard-btn': { padding: '8px 10px', fontSize: '12px', order: 1, position: 'static' },
+        'header-spacer': { display: 'none' },
+        'my-work-main': { width: '100%', maxWidth: '640px', margin: '0 auto', padding: '18px 10px', boxSizing: 'border-box' },
+        'empty-state-banner': { padding: '24px 14px' },
+        'profile-summary-card': { gridTemplateColumns: '1fr', gap: '16px', padding: '16px' },
+        'profile-info': { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' },
+        'profile-name-link': { fontSize: '20px' },
+        location: { textAlign: 'center' },
+        'profile-stats': { gridTemplateColumns: '1fr' },
+        'inquiries-section': { width: '100%', maxWidth: '600px', margin: '0 auto 32px' },
+        'section-header': { textAlign: 'center' },
+        'inquiries-grid': { width: '100%', maxWidth: '600px', margin: '0 auto', gridTemplateColumns: '1fr', justifyItems: 'center' },
+        'inquiry-card': { width: '100%', maxWidth: '560px', margin: '0 auto' },
+        'inquiry-meta': { flexWrap: 'wrap', gap: '8px' },
+        'inquiry-actions': { flexDirection: 'column' },
+        'week-slider': { flexDirection: 'column', alignItems: 'stretch' },
+        'calendar-availability-grid': { gridTemplateColumns: '1fr' },
+        'schedule-grid': { gridTemplateColumns: '1fr' },
+        'booking-item': { flexDirection: 'column', alignItems: 'flex-start', gap: '6px' },
+        'booking-name': { minWidth: 0 },
+        'booking-inline-actions': { width: '100%', flexWrap: 'wrap' },
+        'stats-footer': { gridTemplateColumns: '1fr', marginTop: '24px' },
+        'gcash-preview-body': { flexDirection: 'column', alignItems: 'center' },
+        'gcash-preview-qr': { width: '100%', maxWidth: '220px', height: 'auto' },
+        'payment-confirm-grid': { gridTemplateColumns: '1fr' },
+        'payment-qr-grid': { gridTemplateColumns: '1fr' },
+        'section-filter-row': { justifyContent: 'center' },
+        'refund-grid': { gridTemplateColumns: '1fr' },
+        'cancelled-grid': { gridTemplateColumns: '1fr' },
+      }
+    : {};
+
   const sx = (...names) =>
-    names.reduce((acc, name) => ({ ...acc, ...(classStyles[name] || {}) }), {});
+    names.reduce(
+      (acc, name) => ({
+        ...acc,
+        ...(classStyles[name] || {}),
+        ...(responsiveClassStyles[name] || {}),
+      }),
+      {}
+    );
 
   const isHovered = (key) => hoverKey === key;
 
@@ -904,6 +989,16 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
     cashPaymentView === 'pending'
       ? allCashTransactions.filter((txn) => txn.cashConfirmationStatus === 'pending-worker-review')
       : allCashTransactions.filter((txn) => txn.cashConfirmationStatus === 'approved' || txn.cashConfirmationStatus === 'denied');
+
+  const refundTransactions = weekTransactions.filter((txn) => Boolean(txn.refundStatus));
+  const cancelledCashTransactions = weekTransactions.filter(
+    (txn) => txn.bookingStatus === 'cancelled' && txn.paymentChannel === 'cash'
+  );
+
+  const showInquiriesSection = workSectionFilter === 'all' || workSectionFilter === 'inquiries';
+  const showCashApprovalSection = workSectionFilter === 'all' || workSectionFilter === 'cash-approvals';
+  const showRefundSection = workSectionFilter === 'all' || workSectionFilter === 'refunds';
+  const showCancelledSection = workSectionFilter === 'all' || workSectionFilter === 'cancelled';
   
   // ============ HELPER FUNCTIONS ============
   
@@ -945,7 +1040,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
     <div style={sx('my-work-page')}>
       <div style={sx('my-work-header-bar')}>
         <button
-          style={{ ...sx('back-to-dashboard-btn'), ...(isHovered('back-to-dashboard') ? hoverStyles.backButton : {}) }}
+          style={{ ...sx('back-to-dashboard-btn'), ...(isHovered('back-to-dashboard') ? hoverStyles.backButton : {}), ...(isMobile ? {} : { position: 'absolute', left: '24px' }) }}
           onMouseEnter={() => setHoverKey('back-to-dashboard')}
           onMouseLeave={() => setHoverKey('')}
           onClick={onBackToDashboard}
@@ -953,14 +1048,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
           ← Back to Dashboard
         </button>
         <h1 style={sx('my-work-title')}>My Work Portal</h1>
-        <button
-          style={{ ...sx('logout-btn'), ...(isHovered('logout-btn') ? hoverStyles.logoutButton : {}) }}
-          onMouseEnter={() => setHoverKey('logout-btn')}
-          onMouseLeave={() => setHoverKey('')}
-          onClick={() => setIsLogoutConfirmOpen(true)}
-        >
-          Logout
-        </button>
+        <div style={sx('header-spacer')} aria-hidden="true"></div>
       </div>
       
       <main style={sx('my-work-main')}>
@@ -1030,8 +1118,16 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                 </div>
               </div>
             </div>
+
+            <div style={sx('section-filter-row')}>
+              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'all' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('all')}>Show All</button>
+              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'inquiries' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('inquiries')}>Inquiries</button>
+              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'cash-approvals' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('cash-approvals')}>Cash Payments Approval</button>
+              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'refunds' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('refunds')}>Refund Cases</button>
+              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'cancelled' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('cancelled')}>Cancelled (Cash)</button>
+            </div>
             
-            <section style={sx('inquiries-section')}>
+            {showInquiriesSection && <section style={sx('inquiries-section')}>
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Active Inquiries ({dummyInquiries.length})</h2>
                 <p style={sx('section-subtitle')}>Clients waiting for your response</p>
@@ -1086,9 +1182,9 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                   </div>
                 ))}
               </div>
-            </section>
+            </section>}
 
-            <section style={sx('payment-confirm-section')}>
+            {showCashApprovalSection && <section style={sx('payment-confirm-section')}>
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Payment Confirmations (Cash)</h2>
                 <p style={sx('section-subtitle')}>Worker review queue for face-to-face cash confirmations scanned via Cash QR.</p>
@@ -1189,9 +1285,86 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                   })}
                 </div>
               )}
-            </section>
+            </section>}
             
-            <section style={sx('schedule-section')}>
+            {showRefundSection && (
+              <section style={sx('refund-section')}>
+                <div style={sx('section-header')}>
+                  <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Refund Queue (GCash)</h2>
+                  <p style={sx('section-subtitle')}>Cases for GCash Advance and GCash post-service payments that need refund tracking.</p>
+                </div>
+                {refundTransactions.length === 0 ? (
+                  <div style={sx('payment-confirm-card')}>
+                    <p style={{ margin: 0, color: '#64748b' }}>No refund scenarios for this week.</p>
+                  </div>
+                ) : (
+                  <div style={sx('refund-grid')}>
+                    {refundTransactions.map((txn) => (
+                      <div key={`refund-${txn.id}`} style={sx('refund-card')}>
+                        <div style={sx('payment-confirm-meta')}>
+                          <strong>{txn.clientName}</strong>
+                          <span style={{ ...sx('confirm-status-pill'), ...(txn.refundStatus === 'approved' ? sx('confirm-status-approved') : sx('confirm-status-pending')) }}>
+                            {txn.refundStatus === 'approved' ? 'Refund Approved' : 'Refund Requested'}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, color: '#3730a3', fontWeight: 700, fontSize: '13px' }}>{txn.service}</p>
+                        <p style={{ margin: 0, color: '#4f46e5', fontSize: '12px' }}>Amount: ₱{txn.refundAmount || 0}</p>
+                        <p style={{ margin: 0, color: '#4f46e5', fontSize: '12px' }}>Reason: {txn.refundReason || 'Service cancellation/refund case'}</p>
+                        <p style={{ margin: 0, color: '#4338ca', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 }}>
+                          {txn.refundReference ? `Refund Ref: ${txn.refundReference}` : 'Refund Ref: Pending'}
+                        </p>
+                        <p style={{ margin: 0, color: '#0f766e', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 }}>
+                          {txn.transactionId ? `Transaction ID: ${txn.transactionId}` : 'Transaction ID: N/A'}
+                        </p>
+                        {txn.refundStatus === 'requested' && (
+                          <div style={sx('refund-actions')}>
+                            <button
+                              style={{ ...sx('btn-approve-refund'), ...(isHovered(`approve-refund-${txn.id}`) ? hoverStyles.approveRefund : {}) }}
+                              onMouseEnter={() => setHoverKey(`approve-refund-${txn.id}`)}
+                              onMouseLeave={() => setHoverKey('')}
+                              onClick={() => handleApproveRefund(txn.id)}
+                            >
+                              Approve Refund
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {showCancelledSection && (
+              <section style={sx('cancelled-section')}>
+                <div style={sx('section-header')}>
+                  <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Cancelled Bookings (Cash Only)</h2>
+                  <p style={sx('section-subtitle')}>Cash-based bookings that were cancelled and should not enter GCash refund flow.</p>
+                </div>
+                {cancelledCashTransactions.length === 0 ? (
+                  <div style={sx('payment-confirm-card')}>
+                    <p style={{ margin: 0, color: '#64748b' }}>No cancelled cash bookings for this week.</p>
+                  </div>
+                ) : (
+                  <div style={sx('cancelled-grid')}>
+                    {cancelledCashTransactions.map((txn) => (
+                      <div key={`cancelled-${txn.id}`} style={sx('cancelled-card')}>
+                        <div style={sx('payment-confirm-meta')}>
+                          <strong>{txn.clientName}</strong>
+                          <span style={sx('confirm-status-pill', 'confirm-status-denied')}>Cancelled</span>
+                        </div>
+                        <p style={{ margin: 0, color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>{txn.service}</p>
+                        <p style={{ margin: 0, color: '#991b1b', fontSize: '12px' }}>Payment Channel: Cash (No GCash refund needed)</p>
+                        <p style={{ margin: 0, color: '#b91c1c', fontSize: '12px' }}>Reason: {txn.cancelReason || 'Cancelled before service.'}</p>
+                        <p style={{ margin: 0, color: '#7f1d1d', fontSize: '12px', fontWeight: 700 }}>{txn.cancelPolicy || 'Cash-only cancellation flow'}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {workSectionFilter === 'all' && <section style={sx('schedule-section')}>
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
                 <p style={sx('section-subtitle')}>
@@ -1445,9 +1618,9 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                   })}
                 </div>
               )}
-            </section>
+            </section>}
             
-            <section style={sx('stats-footer')}>
+            {workSectionFilter === 'all' && <section style={sx('stats-footer')}>
               <div style={sx('stat-card')}>
                 <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>Response Rate</h4>
                 <p style={sx('stat-value')}>92%</p>
@@ -1463,7 +1636,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
                 <p style={sx('stat-value')}>₱3,600</p>
                 <p style={sx('stat-desc')}>Pending completion</p>
               </div>
-            </section>
+            </section>}
           </>
         )}
       </main>
@@ -1641,14 +1814,6 @@ const MyWork = ({ sellerProfile, onBackToDashboard, onLogout }) => {
         onClose={() => setProfileEditModalOpen(false)}
       />
 
-      <LogoutConfirmModal
-        isOpen={isLogoutConfirmOpen}
-        onCancel={() => setIsLogoutConfirmOpen(false)}
-        onConfirm={() => {
-          setIsLogoutConfirmOpen(false);
-          onLogout && onLogout();
-        }}
-      />
     </div>
   );
 };

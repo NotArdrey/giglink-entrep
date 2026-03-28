@@ -1,13 +1,8 @@
 import { useState } from 'react';
 
 function Navigation({ onLoginClick }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoginHovered, setIsLoginHovered] = useState(false);
   const [isNavLinkHovered, setIsNavLinkHovered] = useState(false);
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
 
   const styles = {
     navigation: {
@@ -58,48 +53,29 @@ function Navigation({ onLoginClick }) {
       fontWeight: 600,
       transition: 'background-color 0.3s ease',
     },
-    hamburger: {
-      display: 'none',
-      flexDirection: 'column',
-      backgroundColor: 'transparent',
-      border: 'none',
-      cursor: 'pointer',
-      gap: '0.5rem',
-      zIndex: 101,
+    mobileHeaderActions: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 0,
+      marginLeft: 'auto',
+      justifyContent: 'flex-end',
     },
-    hamburgerLine: {
-      width: '1.8rem',
-      height: '0.25rem',
-      backgroundColor: 'var(--text-primary)',
-      borderRadius: '0.125rem',
-      transition: 'all 0.3s ease',
-    },
-    navLinksMobile: {
-      display: 'none',
-      flexDirection: 'column',
-      gap: '1rem',
-      padding: '1rem 2rem 1.5rem',
-      backgroundColor: 'var(--bg-surface-soft)',
-    },
-    navLinkMobile: {
-      color: 'var(--text-primary)',
-      textDecoration: 'none',
-      fontWeight: 500,
-      transition: 'color 0.3s ease',
-      border: 'none',
-      backgroundColor: 'transparent',
-      cursor: 'pointer',
-      textAlign: 'left',
-    },
-    navButtonMobile: {
-      padding: '0.6rem 1rem',
-      borderRadius: '0.4rem',
-      fontWeight: 600,
-      border: 'none',
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
+    mobileLoginIconBtn: {
+      width: '42px',
+      height: '36px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: '#2563eb',
       color: '#ffffff',
+      border: 'none',
+      borderRadius: '0.45rem',
+      cursor: 'pointer',
+    },
+    mobileLoginIcon: {
+      width: '18px',
+      height: '18px',
+      display: 'block',
     },
   };
 
@@ -108,7 +84,7 @@ function Navigation({ onLoginClick }) {
 
   return (
     <nav style={styles.navigation}>
-      <div style={styles.navContainer}>
+      <div style={isDesktop ? styles.navContainer : { ...styles.navContainer, padding: '1rem 1.25rem' }}>
         {/* Logo */}
         <div>
           <h1 style={styles.navLogo.h1}>GigLink</h1>
@@ -134,37 +110,18 @@ function Navigation({ onLoginClick }) {
           </button>
         </div>
 
-        {/* Hamburger Menu Button */}
-        <button
-          style={!isDesktop ? styles.hamburger : { display: 'none' }}
-          onClick={toggleMobileMenu}
-          aria-label="Toggle menu"
-        >
-          <span style={styles.hamburgerLine}></span>
-          <span style={styles.hamburgerLine}></span>
-          <span style={styles.hamburgerLine}></span>
-        </button>
+        {!isDesktop && (
+          <div style={styles.mobileHeaderActions}>
+            <button onClick={onLoginClick} style={styles.mobileLoginIconBtn} aria-label="Login">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.mobileLoginIcon}>
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                <path d="M10 17l5-5-5-5" />
+                <path d="M15 12H3" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Mobile Navigation Menu */}
-      {isMobileMenuOpen && !isDesktop && (
-        <div style={styles.navLinksMobile}>
-          <a href="#browse" style={styles.navLinkMobile}>
-            Browse Services
-          </a>
-          <button
-            onClick={() => {
-              onLoginClick();
-              setIsMobileMenuOpen(false);
-            }}
-            style={styles.navButtonMobile}
-            onMouseEnter={(e) => (e.target.style.backgroundColor = '#1d4ed8')}
-            onMouseLeave={(e) => (e.target.style.backgroundColor = '#2563eb')}
-          >
-            Login
-          </button>
-        </div>
-      )}
     </nav>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navigation from '../components/Navigation';
 import HeroSlider from '../modules/HeroSlider';
 import LoginModal from '../components/LoginModal';
@@ -262,7 +262,7 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
   );
 }
 
-function GoalsSection({ onLoginClick }) {
+function GoalsSection({ onLoginClick, isMobile, isTablet }) {
   const [activeGoal, setActiveGoal] = useState(null);
   const [showToast, setShowToast] = useState(false);
   const [toastYOffset, setToastYOffset] = useState(0);
@@ -277,7 +277,7 @@ function GoalsSection({ onLoginClick }) {
   const styles = {
     goalsSection: {
       position: 'relative',
-      padding: '100px 40px 80px',
+      padding: isMobile ? '72px 14px 56px' : isTablet ? '84px 24px 64px' : '100px 40px 80px',
       background: 'var(--bg-surface)',
       overflow: 'hidden',
     },
@@ -291,7 +291,7 @@ function GoalsSection({ onLoginClick }) {
     },
     goalsSectionHeader: {
       maxWidth: '680px',
-      margin: '0 auto 64px',
+      margin: isMobile ? '0 auto 38px' : '0 auto 64px',
       textAlign: 'center',
     },
     goalsSectionEyebrow: {
@@ -329,10 +329,14 @@ function GoalsSection({ onLoginClick }) {
     },
     goalsGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-      gap: '24px',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : isTablet
+          ? 'repeat(2, minmax(0, 1fr))'
+          : 'repeat(auto-fill, minmax(300px, 1fr))',
+      gap: isMobile ? '14px' : '24px',
       maxWidth: '1200px',
-      margin: '0 auto 72px',
+      margin: isMobile ? '0 auto 48px' : '0 auto 72px',
     },
     goalsCta: {
       display: 'flex',
@@ -376,12 +380,14 @@ function GoalsSection({ onLoginClick }) {
       gap: '10px',
       background: 'var(--bg-surface)',
       border: '1px solid var(--border-default)',
-      borderRadius: '100px',
+      borderRadius: isMobile ? '14px' : '100px',
       padding: '12px 24px',
       fontFamily: "'DM Sans', sans-serif",
       fontSize: '16px',
       color: 'var(--text-primary)',
-      whiteSpace: 'nowrap',
+      whiteSpace: isMobile ? 'normal' : 'nowrap',
+      width: isMobile ? 'calc(100vw - 24px)' : 'auto',
+      maxWidth: isMobile ? '420px' : 'none',
       zIndex: 9999,
       boxShadow: 'var(--shadow-soft)',
       animation: 'toastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -449,6 +455,23 @@ function LandingPage({ onLogin }) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [socialLinkHovered, setSocialLinkHovered] = useState(null);
   const [footerLinkHovered, setFooterLinkHovered] = useState(null);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+  const [isTablet, setIsTablet] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+      setIsTablet(window.innerWidth <= 1024);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLoginClick = () => {
     setIsLoginModalOpen(true);
@@ -476,7 +499,7 @@ function LandingPage({ onLogin }) {
     landingStatsSection: {
       maxWidth: '1200px',
       margin: '0 auto 2rem',
-      padding: '0 1.25rem',
+      padding: isMobile ? '0 0.9rem' : '0 1.25rem',
     },
     landingStatsHeader: {
       maxWidth: '760px',
@@ -510,7 +533,7 @@ function LandingPage({ onLogin }) {
     },
     landingStatsGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
       gap: '12px',
     },
     landingStatCard: {
@@ -536,12 +559,12 @@ function LandingPage({ onLogin }) {
     landingLinksSection: {
       maxWidth: '1320px',
       margin: '2.4rem auto 0',
-      padding: '2rem 1.25rem 1.35rem',
+      padding: isMobile ? '1.5rem 0.9rem 1.1rem' : '2rem 1.25rem 1.35rem',
       borderTop: '1px solid var(--border-default)',
     },
     landingLinksGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+      gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
       gap: '20px',
     },
     landingLinksColumn: {
@@ -575,6 +598,7 @@ function LandingPage({ onLogin }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
+      flexDirection: isMobile ? 'column' : 'row',
       gap: '12px',
     },
     landingCopyright: {
@@ -615,7 +639,7 @@ function LandingPage({ onLogin }) {
       <main style={styles.landingMain}>
         <HeroSlider onGetStarted={handleLoginClick} />
 
-        <GoalsSection onLoginClick={handleLoginClick} />
+        <GoalsSection onLoginClick={handleLoginClick} isMobile={isMobile} isTablet={isTablet} />
 
         <section style={styles.landingStatsSection} aria-label="GigLink performance highlights">
           <div style={styles.landingStatsHeader}>

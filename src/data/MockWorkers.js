@@ -567,7 +567,7 @@ export const COMPREHENSIVE_TRANSACTIONS = [
   { id: 'txn-18', clientName: 'Yuki Nakamura', service: 'Science Tutoring', scheduleRef: 'cal-hourly-2', paymentMode: 'Advance', isPaid: true, isDone: true, weekOffset: 0 },
 ];
 
-export default {
+const mockWorkersData = {
   MOCK_WORKERS,
   HOURLY_WORKER_SCHEDULE,
   DAILY_WORKER_CALENDAR,
@@ -577,3 +577,5 @@ export default {
   HOURLY_CALENDAR,
   COMPREHENSIVE_TRANSACTIONS,
 };
+
+export default mockWorkersData;

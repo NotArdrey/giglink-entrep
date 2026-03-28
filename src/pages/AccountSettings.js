@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
@@ -16,6 +16,8 @@ const BULACAN_CODE = '031400000';
  */
 function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
   const profileName = sellerProfile?.fullName || 'Juan Dela Cruz';
+  const initialCityRef = useRef(userLocation?.city || 'Baliwag');
+  const initialBarangayRef = useRef(userLocation?.barangay || 'Sabang');
   const [email, setEmail] = useState('juandelacruz@email.com');
   const [phone, setPhone] = useState('09171234567');
 
@@ -23,8 +25,6 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
   const [barangays, setBarangays] = useState([]);
   const [selectedCityCode, setSelectedCityCode] = useState('');
   const [selectedBarangayCode, setSelectedBarangayCode] = useState('');
-  const [city, setCity] = useState(userLocation?.city || 'Baliwag');
-  const [barangay, setBarangay] = useState(userLocation?.barangay || 'Sabang');
   const [locationError, setLocationError] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -34,6 +34,19 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [hoveredButton, setHoveredButton] = useState('');
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -44,7 +57,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
         const data = await response.json();
         setCities(data);
 
-        const initialCity = data.find((item) => item.name.toLowerCase() === city.toLowerCase());
+        const initialCity = data.find((item) => item.name.toLowerCase() === initialCityRef.current.toLowerCase());
         if (initialCity) {
           setSelectedCityCode(initialCity.code);
         }
@@ -70,7 +83,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
         const data = await response.json();
         setBarangays(data);
 
-        const initialBarangay = data.find((item) => item.name.toLowerCase() === barangay.toLowerCase());
+        const initialBarangay = data.find((item) => item.name.toLowerCase() === initialBarangayRef.current.toLowerCase());
         if (initialBarangay) {
           setSelectedBarangayCode(initialBarangay.code);
         }
@@ -86,18 +99,11 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
     const cityCode = event.target.value;
     setSelectedCityCode(cityCode);
     setSelectedBarangayCode('');
-
-    const selectedCity = cities.find((item) => item.code === cityCode);
-    setCity(selectedCity ? selectedCity.name : '');
-    setBarangay('');
   };
 
   const handleBarangayChange = (event) => {
     const barangayCode = event.target.value;
     setSelectedBarangayCode(barangayCode);
-
-    const selectedBarangay = barangays.find((item) => item.code === barangayCode);
-    setBarangay(selectedBarangay ? selectedBarangay.name : '');
   };
 
   const handlePasswordUpdate = () => {
@@ -140,7 +146,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
       display: 'flex',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      padding: '1rem',
+      padding: isMobile ? '0.7rem' : '1rem',
     },
     card: {
       width: 'min(96vw, 760px)',
@@ -148,7 +154,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
       border: '1px solid #e2e8f0',
       borderRadius: '0.8rem',
       boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-      padding: '1rem',
+      padding: isMobile ? '0.8rem' : '1rem',
       display: 'flex',
       flexDirection: 'column',
       gap: '1rem',
@@ -166,7 +172,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
     section: {
       border: '1px solid #e2e8f0',
       borderRadius: '0.65rem',
-      padding: '0.9rem',
+      padding: isMobile ? '0.75rem' : '0.9rem',
       backgroundColor: '#f8fafc',
       display: 'flex',
       flexDirection: 'column',
@@ -195,7 +201,7 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
       padding: '0.58rem 0.85rem',
       fontWeight: 700,
       cursor: 'pointer',
-      width: 'fit-content',
+      width: isMobile ? '100%' : 'fit-content',
       marginTop: '0.2rem',
     },
     toast: {
@@ -209,6 +215,8 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
       padding: '0.65rem 0.95rem',
       fontWeight: 700,
       zIndex: 200,
+      width: isMobile ? 'calc(100vw - 24px)' : 'auto',
+      textAlign: 'center',
     },
   };
 

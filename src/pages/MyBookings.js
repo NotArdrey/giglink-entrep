@@ -3,12 +3,12 @@ import Header from '../components/Header';
 import ChatWindow from '../components/ChatWindow';
 import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
-import SkeletonCard from '../components/SkeletonCard';
 
 const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings }) => {
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [uiState, setUiState] = useState('chat');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [displayFilter, setDisplayFilter] = useState('all');
   const [ratingTargetId, setRatingTargetId] = useState(null);
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingHover, setRatingHover] = useState(0);
@@ -33,13 +33,26 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
   const [hoveredBackToBookings, setHoveredBackToBookings] = useState(false);
   const [isReferenceFocused, setIsReferenceFocused] = useState(false);
   const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
 
-  // Simulate initial loading of bookings with skeletons
+  // Simulate initial loading of bookings before list is shown.
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoadingBookings(false);
     }, 1000);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const parseDateOnly = (dateString) => {
@@ -297,9 +310,66 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       rating: 5,
       review: 'Secure and smooth payment confirmation flow.',
     },
+    {
+      id: 9,
+      workerId: 109,
+      workerName: 'Nico Alvarez',
+      serviceType: 'Home Deep Cleaning',
+      status: 'Cancelled (Cash)',
+      requestDate: '2026-03-22',
+      description: 'Client cancelled a cash-on-service booking before meetup.',
+      quoteAmount: 2200,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-24',
+        timeBlock: { id: 'morning', startTime: '10:00 AM', endTime: '12:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'after-service-cash',
+      allowGcashAdvance: false,
+      allowAfterService: true,
+      afterServicePaymentType: 'cash-only',
+      cancellationReason: 'Client requested cancellation due to schedule conflict.',
+      cancelledBy: 'Client',
+      canRate: false,
+      rating: null,
+      review: '',
+    },
+    {
+      id: 10,
+      workerId: 110,
+      workerName: 'Mara Lim',
+      serviceType: 'Weekly Tutoring',
+      status: 'Refund Processing',
+      requestDate: '2026-03-17',
+      description: 'Advance payment received, then service was cancelled and refund was initiated.',
+      quoteAmount: 2800,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-19',
+        timeBlock: { id: 'night', startTime: '07:00 PM', endTime: '09:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'gcash-advance',
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
+      paymentProofSubmitted: true,
+      paymentReference: 'GCASH-TRX-20260318-10-6821',
+      transactionId: 'GCASH-TRX-20260318-10-6821',
+      refundStatus: 'processing',
+      refundAmount: 2800,
+      refundReference: 'REFUND-REQ-20260324-10',
+      refundReason: 'Worker unavailable for scheduled date.',
+      canRate: false,
+      rating: null,
+      review: '',
+    },
   ]);
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
+  const isRefundBooking = (booking) => Boolean(booking.refundStatus) || booking.status === 'Refund Processing' || booking.status === 'Refunded';
+  const isCancelledCashBooking = (booking) => booking.status === 'Cancelled (Cash)' && booking.paymentMethod === 'after-service-cash';
 
   const handleOpenChat = (bookingId) => {
     setSelectedBookingId(bookingId);
@@ -584,27 +654,29 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       width: '100%',
       overflowX: 'hidden',
     },
-    bookingsHeader: { maxWidth: '1200px', margin: '0 auto 40px', textAlign: 'center', padding: '32px 0' },
-    title: { fontSize: '32px', fontWeight: 700, color: '#2c3e50', margin: '0 0 8px 0' },
+    bookingsHeader: { width: '100%', maxWidth: isMobile ? '390px' : '1200px', margin: '0 auto 24px', textAlign: 'center', padding: isMobile ? '20px 14px 0' : '32px 0', boxSizing: 'border-box' },
+    title: { fontSize: isMobile ? '24px' : '32px', fontWeight: 700, color: '#2c3e50', margin: '0 0 8px 0' },
     subtitle: { fontSize: '14px', color: '#7f8c8d', margin: 0 },
-    bookingsFilters: { maxWidth: '1200px', margin: '0 auto 16px', display: 'flex', gap: '8px', flexWrap: 'wrap' },
-    filterBtn: { padding: '8px 14px', borderRadius: '999px', border: '1px solid #cbd5e1', background: '#fff', color: '#334155', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
+    bookingsFilters: { width: '100%', maxWidth: isMobile ? '390px' : '1200px', margin: '0 auto 16px', padding: isMobile ? '0 14px' : '0', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', boxSizing: 'border-box' },
+    filterBtn: { padding: '8px 14px', borderRadius: '999px', border: '1px solid #cbd5e1', background: '#fff', color: '#334155', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' },
     filterBtnActive: { background: '#1d4ed8', color: '#fff', borderColor: '#1d4ed8' },
-    bookingsList: { display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '1200px', margin: '0 auto' },
-    bookingCard: { background: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', padding: '20px', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', borderLeft: '4px solid #27ae60' },
+    displayFilters: { width: '100%', maxWidth: isMobile ? '390px' : '1200px', margin: '0 auto 14px', padding: isMobile ? '0 14px' : '0', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', boxSizing: 'border-box' },
+    displayHint: { width: '100%', margin: '2px 0 0', fontSize: '12px', color: '#64748b', textAlign: isMobile ? 'center' : 'left' },
+    bookingsList: { display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: isMobile ? '390px' : '1200px', margin: '0 auto', padding: isMobile ? '0 14px 16px' : '0 0 20px', alignItems: 'stretch', boxSizing: 'border-box' },
+    bookingCard: { background: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', padding: isMobile ? '14px' : '20px', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', borderLeft: '4px solid #27ae60', width: '100%', marginLeft: 'auto', marginRight: 'auto', boxSizing: 'border-box' },
     bookingCardHover: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', transform: 'translateY(-2px)' },
     bookingInfo: { flex: 1 },
-    workerName: { fontSize: '18px', fontWeight: 600, color: '#2c3e50', margin: '0 0 4px 0' },
-    serviceType: { fontSize: '14px', color: '#27ae60', fontWeight: 600, margin: '0 0 8px 0' },
-    description: { fontSize: '14px', color: '#555', margin: '0 0 12px 0', lineHeight: 1.5 },
-    bookingMeta: { display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: '#7f8c8d', alignItems: 'center' },
+    workerName: { fontSize: '18px', fontWeight: 600, color: '#2c3e50', margin: '0 0 4px 0', textAlign: isMobile ? 'center' : 'left' },
+    serviceType: { fontSize: '14px', color: '#27ae60', fontWeight: 600, margin: '0 0 8px 0', textAlign: isMobile ? 'center' : 'left' },
+    description: { fontSize: '14px', color: '#555', margin: '0 0 12px 0', lineHeight: 1.5, textAlign: isMobile ? 'center' : 'left' },
+    bookingMeta: { display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: '#7f8c8d', alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start' },
     requestDate: { display: 'inline-block' },
     billingBadge: { display: 'inline-block', padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: '#dbeafe', color: '#1e3a8a' },
     nextChargeDate: { fontSize: '12px', color: '#1d4ed8', fontWeight: 600 },
     statusBadge: { display: 'inline-block', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' },
     bookingRating: { color: '#7c2d12', fontWeight: 600 },
-    bookingActions: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px', marginTop: '16px' },
-    quotePreview: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#2c3e50' },
+    bookingActions: { display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', gap: '12px', marginTop: '16px', width: '100%' },
+    quotePreview: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#2c3e50', justifyContent: isMobile ? 'center' : 'flex-start', width: isMobile ? '100%' : 'auto' },
     quoteLabel: { fontWeight: 600 },
     quoteAmount: { fontSize: '18px', fontWeight: 700, color: '#27ae60' },
     gcashPreview: { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '6px 10px' },
@@ -613,21 +685,29 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     cashPreview: { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '6px', padding: '6px 10px' },
     cashLabel: { color: '#9a3412', fontWeight: 700 },
     cashHint: { color: '#b45309', fontWeight: 600 },
+    refundPreview: { display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '8px 10px', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' },
+    refundTitle: { color: '#4338ca', fontWeight: 800 },
+    refundMeta: { color: '#4f46e5', fontWeight: 600 },
+    cancelPreview: { display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 10px', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' },
+    cancelTitle: { color: '#b91c1c', fontWeight: 800 },
+    cancelMeta: { color: '#991b1b', fontWeight: 600 },
     cashConfirmBtn: { padding: '10px 16px', background: '#ea580c', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s ease' },
     cashConfirmBtnHover: { background: '#c2410c' },
     transactionProofBtn: { padding: '10px 14px', background: '#0f766e', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
     transactionIdInline: { padding: '6px 10px', borderRadius: '999px', background: '#ecfeff', border: '1px solid #99f6e4', color: '#0f766e', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 },
-    bookingActionRow: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' },
-    openChatBtn: { padding: '10px 24px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', transform: 'scale(1)' },
+    bookingActionRow: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', width: '100%' },
+    openChatBtn: { padding: '10px 16px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', transform: 'scale(1)' },
     openChatBtnHover: { background: '#229954', transform: 'scale(1.02)' },
     rateBtn: { padding: '10px 18px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
     rateBtnHover: { background: '#d97706' },
     payGcashBtn: { padding: '10px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s ease' },
     payGcashBtnHover: { background: '#1d4ed8' },
-    emptyState: { textAlign: 'center', padding: '60px 20px', color: '#7f8c8d' },
-    ratingModalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.55)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '16px' },
-    ratingModal: { width: '100%', maxWidth: '760px', background: '#fff', borderRadius: '12px', padding: '24px', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', gap: '10px' },
-    paymentProofModal: { maxWidth: '900px' },
+    loadingCard: { background: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)', padding: '20px', border: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginLeft: 'auto', marginRight: 'auto', boxSizing: 'border-box' },
+    loadingLine: { height: '11px', borderRadius: '999px', background: '#e2e8f0' },
+    emptyState: { textAlign: 'center', padding: '60px 20px', color: '#7f8c8d', width: '100%', marginLeft: 'auto', marginRight: 'auto', boxSizing: 'border-box' },
+    ratingModalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.55)', display: 'flex', justifyContent: 'center', alignItems: isMobile ? 'flex-start' : 'center', zIndex: 1100, padding: isMobile ? '10px 10px 14px' : '16px', overflowY: 'auto', overscrollBehavior: 'contain' },
+    ratingModal: { width: '100%', maxWidth: isMobile ? '100%' : '760px', maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', background: '#fff', borderRadius: '12px', padding: isMobile ? '14px' : '24px', boxShadow: '0 16px 40px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', gap: '10px', boxSizing: 'border-box' },
+    paymentProofModal: { maxWidth: isMobile ? '100%' : '900px' },
     ratingTitle: { margin: 0, color: '#1f2937', fontSize: '26px' },
     ratingSubtitle: { margin: '0 0 8px', color: '#6b7280', fontSize: '15px' },
     label: { fontSize: '14px', fontWeight: 600, color: '#374151' },
@@ -637,9 +717,10 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     starRatingValue: { margin: '2px 0 6px', fontSize: '13px', fontWeight: 600, color: '#374151' },
     textarea: { border: '1px solid #d1d5db', borderRadius: '8px', minHeight: '120px', padding: '12px', fontSize: '15px', fontFamily: 'inherit' },
     ratingActions: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' },
+    paymentProofActions: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px', position: 'sticky', bottom: 0, background: '#fff', paddingTop: '10px', paddingBottom: isMobile ? '2px' : 0, borderTop: '1px solid #e5e7eb' },
     btnCancelRate: { border: 'none', borderRadius: '8px', padding: '10px 14px', fontWeight: 600, cursor: 'pointer', background: '#e5e7eb', color: '#111827' },
     btnSubmitRate: { border: 'none', borderRadius: '8px', padding: '10px 14px', fontWeight: 600, cursor: 'pointer', background: '#2563eb', color: '#fff' },
-    gcashPaymentHeader: { display: 'grid', gridTemplateColumns: '220px 1fr', gap: '16px', alignItems: 'start', marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' },
+    gcashPaymentHeader: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '220px 1fr', gap: '16px', alignItems: 'start', marginBottom: '24px', padding: '16px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' },
     gcashQrImage: { width: '100%', border: '2px solid #e5e7eb', borderRadius: '8px', background: '#fff', display: 'block' },
     gcashPaymentInfo: { display: 'flex', flexDirection: 'column', gap: '12px' },
     paymentInfoGroup: { display: 'flex', flexDirection: 'column', gap: '4px' },
@@ -650,15 +731,15 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     paymentProofSection: { padding: '16px', background: '#fafbfc', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '16px' },
     h4: { margin: '0 0 16px 0', fontSize: '14px', fontWeight: 600, color: '#111827' },
     proofUploadGroup: { marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' },
-    fileInput: { minHeight: '46px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', fontSize: '14px', cursor: 'pointer' },
+    fileInput: { minHeight: '46px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', fontSize: '14px', cursor: 'pointer', width: '100%', boxSizing: 'border-box' },
     proofFileName: { margin: '2px 0 6px', fontSize: '12px', color: '#6b7280' },
     referenceNumberGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
     referenceInput: { padding: '12px 14px', fontSize: '15px', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', fontFamily: 'inherit', transition: 'border-color 0.2s, box-shadow 0.2s', minHeight: '48px', width: '100%', boxSizing: 'border-box', outline: 'none' },
     referenceInputFocused: { borderColor: '#3b82f6', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)' },
     errorTextInline: { margin: 0, color: '#dc2626', fontSize: '13px', fontWeight: 600 },
-    paymentStatusNotice: { position: 'fixed', right: '16px', bottom: '16px', background: '#1d4ed8', color: '#fff', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', fontWeight: 600, boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)', zIndex: 1400 },
+    paymentStatusNotice: { position: 'fixed', right: isMobile ? '12px' : '16px', left: isMobile ? '12px' : 'auto', bottom: '16px', background: '#1d4ed8', color: '#fff', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', fontWeight: 600, boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)', zIndex: 1400 },
     cashModalHeader: { marginBottom: '10px' },
-    cashSecurityCard: { marginBottom: '14px', border: '1px solid #fed7aa', background: '#fff7ed', borderRadius: '8px', padding: '12px', display: 'grid', gridTemplateColumns: '160px 1fr', gap: '12px', alignItems: 'start' },
+    cashSecurityCard: { marginBottom: '14px', border: '1px solid #fed7aa', background: '#fff7ed', borderRadius: '8px', padding: '12px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '160px 1fr', gap: '12px', alignItems: 'start' },
     cashQrImage: { width: '100%', borderRadius: '8px', border: '1px solid #fdba74', background: '#fff' },
     cashSecurityTitle: { margin: 0, color: '#9a3412', fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' },
     cashSecurityText: { margin: '6px 0 0', color: '#7c2d12', fontSize: '13px', lineHeight: 1.5 },
@@ -672,12 +753,12 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     cashReviewDenied: { background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' },
     transactionModalValue: { fontSize: '14px', color: '#0f172a', fontWeight: 700, fontFamily: "'Courier New', monospace" },
     confirmationOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' },
-    confirmationCard: { background: '#fff', borderRadius: '16px', padding: '40px 24px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)', transition: 'transform 0.4s ease, opacity 0.4s ease' },
+    confirmationCard: { background: '#fff', borderRadius: '16px', padding: isMobile ? '24px 14px' : '40px 24px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)', transition: 'transform 0.4s ease, opacity 0.4s ease' },
     confirmationHeader: { textAlign: 'center', marginBottom: '32px' },
     checkmarkIcon: { width: '80px', height: '80px', background: '#27ae60', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', color: '#fff', margin: '0 auto 16px' },
     confirmationHeading: { fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: 0 },
     confirmationDetails: { background: '#f8f9fa', borderRadius: '8px', padding: '24px', marginBottom: '24px' },
-    detailRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #ecf0f1' },
+    detailRow: { display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '4px' : '0', padding: '8px 0', borderBottom: '1px solid #ecf0f1' },
     detailLabel: { fontWeight: 600, color: '#2c3e50', fontSize: '13px' },
     detailValue: { color: '#555', fontSize: '13px' },
     payGcashAdvance: { color: '#27ae60', fontWeight: 600 },
@@ -704,15 +785,32 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     'Payment Submitted': { background: '#dbeafe', color: '#1e40af' },
     'Cash Verification Pending': { background: '#ffedd5', color: '#9a3412' },
     'Cash Verification Denied': { background: '#fee2e2', color: '#b91c1c' },
+    'Cancelled (Cash)': { background: '#fee2e2', color: '#991b1b' },
+    'Refund Processing': { background: '#e0e7ff', color: '#3730a3' },
+    Refunded: { background: '#dcfce7', color: '#166534' },
   };
 
   const currentBooking = bookings.find((b) => b.id === selectedBookingId);
-  const filteredBookings = bookings.filter((booking) => {
+  const terminalStatuses = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refunded'];
+  const statusFilteredBookings = bookings.filter((booking) => {
     if (activeFilter === 'completed') {
-      return booking.status === 'Completed Service' || booking.status === 'Service Stopped';
+      return terminalStatuses.includes(booking.status) || booking.status === 'Refund Processing';
     }
     if (activeFilter === 'active') {
-      return booking.status !== 'Completed Service' && booking.status !== 'Service Stopped';
+      return !terminalStatuses.includes(booking.status);
+    }
+    return true;
+  });
+
+  const filteredBookings = statusFilteredBookings.filter((booking) => {
+    if (displayFilter === 'cash-approvals') {
+      return booking.paymentMethod === 'after-service-cash';
+    }
+    if (displayFilter === 'refunds') {
+      return isRefundBooking(booking);
+    }
+    if (displayFilter === 'cancelled') {
+      return isCancelledCashBooking(booking);
     }
     return true;
   });
@@ -743,10 +841,23 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           <button style={{ ...styles.filterBtn, ...(activeFilter === 'active' ? styles.filterBtnActive : {}) }} onClick={() => setActiveFilter('active')}>Active</button>
           <button style={{ ...styles.filterBtn, ...(activeFilter === 'completed' ? styles.filterBtnActive : {}) }} onClick={() => setActiveFilter('completed')}>Done / Completed</button>
         </div>
+        <div style={styles.displayFilters}>
+          <button style={{ ...styles.filterBtn, ...(displayFilter === 'all' ? styles.filterBtnActive : {}) }} onClick={() => setDisplayFilter('all')}>Show: All</button>
+          <button style={{ ...styles.filterBtn, ...(displayFilter === 'cash-approvals' ? styles.filterBtnActive : {}) }} onClick={() => setDisplayFilter('cash-approvals')}>Cash Payments Approval</button>
+          <button style={{ ...styles.filterBtn, ...(displayFilter === 'refunds' ? styles.filterBtnActive : {}) }} onClick={() => setDisplayFilter('refunds')}>Refund Cases</button>
+          <button style={{ ...styles.filterBtn, ...(displayFilter === 'cancelled' ? styles.filterBtnActive : {}) }} onClick={() => setDisplayFilter('cancelled')}>Cancelled (Cash)</button>
+          <p style={styles.displayHint}>Use this filter to showcase one flow at a time during demo.</p>
+        </div>
         <div style={styles.bookingsList}>
           {isLoadingBookings
             ? Array.from({ length: 5 }).map((_, index) => (
-                <SkeletonCard key={`skeleton-${index}`} />
+                <div key={`loading-booking-${index}`} style={styles.loadingCard} aria-label="Loading booking card">
+                  <div style={{ ...styles.loadingLine, width: '52%' }} />
+                  <div style={{ ...styles.loadingLine, width: '35%' }} />
+                  <div style={{ ...styles.loadingLine, width: '88%' }} />
+                  <div style={{ ...styles.loadingLine, width: '70%' }} />
+                  <div style={{ ...styles.loadingLine, width: '25%' }} />
+                </div>
               ))
             : filteredBookings.length === 0
             ? (
@@ -795,6 +906,22 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                       </span>
                     </div>
                   )}
+                  {isRefundBooking(booking) && (
+                    <div style={styles.refundPreview}>
+                      <span style={styles.refundTitle}>Refund Case</span>
+                      <span style={styles.refundMeta}>Status: {booking.refundStatus || booking.status}</span>
+                      {booking.refundAmount && <span style={styles.refundMeta}>Amount: {`\u20B1${booking.refundAmount}`}</span>}
+                      {booking.refundReference && <span style={styles.refundMeta}>Ref: {booking.refundReference}</span>}
+                      {booking.refundReason && <span style={styles.refundMeta}>Reason: {booking.refundReason}</span>}
+                    </div>
+                  )}
+                  {isCancelledCashBooking(booking) && (
+                    <div style={styles.cancelPreview}>
+                      <span style={styles.cancelTitle}>Cancelled Cash Booking</span>
+                      <span style={styles.cancelMeta}>Cancelled by: {booking.cancelledBy || 'Client'}</span>
+                      <span style={styles.cancelMeta}>{booking.cancellationReason || 'Cash-only cancellation flow for demo.'}</span>
+                    </div>
+                  )}
                   {booking.transactionId && (
                     <span style={styles.transactionIdInline}>Transaction ID: {booking.transactionId}</span>
                   )}
@@ -809,6 +936,8 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                     </button>
                     {isGcashFlow(booking.paymentMethod)
                       && booking.status !== 'Service Stopped'
+                      && booking.status !== 'Cancelled (Cash)'
+                      && !isRefundBooking(booking)
                       && (((isRecurringBilling(booking) && isRecurringChargeDue(booking)) || (!isRecurringBilling(booking) && !booking.paymentProofSubmitted))) && (
                       <button
                         style={{ ...styles.payGcashBtn, ...(hoveredPayId === booking.id ? styles.payGcashBtnHover : {}) }}
@@ -821,6 +950,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
                     )}
                     {booking.paymentMethod === 'after-service-cash'
                       && booking.status !== 'Service Stopped'
+                      && booking.status !== 'Cancelled (Cash)'
                       && booking.cashConfirmationStatus !== 'approved' && (
                       <button
                         style={{ ...styles.cashConfirmBtn, ...(hoveredPayId === booking.id ? styles.cashConfirmBtnHover : {}) }}
@@ -955,7 +1085,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
               })()}
 
               {paymentProofError && <p style={styles.errorTextInline}>{paymentProofError}</p>}
-              <div style={styles.ratingActions}>
+              <div style={styles.paymentProofActions}>
                 <button style={styles.btnCancelRate} onClick={() => setPaymentProofBookingId(null)}>Cancel</button>
                 <button style={styles.btnSubmitRate} onClick={handleSubmitPaymentProof}>Submit Proof</button>
               </div>

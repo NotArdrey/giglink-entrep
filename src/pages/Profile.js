@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
-import SkeletonAvatar from '../components/SkeletonAvatar';
-import SkeletonText from '../components/SkeletonText';
 
 function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile }) {
   const fallbackName = 'Juan Dela Cruz';
@@ -22,6 +20,9 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
   const [isManageHovered, setIsManageHovered] = useState(false);
   const [isPortfolioHovered, setIsPortfolioHovered] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
 
   const cameraInputRef = useRef(null);
   const deviceInputRef = useRef(null);
@@ -44,6 +45,16 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
     }, 700);
     return () => clearTimeout(timer);
   }, [sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const localizedAddress = userLocation
     ? `${userLocation.barangay || 'Sabang'}, ${userLocation.city || 'Baliwag'}, ${userLocation.province || 'Bulacan'}`
@@ -82,20 +93,22 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
   };
 
   const styles = {
-    page: { minHeight: '100vh', background: '#ffffff', color: '#2c3e50', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" },
-    header: { backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' },
-    backBtn: { border: `1px solid ${isBackHovered ? '#2563eb' : '#e5e7eb'}`, background: isBackHovered ? '#f9f9f9' : 'transparent', color: isBackHovered ? '#2563eb' : '#2c3e50', padding: '8px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
-    title: { fontSize: '24px', fontWeight: 700, margin: 0, color: '#2c3e50' },
-    headerSpacer: { width: '92px' },
-    main: { maxWidth: '800px', margin: '0 auto', padding: '32px 16px' },
-    card: { width: '100%', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', padding: '32px' },
+    page: { minHeight: '100vh', background: '#ffffff', color: '#2c3e50', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center' },
+    header: { width: '100%', boxSizing: 'border-box', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '12px 14px' : '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' },
+    backBtn: { border: `1px solid ${isBackHovered ? '#2563eb' : '#e5e7eb'}`, background: isBackHovered ? '#f9f9f9' : 'transparent', color: isBackHovered ? '#2563eb' : '#2c3e50', padding: isMobile ? '7px 11px' : '8px 14px', borderRadius: '6px', fontSize: isMobile ? '12px' : '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
+    title: { fontSize: isMobile ? '20px' : '24px', fontWeight: 700, margin: 0, color: '#2c3e50' },
+    headerSpacer: { width: isMobile ? '0' : '92px' },
+    main: { width: '100%', maxWidth: '900px', margin: '0 auto', padding: isMobile ? '20px 12px' : '32px 16px', boxSizing: 'border-box' },
+    card: { width: '100%', maxWidth: '760px', margin: '0 auto', boxSizing: 'border-box', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', padding: isMobile ? '18px 14px' : '32px' },
     hero: { textAlign: 'center', margin: '0 0 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' },
     profilePhotoButton: { border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' },
-    profilePhoto: { width: '150px', height: '150px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #e5e7eb', display: 'block', margin: '0 auto' },
-    profileAvatarSkeleton: { width: '150px', height: '150px', borderRadius: '50%', border: '4px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' },
+    profilePhoto: { width: isMobile ? '120px' : '150px', height: isMobile ? '120px' : '150px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #e5e7eb', display: 'block', margin: '0 auto' },
+    profileAvatarSkeleton: { width: isMobile ? '120px' : '150px', height: isMobile ? '120px' : '150px', borderRadius: '50%', border: '4px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' },
+    avatarPlaceholder: { width: isMobile ? '112px' : '142px', height: isMobile ? '112px' : '142px', borderRadius: '50%', background: '#dbe3ef' },
+    textPlaceholder: { height: '12px', borderRadius: '999px', background: '#dbe3ef' },
     profilePhotoEdit: { fontSize: '12px', fontWeight: 700, color: '#2563eb' },
     inlineEditRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', justifyContent: 'center', flexWrap: 'wrap' },
-    inlineEditInput: { minWidth: '260px', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 10px', fontSize: '16px' },
+    inlineEditInput: { minWidth: isMobile ? '0' : '260px', width: isMobile ? '100%' : 'auto', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 10px', fontSize: '16px' },
     inlineEditSave: { border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, background: '#2563eb', color: '#ffffff' },
     inlineEditCancel: { border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, background: '#e5e7eb', color: '#1f2937' },
     editableHeading: { margin: '12px 0 8px', color: isHeadingHovered ? '#2563eb' : '#1f2937', cursor: 'pointer' },
@@ -104,7 +117,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
     portfolioSection: { background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)', border: '2px solid #bfdbfe' },
     h2: { margin: '0 0 8px', color: '#2c3e50', fontSize: '18px' },
     h2Portfolio: { margin: '0 0 8px', color: '#0c4a6e', fontSize: '18px' },
-    sectionHeadingRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' },
+    sectionHeadingRow: { display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: isMobile ? '8px' : '0', flexWrap: isMobile ? 'wrap' : 'nowrap', marginBottom: '8px' },
     sectionEditBtn: { border: '1px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', color: '#1f2937', padding: '4px 10px', fontWeight: 700, cursor: 'pointer' },
     bioEditWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
     bioEditInput: { border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', resize: 'vertical', minHeight: '90px' },
@@ -131,7 +144,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
           onMouseLeave={() => setIsBackHovered(false)}
           onClick={onBackToDashboard}
         >
-          ? Back
+          &larr; Back
         </button>
         <h1 style={styles.title}>Profile</h1>
         <div style={styles.headerSpacer}></div>
@@ -143,9 +156,9 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
             {isProfileLoading ? (
               <div style={styles.profilePhotoButton}>
                 <div style={styles.profileAvatarSkeleton}>
-                  <SkeletonAvatar size={142} />
+                  <div style={styles.avatarPlaceholder} />
                 </div>
-                <SkeletonText lines={1} width="120px" />
+                <div style={{ ...styles.textPlaceholder, width: '120px' }} />
               </div>
             ) : (
               <button style={styles.profilePhotoButton} onClick={() => setIsPhotoSourceOpen(true)}>
@@ -155,7 +168,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
             )}
 
             {isProfileLoading ? (
-              <SkeletonText lines={1} width="220px" />
+              <div style={{ ...styles.textPlaceholder, width: '220px' }} />
             ) : isEditingName ? (
               <div style={styles.inlineEditRow}>
                 <input
@@ -182,7 +195,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
             )}
 
             {isProfileLoading ? (
-              <SkeletonText lines={1} width="130px" />
+              <div style={{ ...styles.textPlaceholder, width: '130px' }} />
             ) : (
               isVerifiedWorker && <span style={styles.verifiedBadge}>Verified Worker</span>
             )}
@@ -199,7 +212,12 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
             </div>
 
             {isProfileLoading ? (
-              <SkeletonText lines={4} width="85%" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ ...styles.textPlaceholder, width: '85%' }} />
+                <div style={{ ...styles.textPlaceholder, width: '90%' }} />
+                <div style={{ ...styles.textPlaceholder, width: '72%' }} />
+                <div style={{ ...styles.textPlaceholder, width: '66%' }} />
+              </div>
             ) : isEditingBio ? (
               <div style={styles.bioEditWrap}>
                 <textarea
@@ -223,7 +241,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
 
           <section style={styles.profileSection}>
             <h2 style={styles.h2}>Localized Address</h2>
-            {isProfileLoading ? <SkeletonText lines={1} width="70%" /> : <p style={styles.paragraph}>{localizedAddress}</p>}
+            {isProfileLoading ? <div style={{ ...styles.textPlaceholder, width: '70%' }} /> : <p style={styles.paragraph}>{localizedAddress}</p>}
           </section>
 
           {isVerifiedWorker && (
@@ -236,7 +254,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
                 onMouseLeave={() => setIsPortfolioHovered(false)}
                 onClick={() => setIsPortfolioModalOpen(true)}
               >
-                ?? Generate & Download Portfolio
+                &#128229; Generate & Download Portfolio
               </button>
             </section>
           )}

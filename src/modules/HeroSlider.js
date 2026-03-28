@@ -43,7 +43,7 @@ function HeroSlider({ onGetStarted }) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [sliderImages.length]);
 
   const goToSlide = (slideIndex) => {
     setCurrentSlide(slideIndex);

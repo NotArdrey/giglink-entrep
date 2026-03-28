@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import SkeletonChatMessage from './SkeletonChatMessage';
 
 const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted }) => {
   const [messages, setMessages] = useState([]);
@@ -144,7 +143,7 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted }
     closeBtn: { background: 'none', border: 'none', fontSize: '24px', color: isCloseHovered ? '#2c3e50' : '#7f8c8d', cursor: 'pointer', padding: 0, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', transform: isCloseHovered ? 'scale(1.1)' : 'scale(1)' },
     messages: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8f9fa' },
     loadingState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px', color: '#7f8c8d' },
-    spinner: { width: '40px', height: '40px', border: '4px solid #ecf0f1', borderTopColor: '#2563eb', borderRadius: '50%' },
+    loadingBubble: { height: '14px', borderRadius: '999px', background: '#e2e8f0' },
     chatMessage: { display: 'flex', flexDirection: 'column', marginBottom: '8px', gap: '4px' },
     chatMessageWorker: { alignSelf: 'flex-start', maxWidth: '80%' },
     chatMessageClient: { alignSelf: 'flex-end', maxWidth: '80%', alignItems: 'flex-end' },
@@ -210,9 +209,10 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted }
         <div style={styles.messages}>
           {isLoading ? (
             <div style={styles.loadingState}>
-              <SkeletonChatMessage isClient={false} />
-              <SkeletonChatMessage isClient={false} />
-              <SkeletonChatMessage isClient={true} />
+              <div style={{ ...styles.loadingBubble, width: '65%', alignSelf: 'flex-start' }} />
+              <div style={{ ...styles.loadingBubble, width: '55%', alignSelf: 'flex-start' }} />
+              <div style={{ ...styles.loadingBubble, width: '60%', alignSelf: 'flex-end' }} />
+              <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Loading conversation...</p>
             </div>
           ) : (
             messages.map((msg) => (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const Settings = ({
   onBack,
@@ -20,6 +20,19 @@ const Settings = ({
   const [isLangFocused, setIsLangFocused] = useState(false);
   const [isSystemHovered, setIsSystemHovered] = useState(false);
   const [isSaveHovered, setIsSaveHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const translations = {
     en: {
@@ -157,7 +170,7 @@ const Settings = ({
     header: {
       backgroundColor: themeTokens.cardBg,
       borderBottom: `1px solid ${themeTokens.borderColor}`,
-      padding: '16px 24px',
+      padding: isMobile ? '12px 14px' : '16px 24px',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -178,22 +191,22 @@ const Settings = ({
       transition: 'all 0.2s ease',
     },
     title: {
-      fontSize: '24px',
+      fontSize: isMobile ? '20px' : '24px',
       fontWeight: 700,
       color: themeTokens.textPrimary,
       margin: 0,
     },
-    spacer: { width: '100px' },
+    spacer: { width: isMobile ? '0' : '100px' },
     main: {
       maxWidth: '800px',
       margin: '0 auto',
-      padding: '32px 16px',
+      padding: isMobile ? '20px 12px' : '32px 16px',
     },
     card: {
       backgroundColor: themeTokens.cardBg,
       borderRadius: '12px',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-      padding: '32px',
+      padding: isMobile ? '20px 14px' : '32px',
       border: `1px solid ${themeTokens.borderColor}`,
     },
     cardHeader: {
@@ -235,7 +248,8 @@ const Settings = ({
     },
     settingItem: {
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'stretch' : 'center',
+      flexDirection: isMobile ? 'column' : 'row',
       gap: '12px',
     },
     languageSelect: {
@@ -263,14 +277,16 @@ const Settings = ({
       backgroundColor: themeTokens.inputBg,
       color: themeTokens.textPrimary,
       flexShrink: 0,
+      alignSelf: isMobile ? 'flex-start' : 'center',
     },
     themeToggleContainer: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
       gap: '20px',
       backgroundColor: themeTokens.inputBg,
-      padding: '20px',
+      padding: isMobile ? '14px' : '20px',
       borderRadius: '10px',
       border: `1px solid ${themeTokens.inputBorder}`,
     },
@@ -341,8 +357,9 @@ const Settings = ({
     notificationItem: {
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '16px',
+      alignItems: isMobile ? 'flex-start' : 'center',
+      flexDirection: isMobile ? 'column' : 'row',
+      padding: isMobile ? '14px' : '16px',
       backgroundColor: themeTokens.inputBg,
       borderRadius: '10px',
       border: `1px solid ${themeTokens.inputBorder}`,
@@ -426,6 +443,7 @@ const Settings = ({
     },
     saveChangesBtn: {
       padding: '12px 32px',
+      width: isMobile ? '100%' : 'auto',
       backgroundColor: isSaveHovered && !isSaving ? themeTokens.accentHover : themeTokens.accent,
       color: '#ffffff',
       border: 'none',

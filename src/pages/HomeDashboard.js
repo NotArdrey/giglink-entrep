@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 // Note: Using functional components with JSX and className for styling
 // Note: External CSS imported from styles/
 import ServiceCard from '../components/ServiceCard';
@@ -101,8 +101,21 @@ function HomeDashboard({ onLogout }) {
   const [showBookingNotification, setShowBookingNotification] = useState(false);
   const [bookingMessage, setBookingMessage] = useState('');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
 
   const [logoutBtnHovered, setLogoutBtnHovered] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
   };
@@ -166,13 +179,15 @@ function HomeDashboard({ onLogout }) {
     dashboardHeaderContent: {
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '1.5rem 2rem',
+      padding: isMobile ? '1rem' : '1.5rem 2rem',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
+      gap: '0.75rem',
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
     },
     dashboardTitle: {
-      fontSize: '1.8rem',
+      fontSize: isMobile ? '1.35rem' : '1.8rem',
       color: '#1f2937',
       margin: 0,
       fontWeight: 700,
@@ -190,11 +205,11 @@ function HomeDashboard({ onLogout }) {
     dashboardMain: {
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '2rem',
+      padding: isMobile ? '1rem' : '2rem',
     },
     searchFilterSection: {
       backgroundColor: '#ffffff',
-      padding: '1.5rem',
+      padding: isMobile ? '1rem' : '1.5rem',
       borderRadius: '0.8rem',
       marginBottom: '2rem',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -220,7 +235,8 @@ function HomeDashboard({ onLogout }) {
     },
     filterDropdown: {
       flex: 1,
-      minWidth: '200px',
+      minWidth: isMobile ? '100%' : '200px',
+      width: isMobile ? '100%' : 'auto',
       padding: '0.7rem 1rem',
       border: '1px solid #d1d5db',
       borderRadius: '0.4rem',
@@ -242,8 +258,8 @@ function HomeDashboard({ onLogout }) {
     },
     servicesGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(3, 1fr)',
-      gap: '2rem',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+      gap: isMobile ? '1rem' : '2rem',
       animation: 'fadeIn 0.3s ease',
     },
     noResults: {
