@@ -50,6 +50,15 @@ function App() {
     return <LoadingScreen />;
   }
 
+  // Handle auth-related views (before login check)
+  if (navigationContext.currentView === 'forgot-password') {
+    return renderView('forgot-password', navigationContext);
+  }
+
+  if (navigationContext.currentView === 'reset-password') {
+    return renderView('reset-password', navigationContext);
+  }
+
   // Show landing page if not logged in
   if (!navigationContext.isLoggedIn) {
     return <LandingPage onLogin={navigationContext.handleLogin} onForgotPassword={navigationContext.handleOpenForgotPassword} />;
