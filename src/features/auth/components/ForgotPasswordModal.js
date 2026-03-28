@@ -6,6 +6,8 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [hoveredButton, setHoveredButton] = useState('');
+
   const styles = {
     overlay: {
       position: 'fixed',
@@ -17,24 +19,38 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
       zIndex: 100,
     },
     modal: {
-      backgroundColor: '#1e293b',
+      backgroundColor: '#ffffff',
       borderRadius: '0.5rem',
-      border: '1px solid #334155',
+      border: '1px solid #d1d5db',
       padding: '2rem',
       maxWidth: '400px',
       width: '90%',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+      position: 'relative',
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    },
+    closeButton: {
+      position: 'absolute',
+      top: '1rem',
+      right: '1rem',
+      background: 'none',
+      border: 'none',
+      fontSize: '1.5rem',
+      cursor: 'pointer',
+      color: hoveredButton === 'close' ? '#111827' : '#6b7280',
+      transition: 'color 0.3s ease',
     },
     heading: {
       fontSize: '1.875rem',
       fontWeight: '700',
-      color: '#f1f5f9',
+      color: '#111827',
       marginBottom: '0.5rem',
       textAlign: 'center',
+      margin: '0 0 0.5rem 0',
     },
     subheading: {
       fontSize: '0.875rem',
-      color: '#cbd5e1',
+      color: '#4b5563',
       textAlign: 'center',
       marginBottom: '1.5rem',
     },
@@ -44,18 +60,18 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
     label: {
       display: 'block',
       fontSize: '0.875rem',
-      fontWeight: '500',
-      color: '#cbd5e1',
+      fontWeight: '600',
+      color: '#111827',
       marginBottom: '0.5rem',
     },
     input: {
       width: '100%',
       padding: '0.75rem',
       fontSize: '1rem',
-      backgroundColor: '#0f172a',
-      border: '1px solid #334155',
+      backgroundColor: '#ffffff',
+      border: '1px solid #d1d5db',
       borderRadius: '0.375rem',
-      color: '#f1f5f9',
+      color: '#111827',
       boxSizing: 'border-box',
       transition: 'all 0.2s',
     },
@@ -68,11 +84,8 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
       border: 'none',
       cursor: 'pointer',
       transition: 'all 0.2s',
-      backgroundColor: '#3b82f6',
+      backgroundColor: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb',
       color: '#ffffff',
-    },
-    buttonHover: {
-      backgroundColor: '#2563eb',
     },
     secondaryButton: {
       width: '100%',
@@ -80,19 +93,19 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
       fontSize: '1rem',
       fontWeight: '600',
       borderRadius: '0.375rem',
-      border: '1px solid #334155',
+      border: '1px solid #d1d5db',
       backgroundColor: 'transparent',
-      color: '#cbd5e1',
+      color: '#4b5563',
       cursor: 'pointer',
       marginTop: '1rem',
       transition: 'all 0.2s',
     },
     secondaryButtonHover: {
-      backgroundColor: '#1e293b',
-      borderColor: '#475569',
+      backgroundColor: '#f3f4f6',
+      borderColor: '#d1d5db',
     },
     successMessage: {
-      backgroundColor: '#064e3b',
+      backgroundColor: '#f0fdf4',
       border: '1px solid #10b981',
       borderRadius: '0.375rem',
       padding: '1rem',
@@ -106,26 +119,28 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
     },
     successText: {
       fontSize: '0.875rem',
-      color: '#d1fae5',
+      color: '#059669',
       lineHeight: '1.5',
     },
     errorMessage: {
-      backgroundColor: '#7f1d1d',
+      backgroundColor: '#fef2f2',
       border: '1px solid #ef4444',
       borderRadius: '0.375rem',
       padding: '0.75rem',
       marginBottom: '1rem',
-      color: '#fca5a5',
+      color: '#c33',
       fontSize: '0.875rem',
     },
     resetButton: {
       background: 'none',
       border: 'none',
-      color: '#3b82f6',
+      color: hoveredButton === 'reset' ? '#1d4ed8' : '#2563eb',
       cursor: 'pointer',
-      textDecoration: 'underline',
+      textDecoration: hoveredButton === 'reset' ? 'underline' : 'none',
       padding: 0,
       font: 'inherit',
+      fontWeight: '600',
+      transition: 'color 0.3s ease',
     },
   };
 
@@ -155,6 +170,14 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
   return (
     <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div style={styles.modal}>
+        <button
+          onClick={onClose}
+          onMouseEnter={() => setHoveredButton('close')}
+          onMouseLeave={() => setHoveredButton('')}
+          style={styles.closeButton}
+        >
+          ✕
+        </button>
         <h2 style={styles.heading}>Forgot Password?</h2>
         <p style={styles.subheading}>
           {isSubmitted ? 'Check your email for reset link' : 'Enter your email to receive a password reset link'}
@@ -178,8 +201,8 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
                   email
                 );
               }}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
+              onMouseEnter={() => setHoveredButton('submit')}
+              onMouseLeave={() => setHoveredButton('')}
               style={styles.button}
             >
               Reset Password
@@ -193,6 +216,8 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
                   setEmail('');
                   setError('');
                 }}
+                onMouseEnter={() => setHoveredButton('reset')}
+                onMouseLeave={() => setHoveredButton('')}
                 style={styles.resetButton}
               >
                 try another email
@@ -215,8 +240,8 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
             <button
               type="submit"
               disabled={isLoading}
-              onMouseEnter={(e) => (e.target.style.backgroundColor = styles.buttonHover.backgroundColor)}
-              onMouseLeave={(e) => (e.target.style.backgroundColor = styles.button.backgroundColor)}
+              onMouseEnter={() => setHoveredButton('submit')}
+              onMouseLeave={() => setHoveredButton('')}
               style={{
                 ...styles.button,
                 opacity: isLoading ? 0.7 : 1,
@@ -230,9 +255,9 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
 
         <button
           onClick={onClose}
-          onMouseEnter={(e) => (e.target.style.backgroundColor = styles.secondaryButtonHover.backgroundColor)}
-          onMouseLeave={(e) => (e.target.style.backgroundColor = 'transparent')}
-          style={styles.secondaryButton}
+          onMouseEnter={() => setHoveredButton('secondary')}
+          onMouseLeave={() => setHoveredButton('')}
+          style={hoveredButton === 'secondary' ? { ...styles.secondaryButton, ...styles.secondaryButtonHover } : styles.secondaryButton}
         >
           ← Back to Login
         </button>
