@@ -5,7 +5,7 @@ import ServiceCard from '../../marketplace/components/ServiceCard';
 import WorkerDetailModal from '../../marketplace/components/WorkerDetailModal';
 import BookingNotification from '../../bookings/components/BookingNotification';
 import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
-import { MOCK_WORKERS } from '../../../data/MockWorkers';
+import { MOCK_WORKERS } from '../../work';
 
 
 function HomeDashboard({ onLogout }) {

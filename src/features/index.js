@@ -1,9 +1,44 @@
-export { default as LandingPage } from './landing/pages/LandingPage';
-export { default as Dashboard } from './dashboard/pages/Dashboard';
-export { default as MyBookings } from './bookings/pages/MyBookings';
-export { default as MyWork } from './work/pages/MyWork';
-export { default as Profile } from './profile/pages/Profile';
-export { default as AccountSettings } from './profile/pages/AccountSettings';
-export { default as Settings } from './profile/pages/Settings';
-export { default as SellerOnboarding } from './onboarding/pages/SellerOnboarding';
-export { default as WorkerDashboard } from './work/pages/WorkerDashboard';
+// Main page exports
+export {
+  LandingPage,
+  HeroSlider,
+} from './landing';
+
+export {
+  Dashboard,
+  HomeDashboard,
+} from './dashboard';
+
+export {
+  MyBookings,
+  BookingCalendarModal,
+  BookingNotification,
+} from './bookings';
+
+export {
+  MyWork,
+  WorkerDashboard,
+  SimulatedChat,
+  SlotEditModal,
+} from './work';
+
+export {
+  Profile,
+  AccountSettings,
+  Settings,
+  DigitalPortfolioModal,
+} from './profile';
+
+export {
+  SellerOnboarding,
+} from './onboarding';
+
+export {
+  LoginModal,
+  LogoutConfirmModal,
+} from './auth';
+
+export {
+  ServiceCard,
+  WorkerDetailModal,
+} from './marketplace';

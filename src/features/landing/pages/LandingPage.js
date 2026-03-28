@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Navigation from '../../../shared/components/Navigation';
-import HeroSlider from '../../../modules/HeroSlider';
+import HeroSlider from '../components/HeroSlider';
 import LoginModal from '../../auth/components/LoginModal';
 
 const LANDING_STATS = [
