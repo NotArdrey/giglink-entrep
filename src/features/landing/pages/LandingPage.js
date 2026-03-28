@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import Navigation from '../components/Navigation';
-import HeroSlider from '../modules/HeroSlider';
-import LoginModal from '../components/LoginModal';
+import Navigation from '../../../shared/components/Navigation';
+import HeroSlider from '../../../modules/HeroSlider';
+import LoginModal from '../../auth/components/LoginModal';
 
 const LANDING_STATS = [
   { id: 1, value: '80+', label: 'Active service categories' },

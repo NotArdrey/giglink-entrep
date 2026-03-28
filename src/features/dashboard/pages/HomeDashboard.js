@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 // Note: Using functional components with JSX and className for styling
 // Note: External CSS imported from styles/
-import ServiceCard from '../components/ServiceCard';
-import WorkerDetailModal from '../components/WorkerDetailModal';
-import BookingNotification from '../components/BookingNotification';
-import LogoutConfirmModal from '../components/LogoutConfirmModal';
-import { MOCK_WORKERS } from '../data/MockWorkers';
+import ServiceCard from '../../marketplace/components/ServiceCard';
+import WorkerDetailModal from '../../marketplace/components/WorkerDetailModal';
+import BookingNotification from '../../bookings/components/BookingNotification';
+import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
+import { MOCK_WORKERS } from '../../../data/MockWorkers';
 
 
 function HomeDashboard({ onLogout }) {

@@ -10,7 +10,7 @@ import {
   DAILY_SLOTS_SCHEDULE,
   PROJECT_SLOTS_SCHEDULE,
   HOURLY_CALENDAR,
-} from '../data/MockWorkers';
+} from '../../../data/MockWorkers';
 
 
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

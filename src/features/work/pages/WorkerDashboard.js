@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import CalendarAvailabilityModal from '../components/CalendarAvailabilityModal';
 import SellerScheduleModal from '../components/SellerScheduleModal';
-import LogoutConfirmModal from '../components/LogoutConfirmModal';
+import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
 
 
 function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {

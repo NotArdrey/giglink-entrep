@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 // Note: Conditional rendering is used for the Profile Dropdown menu via isProfileMenuOpen state.
 // Note: Uses inline style objects and camelCase handlers (onClick, onChange).
-import LogoutConfirmModal from './LogoutConfirmModal';
+import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 
 
 function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings, externalNotifications = [] }) {

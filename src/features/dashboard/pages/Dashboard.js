@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 // Note: This page is shown through isLoggedIn conditional rendering in App.js.
 // Note: Service cards are rendered dynamically with .map() and filtered via React state.
-import Header from '../components/Header';
-import ServiceCard from '../components/ServiceCard';
-import WorkerDetailModal from '../components/WorkerDetailModal';
-import BookingCalendarModal from '../components/BookingCalendarModal';
-import PaymentModal from '../components/PaymentModal';
-import BookingNotification from '../components/BookingNotification';
+import Header from '../../../shared/components/Header';
+import ServiceCard from '../../marketplace/components/ServiceCard';
+import WorkerDetailModal from '../../marketplace/components/WorkerDetailModal';
+import BookingCalendarModal from '../../bookings/components/BookingCalendarModal';
+import PaymentModal from '../../bookings/components/PaymentModal';
+import BookingNotification from '../../bookings/components/BookingNotification';
 
 
 function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
