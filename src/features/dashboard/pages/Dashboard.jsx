@@ -753,7 +753,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
                   <p style={styles.emptyTitle}>No match for this service view yet.</p>
                   <p style={styles.emptyText}>{noResultsMessage}</p>
                 </div>
-              )}}
+              )}
         </section>
       </main>
 
