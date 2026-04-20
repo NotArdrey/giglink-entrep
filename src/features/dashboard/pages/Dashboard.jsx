@@ -1,19 +1,42 @@
 import { useState, useEffect } from 'react';
-// Note: This page is shown through isLoggedIn conditional rendering in App.js.
-// Note: Service cards are rendered dynamically with .map() and filtered via React state.
+// ============================================================================
+// DASHBOARD PAGE - Service-First Discovery Interface
+// ============================================================================
+// Purpose: Main post-login page for clients to browse and search for services
+// Parent: App.js (rendered when currentView === 'client-dashboard' and isLoggedIn === true)
+// Architecture: Page-level parent component that manages:
+//   - Service provider list (mock data)
+//   - Search/category/district filtering
+//   - Modal states (worker detail, booking calendar, payment)
+//   - Booking workflow orchestration
+// Design Principle: Service-First (What user needs?) → Price/Availability → Provider Identity
+// This addresses professor feedback: "Users should see if you have what they want on first glance"
+// ============================================================================
+
+// Import shared navigation component
 import Header from '../../../shared/components/Header';
+
+// Import marketplace components
 import ServiceCard from '../../marketplace/components/ServiceCard';
 import WorkerDetailModal from '../../marketplace/components/WorkerDetailModal';
+
+// Import booking workflow components
 import BookingCalendarModal from '../../bookings/components/BookingCalendarModal';
 import PaymentModal from '../../bookings/components/PaymentModal';
 import BookingNotification from '../../bookings/components/BookingNotification';
 
+// SERVICE CATEGORY CONSTANTS - Core + additional service categories
 const CORE_SERVICE_CHIPS = ['Tutor', 'Technician', 'Cleaner'];
 
+// DISPLAY SERVICE TYPE HELPER FUNCTION
+// Converts raw serviceType to human-readable format
+// Special handling: Maps serviceType="Others" + customServiceType to display label
+// Example: { serviceType: "Others", customServiceType: "Valorant Booster" } → displays "Valorant Booster"
 const getDisplayServiceType = (provider) => {
   const rawType = provider.serviceType || '';
   const normalizedType = rawType.trim();
 
+  // If service is "Others", use the customServiceType value instead
   if (normalizedType.toLowerCase() === 'others') {
     const customType = (provider.customServiceType || '').trim();
     return customType || 'General Service';
@@ -24,6 +47,13 @@ const getDisplayServiceType = (provider) => {
 
 
 function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
+  // ============================================================================
+  // MOCK DATA - Service Provider List (Static for skeleton/demo)
+  // ============================================================================
+  // This represents the database of service providers that would be fetched from backend
+  // In production: Replace with API call (useEffect + setState) to fetch providers
+  // Structure: Array of provider objects with service details, pricing, availability, etc.
+  // ============================================================================
   const providers = [
     {
       id: 1,
@@ -127,23 +157,46 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     },
   ];
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [selectedDistrict, setSelectedDistrict] = useState('All Districts');
-  const [selectedWorker, setSelectedWorker] = useState(null);
-  const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
-  const [isBookingCalendarOpen, setIsBookingCalendarOpen] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [pendingBooking, setPendingBooking] = useState(null);
-  const [showBookingNotification, setShowBookingNotification] = useState(false);
-  const [bookingMessage, setBookingMessage] = useState('');
-  const [hoveredChip, setHoveredChip] = useState('');
-  const [isLoadingCards, setIsLoadingCards] = useState(true);
+  // ============================================================================
+  // REACT STATE - Dashboard UI State Management
+  // ============================================================================
+  // Following React Hooks best practice: useState for component-level state
+  // Each state variable controls specific UI behavior or data filtering
+  
+  // SEARCH & FILTERING STATE
+  const [searchQuery, setSearchQuery] = useState(''); // User text input for service/provider search
+  const [activeCategory, setActiveCategory] = useState('All'); // Selected service category chip (All, Tutor, Technician, Cleaner, More Services)
+  const [selectedDistrict, setSelectedDistrict] = useState('All Districts'); // Selected location filter dropdown
+
+  // MODAL & BOOKING WORKFLOW STATE
+  const [selectedWorker, setSelectedWorker] = useState(null); // Provider selected from card (used by WorkerDetailModal)
+  const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false); // Controls WorkerDetailModal visibility
+  const [isBookingCalendarOpen, setIsBookingCalendarOpen] = useState(false); // Controls BookingCalendarModal (date/time selection)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false); // Controls PaymentModal (payment method selection)
+  const [pendingBooking, setPendingBooking] = useState(null); // Holds booking data being processed (workerId, selectedSlot, etc.)
+  
+  // NOTIFICATION & UI STATE
+  const [showBookingNotification, setShowBookingNotification] = useState(false); // Controls success notification display
+  const [bookingMessage, setBookingMessage] = useState(''); // Message text for notification (e.g., "Booking confirmed with GCash advance")
+  const [hoveredChip, setHoveredChip] = useState(''); // Tracks which category chip is hovered (for visual feedback)
+  const [isLoadingCards, setIsLoadingCards] = useState(true); // Loading skeleton animation state
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  );
+  ); // Mobile breakpoint: 768px (tablets and below)
 
-  // Note: Nested scheduling structure is Provider > Days > Time Blocks > Slot Capacity.
+  // ============================================================================
+  // SCHEDULES BY PROVIDER - Availability Calendar State
+  // ============================================================================
+  // Complex nested structure: Provider → Days → Time Slots → Available Capacity
+  // This represents the booking availability calendar for each service provider
+  // Structure:
+  //   schedulesByProvider[providerId] = {
+  //     manualScheduling: boolean (true if inquiry-based, false if calendar booking)
+  //     operatingDays: ['Mon', 'Tue', ..., 'Fri']
+  //     dayBlocks: { 'Mon': [slot1, slot2, ...], 'Tue': [...], ... }
+  //   }
+  // Note: In production, this would be fetched from backend via API
+  // ============================================================================
   const [schedulesByProvider, setSchedulesByProvider] = useState(() => {
     const initialSchedules = {};
 
@@ -206,7 +259,12 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     return initialSchedules;
   });
 
-  // Simulate initial loading of service cards before data is shown.
+  // ============================================================================
+  // EFFECTS - Page Initialization & Responsive Behavior
+  // ============================================================================
+  
+  // EFFECT 1: Simulate loading skeleton animation (mimics data fetch delay)
+  // In production: Call API here and setIsLoadingCards(false) after data arrives
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoadingCards(false);
@@ -214,6 +272,8 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     return () => clearTimeout(timer);
   }, []);
 
+  // EFFECT 2: Handle window resize for responsive mobile layout
+  // Updates isMobile state when viewport width changes
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -224,43 +284,61 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // ============================================================================
+  // DERIVED DATA - Computed values from state (React best practice)
+  // ============================================================================
+  // These are recalculated on each render based on current state
+  // Keeps data in sync without extra state variables
+  
   const topLevelChips = ['All', ...CORE_SERVICE_CHIPS, 'More Services'];
-
   const districts = ['All Districts', ...new Set(providers.map((provider) => provider.location))];
 
+  // ============================================================================
+  // EVENT HANDLERS - User Interactions (Search, Filter, Modal)
+  // ============================================================================
+  // Each handler updates state, triggering re-render with new filtered/modal data
+  
+  // HANDLER 1: Search input change (user typing in search box)
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
   };
 
+  // HANDLER 2: Category chip click (user clicks Tutor/Technician/Cleaner/More Services)
   const handleCategoryClick = (chip) => {
     setActiveCategory(chip);
   };
 
+  // HANDLER 3: District dropdown change (user selects location filter)
   const handleDistrictChange = (event) => {
     setSelectedDistrict(event.target.value);
   };
 
+  // HANDLER 4: Service card click - Opens WorkerDetailModal with provider info
   const handleViewProfile = (provider) => {
     setSelectedWorker(provider);
     setIsWorkerModalOpen(true);
   };
 
+  // HANDLER 5: Close provider detail modal
   const handleCloseWorkerModal = () => {
     setIsWorkerModalOpen(false);
     setSelectedWorker(null);
   };
 
+  // HANDLER 6: "Book Now" button in WorkerDetailModal - Opens BookingCalendarModal
   const handleBookNow = (worker) => {
     setIsWorkerModalOpen(false);
     setSelectedWorker(worker);
     setIsBookingCalendarOpen(true);
   };
 
+  // HANDLER 7: Close booking calendar modal
   const handleCloseBookingCalendar = () => {
     setIsBookingCalendarOpen(false);
     setSelectedWorker(null);
   };
 
+  // HANDLER 8: Confirm booking selection (date/time) - Advances to payment modal
   const handleConfirmBooking = ({ workerId, date, dayKey, blockId, manualScheduling }) => {
     if (manualScheduling) {
       setBookingMessage('Manual schedule request sent! Worker will confirm via chat.');
@@ -352,11 +430,20 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     setSelectedWorker(null);
   };
 
+  // HANDLER 11: Close success notification
   const handleCloseNotification = () => {
     setShowBookingNotification(false);
   };
 
+  // ============================================================================
+  // FILTERING & COMPUTED DISPLAY VALUES
+  // ============================================================================
+  // These computed values are recalculated on every render based on current state
+  // Provides real-time filtering across three dimensions: search, category, district
+  
+  // FILTER LOGIC: Applies all three filters and returns matching providers
   const filteredProviders = providers.filter((provider) => {
+    // SEARCH FILTER: Matches user text input against provider name OR service type
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const serviceLabel = getDisplayServiceType(provider);
     const matchesSearch =
@@ -364,16 +451,22 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       provider.name.toLowerCase().includes(normalizedQuery) ||
       serviceLabel.toLowerCase().includes(normalizedQuery);
 
+    // CATEGORY FILTER: Matches active chip (All, Tutor, Technician, Cleaner, or More Services)
+    // "More Services" = anything NOT in the core chips (custom services like "Valorant Booster")
     const isCoreService = CORE_SERVICE_CHIPS.includes(serviceLabel);
     const matchesCategory =
       activeCategory === 'All' ||
       (activeCategory === 'More Services' ? !isCoreService : serviceLabel === activeCategory);
 
+    // DISTRICT FILTER: Matches location selection dropdown
     const matchesDistrict = selectedDistrict === 'All Districts' || provider.location === selectedDistrict;
 
+    // Return provider only if ALL three filters pass
     return matchesSearch && matchesCategory && matchesDistrict;
   });
 
+  // LABEL COMPUTATION: Human-readable text for current category
+  // Used in "Showing X services" text and empty state messages
   const selectedCategoryLabel =
     activeCategory === 'All'
       ? 'services'
@@ -381,21 +474,34 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         ? 'additional services'
         : activeCategory;
 
+  // EMPTY STATE MESSAGE: Contextual text when no results found
+  // Changes based on what filter is active to give helpful guidance
   const noResultsMessage =
     activeCategory === 'All'
       ? 'No services found for this filter. Try another district or clear your search.'
       : `No ${selectedCategoryLabel} found in this district. Try nearby or view all services.`;
 
+  // ============================================================================
+  // PAGE STYLING - Responsive inline CSS styles
+  // ============================================================================
+  // All styling is done with inline style objects (no external CSS file for Dashboard)
+  // Responsive values adjust based on isMobile breakpoint
+  
   const styles = {
+    // PAGE LAYOUT
     page: {
       minHeight: '100vh',
       backgroundColor: '#f8fafc',
     },
+    
+    // MAIN CONTENT CONTAINER - Centered column with responsive padding
     main: {
       maxWidth: '1200px',
       margin: '0 auto',
       padding: isMobile ? '0.75rem' : '1.2rem',
     },
+    
+    // HERO SECTION - Service-first headline and intro text
     introSection: {
       backgroundColor: '#ffffff',
       border: '1px solid #e2e8f0',
@@ -423,6 +529,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       fontSize: isMobile ? '0.86rem' : '0.92rem',
       lineHeight: 1.45,
     },
+    // FILTER BAR - Chips and district dropdown on one row
     filterBar: {
       display: 'flex',
       justifyContent: 'space-between',
@@ -437,11 +544,15 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       marginBottom: '1rem',
       boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
     },
+    
+    // CATEGORY CHIPS GROUP - Horizontal flex for All/Tutor/Technician/Cleaner/More Services
     chipGroup: {
       display: 'flex',
       flexWrap: 'wrap',
       gap: '0.5rem',
     },
+    
+    // INDIVIDUAL CHIP - Clickable service category button (inactive state)
     chip: {
       border: '1px solid #cbd5e1',
       borderRadius: '999px',
@@ -453,16 +564,22 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       fontSize: isMobile ? '0.84rem' : '0.93rem',
       transition: 'all 0.2s ease',
     },
+    
+    // ACTIVE CHIP STATE - Selected category highlighted in blue with shadow
     chipActive: {
       backgroundColor: '#2563eb',
       borderColor: '#2563eb',
       color: '#ffffff',
       boxShadow: '0 6px 14px rgba(37, 99, 235, 0.24)',
     },
+    
+    // MUTED CHIP STATE - "More Services" chip with dashed border when inactive
     chipMuted: {
       backgroundColor: '#f8fafc',
       borderStyle: 'dashed',
     },
+    
+    // DISTRICT DROPDOWN - Location filter selector
     districtDropdown: {
       minWidth: isMobile ? '100%' : '190px',
       width: isMobile ? '100%' : 'auto',
@@ -479,11 +596,18 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       fontSize: '0.92rem',
       fontWeight: 600,
     },
+    
+    // SERVICE GRID - Responsive auto-fit grid for service cards
+    // Desktop: auto-fit 4 columns | Mobile: 1 column
+    // gap increased to 1.5rem for better visual separation (per spacing feedback)
     grid: {
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: '1rem',
+      gap: '1.5rem',
     },
+    
+    // SKELETON LOADING CARD - Animated placeholder while data loads
+    // Shows 6 cards with gray placeholder lines
     loadingCard: {
       backgroundColor: '#ffffff',
       border: '1px solid #e2e8f0',
@@ -494,33 +618,51 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       flexDirection: 'column',
       gap: '0.7rem',
     },
+    
+    // SKELETON LINE - Gray animated placeholder for text content
     loadingLine: {
       height: '12px',
       borderRadius: '999px',
       backgroundColor: '#e2e8f0',
     },
+    
+    // EMPTY STATE MESSAGE - Shows when no providers match the filters
     emptyState: {
       backgroundColor: '#ffffff',
       border: '1px dashed #cbd5e1',
       borderRadius: '0.75rem',
       padding: '1.25rem',
       color: '#475569',
-      gridColumn: '1 / -1',
+      gridColumn: '1 / -1', // Spans full width of grid
     },
+    
     emptyTitle: {
       margin: 0,
       fontSize: '1rem',
       fontWeight: 700,
       color: '#0f172a',
     },
+    
     emptyText: {
       margin: '0.35rem 0 0',
       lineHeight: 1.5,
     },
   };
 
+  // ============================================================================
+  // RENDER - Main Dashboard Page Layout
+  // ============================================================================
+  // Structure:
+  // 1. Sticky Header (navigation & search)
+  // 2. Hero Section (service-first headline)
+  // 3. Filter Bar (category chips + location dropdown)
+  // 4. Result Summary (count of filtered providers)
+  // 5. Service Grid (cards or skeleton or empty state)
+  // 6. Modals (WorkerDetail, BookingCalendar, Payment, Notification)
+  // ============================================================================
   return (
     <div style={styles.page} id="dashboard-home">
+      {/* NAVIGATION BAR - Sticky header with search and user menu */}
       <Header
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
@@ -536,13 +678,16 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       />
 
       <main style={styles.main}>
+        {/* SECTION 1: HERO/INTRO - Service-first headline and call to action */}
         <section style={styles.introSection}>
           <h1 style={styles.introHeading}>Find Services You Need Today</h1>
           <p style={styles.introSubHeading}>What service are you looking for today?</p>
           <p style={styles.introText}>Choose a category to see available providers instantly.</p>
         </section>
 
+        {/* SECTION 2: FILTER BAR - Category chips and location dropdown */}
         <section style={styles.filterBar}>
+          {/* Category chips: All, Tutor, Technician, Cleaner, More Services */}
           <div style={styles.chipGroup}>
             {topLevelChips.map((chip) => (
               <button
@@ -562,6 +707,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
             ))}
           </div>
 
+          {/* District/Location filter dropdown */}
           <select
             style={styles.districtDropdown}
             value={selectedDistrict}
@@ -575,14 +721,18 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
           </select>
         </section>
 
+        {/* SECTION 3: RESULT SUMMARY - Shows count and filter context */}
         <p style={styles.resultSummary}>
           Showing {filteredProviders.length} {selectedCategoryLabel}
           {selectedDistrict !== 'All Districts' ? ` in ${selectedDistrict}` : ''}
         </p>
 
+        {/* SECTION 4: SERVICE CARDS GRID
+            Shows loading skeleton → actual cards → empty state based on loading state */}
         <section style={styles.grid}>
           {isLoadingCards
-            ? Array.from({ length: 6 }).map((_, index) => (
+            ? // LOADING STATE: Show 6 skeleton placeholder cards
+              Array.from({ length: 6 }).map((_, index) => (
                 <div key={`loading-card-${index}`} style={styles.loadingCard} aria-label="Loading service card">
                   <div style={{ ...styles.loadingLine, width: '52%' }} />
                   <div style={{ ...styles.loadingLine, width: '70%' }} />
@@ -592,18 +742,27 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
                 </div>
               ))
             : filteredProviders.length > 0
-              ? filteredProviders.map((provider) => (
+              ? // DATA STATE: Show actual service cards
+                filteredProviders.map((provider) => (
                   <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
                 ))
-              : (
+              : // EMPTY STATE: Show message when no results match filters
+                (
                 <div style={styles.emptyState}>
                   <p style={styles.emptyTitle}>No match for this service view yet.</p>
                   <p style={styles.emptyText}>{noResultsMessage}</p>
                 </div>
-              )}
+              )}}
         </section>
       </main>
 
+      {/* ========================================================================
+          MODAL LAYER 1: WORKER DETAIL MODAL
+          ========================================================================
+          Triggered by: ServiceCard click → handleViewProfile
+          Shows: Provider bio, pricing details, ratings, action buttons (Book/Inquire)
+          Closed by: handleCloseWorkerModal (user clicks back or outside modal)
+      */}
       <WorkerDetailModal
         isOpen={isWorkerModalOpen}
         worker={selectedWorker}
@@ -611,6 +770,14 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         onBookNow={handleBookNow}
       />
 
+      {/* ========================================================================
+          MODAL LAYER 2: BOOKING CALENDAR MODAL
+          ========================================================================
+          Triggered by: "Book Now" button in WorkerDetailModal → handleBookNow
+          Shows: Date/day selector and time slot picker with availability
+          Closed by: handleCloseBookingCalendar (user clicks back)
+          Next: Advances to PaymentModal → handleConfirmBooking
+      */}
       <BookingCalendarModal
         isOpen={isBookingCalendarOpen}
         onClose={handleCloseBookingCalendar}
@@ -619,6 +786,14 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         onConfirmBooking={handleConfirmBooking}
       />
 
+      {/* ========================================================================
+          MODAL LAYER 3: PAYMENT METHOD MODAL
+          ========================================================================
+          Triggered by: Confirm button in BookingCalendarModal → handleConfirmBooking
+          Shows: Payment method options (GCash advance, After-service cash, etc.)
+          Closed by: handleCancelPayment (user clicks back)
+          Completion: Triggers success notification → handleSelectPayment
+      */}
       {isPaymentModalOpen && pendingBooking && (
         <PaymentModal
           booking={pendingBooking}
@@ -627,10 +802,13 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         />
       )}
 
-      <BookingNotification
-        message={bookingMessage}
-        isVisible={showBookingNotification}
-        onClose={handleCloseNotification}
+      {/* ========================================================================
+          SUCCESS NOTIFICATION
+          ========================================================================
+          Triggered by: handleSelectPayment (after payment method selected)
+          Shows: Toast notification with booking confirmation message
+          Auto-dismisses: After 3 seconds or user clicks close
+      */}
       />
     </div>
   );

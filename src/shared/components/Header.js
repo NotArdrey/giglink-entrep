@@ -1,15 +1,43 @@
 import { useEffect, useState } from 'react';
-// Note: Conditional rendering is used for the Profile Dropdown menu via isProfileMenuOpen state.
-// Note: Uses inline style objects and camelCase handlers (onClick, onChange).
+// ============================================================================
+// HEADER COMPONENT - Navigation & Notification Center
+// ============================================================================
+// Purpose: Sticky navigation bar used on every page (Desktop & Mobile)
+// Parent: Called from App.js layout, passed via Header prop in each page
+// Features:
+//   - Logo + Responsive search box (intent-focused placeholder per service-first design)
+//   - Desktop: Inline navigation buttons | Mobile: Hamburger menu drawer
+//   - Notification center with bell icon (shows unread count badge)
+//   - Profile avatar + dropdown menu (Profile, My Bookings, Account, Logout, etc.)
+//   - Theme & responsive behavior with window.innerWidth breakpoint at 900px
+// State Management: Uses useState for menu open/close and notification visibility
+// Architecture: Child component that receives callbacks from parent (Dashboard, MyBookings, etc.)
+//   Callbacks pushed down: onLogout, onOpenMyBookings, onOpenMyWork, onOpenProfile, etc.
+// ============================================================================
+
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 
 
 function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings, externalNotifications = [], searchPlaceholder = 'Search for services...' }) {
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  // ============================================================================
+  // LOCAL STATE - Header UI State Management
+  // ============================================================================
+  // Menu visibility states (mutually exclusive - prevents multiple menus open)
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false); // Profile dropdown toggle
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile hamburger menu drawer
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false); // Logout confirmation modal
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false); // Notification center dropdown
+  
+  // ============================================================================
+  // NOTIFICATIONS STATE - Notification Center with Read Status Tracking
+  // ============================================================================
+  // Each notification has: id, title, message, time, isRead (flag), type (for routing)
+  // Type field determines where to navigate when clicked:
+  //   - 'booking': User bookings (client perspective)
+  //   - 'work': Worker transactions (seller perspective)
+  //   - 'message': Chat-related notifications
   const [notifications, setNotifications] = useState([
+    // SAMPLE BOOKING NOTIFICATIONS (client perspective)
     {
       id: 'notif-1',
       title: 'Payment Successful',
@@ -34,6 +62,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       isRead: true,
       type: 'booking',
     },
+    // SAMPLE WORK NOTIFICATIONS (seller perspective)
     {
       id: 'notif-4',
       title: 'New Inquiry',
