@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 
 
-function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings, externalNotifications = [] }) {
+function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings, externalNotifications = [], searchPlaceholder = 'Search for services...' }) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
@@ -311,7 +311,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
         {isDesktop && <div style={styles.searchWrap}>
           <input
             type="text"
-            placeholder="Search for services..."
+            placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={onSearchChange}
             style={styles.input}
@@ -423,7 +423,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
           <div style={styles.searchWrap}>
             <input
               type="text"
-              placeholder="Search for services..."
+              placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={onSearchChange}
               style={styles.input}

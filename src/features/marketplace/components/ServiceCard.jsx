@@ -6,86 +6,117 @@ const styles = {
   card: {
     backgroundColor: 'var(--bg-surface)',
     borderRadius: '0.8rem',
-    overflow: 'hidden',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
     transition: 'all 0.3s ease',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
+    padding: '1rem',
   },
   cardHover: {
-    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)',
-    transform: 'translateY(-4px)',
-  },
-  imageContainer: {
-    width: '100%',
-    height: '250px',
-    overflow: 'hidden',
-    backgroundColor: 'var(--bg-surface-soft)',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    transition: 'transform 0.3s ease',
-  },
-  imageHover: {
-    transform: 'scale(1.05)',
+    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.13)',
+    transform: 'translateY(-3px)',
+    borderColor: '#bfdbfe',
   },
   cardContent: {
-    padding: '1.5rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.8rem',
+    gap: '0.75rem',
     flexGrow: 1,
   },
-  cardName: {
-    fontSize: '1.2rem',
-    fontWeight: 700,
+  serviceTypePill: {
+    alignSelf: 'flex-start',
+    borderRadius: '999px',
+    backgroundColor: '#dbeafe',
+    color: '#1d4ed8',
+    fontSize: '0.74rem',
+    fontWeight: 800,
+    letterSpacing: '0.03em',
+    padding: '0.28rem 0.62rem',
+    textTransform: 'uppercase',
+  },
+  serviceTypeHeading: {
+    fontSize: '1.25rem',
+    fontWeight: 800,
     color: 'var(--text-primary)',
     margin: 0,
+    lineHeight: 1.2,
   },
-  serviceType: {
-    fontSize: '0.95rem',
-    color: 'var(--text-secondary)',
+  description: {
     margin: 0,
-    fontWeight: 500,
+    fontSize: '0.9rem',
+    lineHeight: 1.5,
+    color: 'var(--text-secondary)',
   },
   rateBadgeWrap: {
     display: 'flex',
     gap: '0.5rem',
+    flexWrap: 'wrap',
   },
   badgeBase: {
     display: 'inline-block',
-    padding: '0.4rem 0.8rem',
-    borderRadius: '0.25rem',
-    fontSize: '0.8rem',
+    padding: '0.32rem 0.7rem',
+    borderRadius: '999px',
+    fontSize: '0.75rem',
     fontWeight: 700,
     color: '#ffffff',
   },
-  cardRating: {
+  neutralBadge: {
+    backgroundColor: '#334155',
+  },
+  metaRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
+    flexWrap: 'wrap',
   },
-  ratingStars: {
-    color: '#fbbf24',
-    fontSize: '0.9rem',
-    letterSpacing: '1px',
+  ratingBadge: {
+    border: '1px solid #cbd5e1',
+    borderRadius: '999px',
+    padding: '0.26rem 0.6rem',
+    color: '#0f172a',
+    fontSize: '0.78rem',
+    fontWeight: 700,
   },
-  ratingValue: {
-    fontSize: '0.95rem',
+  providerRow: {
+    marginTop: '0.2rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.6rem',
+  },
+  avatar: {
+    width: '42px',
+    height: '42px',
+    borderRadius: '999px',
+    objectFit: 'cover',
+    border: '2px solid #e2e8f0',
+    backgroundColor: '#f1f5f9',
+  },
+  providerMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.08rem',
+  },
+  providerName: {
+    margin: 0,
+    fontSize: '0.88rem',
     fontWeight: 600,
     color: 'var(--text-primary)',
+  },
+  providerSubline: {
+    margin: 0,
+    fontSize: '0.76rem',
+    color: '#64748b',
   },
   button: {
     backgroundColor: '#2563eb',
     color: '#ffffff',
     border: 'none',
-    padding: '0.7rem 1.2rem',
+    padding: '0.7rem 0.95rem',
     borderRadius: '0.4rem',
-    fontSize: '0.95rem',
-    fontWeight: 600,
+    fontSize: '0.88rem',
+    fontWeight: 700,
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     marginTop: 'auto',
@@ -106,6 +137,26 @@ function ServiceCard({ provider, onViewProfile }) {
   const [isHovered, setIsHovered] = useState(false);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
 
+  const displayServiceType =
+    provider.serviceType === 'Others'
+      ? (provider.customServiceType || 'General Service')
+      : provider.serviceType;
+
+  const priceLabel =
+    provider.rateBasis === 'per-hour'
+      ? `P${provider.hourlyRate}/hr`
+      : provider.rateBasis === 'per-day'
+        ? `P${provider.dailyRate}/day`
+        : provider.rateBasis === 'per-project'
+          ? `P${provider.projectRate}/project`
+          : provider.pricingType === 'inquiry'
+            ? 'Price on inquiry'
+            : provider.hourlyRate
+              ? `P${provider.hourlyRate}/hr`
+              : 'Custom pricing';
+
+  const availabilityLabel = provider.actionType === 'inquire' ? 'Manual schedule' : 'Book now available';
+
   const badgeStyle = {
     ...styles.badgeBase,
     backgroundColor: badgeColors[provider.rateBasis] || '#2563eb',
@@ -120,53 +171,36 @@ function ServiceCard({ provider, onViewProfile }) {
         setIsButtonHovered(false);
       }}
     >
-      {/* Provider Photo */}
-      <div style={styles.imageContainer}>
-        <img
-          src={provider.photo}
-          alt={provider.name}
-          style={{ ...styles.image, ...(isHovered ? styles.imageHover : {}) }}
-        />
-      </div>
-
-      {/* Card Content */}
       <div style={styles.cardContent}>
-        {/* Provider Name */}
-        <h3 style={styles.cardName}>{provider.name}</h3>
+        <span style={styles.serviceTypePill}>Service</span>
+        <h3 style={styles.serviceTypeHeading}>{displayServiceType}</h3>
+        <p style={styles.description}>{provider.description}</p>
 
-        {/* Service Type */}
-        <p style={styles.serviceType}>{provider.serviceType}</p>
-
-        {/* Rate Basis Badge */}
-        {provider.rateBasis && (
-          <div style={styles.rateBadgeWrap}>
-            {provider.rateBasis === 'per-hour' && (
-              <span style={badgeStyle}>₱{provider.hourlyRate}/hr</span>
-            )}
-            {provider.rateBasis === 'per-day' && (
-              <span style={badgeStyle}>₱{provider.dailyRate}/day</span>
-            )}
-            {provider.rateBasis === 'per-project' && (
-              <span style={badgeStyle}>₱{provider.projectRate}/project</span>
-            )}
-          </div>
-        )}
-
-        {/* Rating */}
-        <div style={styles.cardRating}>
-          <span style={styles.ratingStars}>★★★★★</span>
-          <span style={styles.ratingValue}>{provider.rating}</span>
+        <div style={styles.rateBadgeWrap}>
+          <span style={provider.rateBasis ? badgeStyle : { ...styles.badgeBase, ...styles.neutralBadge }}>{priceLabel}</span>
+          <span style={{ ...styles.badgeBase, ...styles.neutralBadge }}>{availabilityLabel}</span>
         </div>
 
-        {/* View Profile Button */}
-        {/* Note: camelCase for onClick event handler */}
+        <div style={styles.metaRow}>
+          <span style={styles.ratingBadge}>★ {provider.rating} ({provider.reviews} reviews)</span>
+          {provider.location && <span style={styles.ratingBadge}>{provider.location}</span>}
+        </div>
+
+        <div style={styles.providerRow}>
+          <img src={provider.photo} alt={provider.name} style={styles.avatar} />
+          <div style={styles.providerMeta}>
+            <p style={styles.providerName}>{provider.name}</p>
+            <p style={styles.providerSubline}>{provider.experience}+ years experience</p>
+          </div>
+        </div>
+
         <button
           onClick={() => onViewProfile(provider)}
           style={{ ...styles.button, ...(isButtonHovered ? styles.buttonHover : {}) }}
           onMouseEnter={() => setIsButtonHovered(true)}
           onMouseLeave={() => setIsButtonHovered(false)}
         >
-          View Profile
+          View Service
         </button>
       </div>
     </div>

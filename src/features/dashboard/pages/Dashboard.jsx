@@ -8,6 +8,20 @@ import BookingCalendarModal from '../../bookings/components/BookingCalendarModal
 import PaymentModal from '../../bookings/components/PaymentModal';
 import BookingNotification from '../../bookings/components/BookingNotification';
 
+const CORE_SERVICE_CHIPS = ['Tutor', 'Technician', 'Cleaner'];
+
+const getDisplayServiceType = (provider) => {
+  const rawType = provider.serviceType || '';
+  const normalizedType = rawType.trim();
+
+  if (normalizedType.toLowerCase() === 'others') {
+    const customType = (provider.customServiceType || '').trim();
+    return customType || 'General Service';
+  }
+
+  return normalizedType || 'General Service';
+};
+
 
 function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
   const providers = [
@@ -94,6 +108,22 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       hourlyRate: null,
       pricingType: 'inquiry',
       actionType: 'inquire',
+    },
+    {
+      id: 7,
+      name: 'Vince Tan',
+      serviceType: 'Others',
+      customServiceType: 'Valorant Account Booster',
+      rating: 4.9,
+      reviews: 63,
+      photo: 'https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=400&h=400&fit=crop',
+      description: 'Secure and performance-focused account boosting sessions with transparent progress updates.',
+      experience: 3,
+      location: 'District 2',
+      projectRate: 1200,
+      pricingType: 'fixed',
+      actionType: 'book',
+      rateBasis: 'per-project',
     },
   ];
 
@@ -194,7 +224,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const categoryChips = ['All', 'Tutors', 'Technicians', 'Cleaners'];
+  const topLevelChips = ['All', ...CORE_SERVICE_CHIPS, 'More Services'];
 
   const districts = ['All Districts', ...new Set(providers.map((provider) => provider.location))];
 
@@ -328,24 +358,33 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
 
   const filteredProviders = providers.filter((provider) => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
+    const serviceLabel = getDisplayServiceType(provider);
     const matchesSearch =
       normalizedQuery.length === 0 ||
       provider.name.toLowerCase().includes(normalizedQuery) ||
-      provider.serviceType.toLowerCase().includes(normalizedQuery);
+      serviceLabel.toLowerCase().includes(normalizedQuery);
 
-    const chipToCategory = {
-      All: 'All',
-      Tutors: 'Tutor',
-      Technicians: 'Technician',
-      Cleaners: 'Cleaner',
-    };
+    const isCoreService = CORE_SERVICE_CHIPS.includes(serviceLabel);
+    const matchesCategory =
+      activeCategory === 'All' ||
+      (activeCategory === 'More Services' ? !isCoreService : serviceLabel === activeCategory);
 
-    const selectedCategory = chipToCategory[activeCategory];
-    const matchesCategory = selectedCategory === 'All' || provider.serviceType === selectedCategory;
     const matchesDistrict = selectedDistrict === 'All Districts' || provider.location === selectedDistrict;
 
     return matchesSearch && matchesCategory && matchesDistrict;
   });
+
+  const selectedCategoryLabel =
+    activeCategory === 'All'
+      ? 'services'
+      : activeCategory === 'More Services'
+        ? 'additional services'
+        : activeCategory;
+
+  const noResultsMessage =
+    activeCategory === 'All'
+      ? 'No services found for this filter. Try another district or clear your search.'
+      : `No ${selectedCategoryLabel} found in this district. Try nearby or view all services.`;
 
   const styles = {
     page: {
@@ -355,7 +394,34 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     main: {
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: isMobile ? '0.75rem' : '1rem',
+      padding: isMobile ? '0.75rem' : '1.2rem',
+    },
+    introSection: {
+      backgroundColor: '#ffffff',
+      border: '1px solid #e2e8f0',
+      borderRadius: '1rem',
+      padding: isMobile ? '1rem' : '1.35rem 1.45rem',
+      marginBottom: '0.85rem',
+      boxShadow: '0 10px 25px rgba(15, 23, 42, 0.06)',
+    },
+    introHeading: {
+      margin: 0,
+      color: '#0f172a',
+      fontWeight: 800,
+      fontSize: isMobile ? '1.25rem' : '1.75rem',
+      letterSpacing: '-0.02em',
+    },
+    introSubHeading: {
+      margin: '0.4rem 0 0.2rem',
+      color: '#1e293b',
+      fontWeight: 600,
+      fontSize: isMobile ? '0.95rem' : '1rem',
+    },
+    introText: {
+      margin: '0.15rem 0 0',
+      color: '#64748b',
+      fontSize: isMobile ? '0.86rem' : '0.92rem',
+      lineHeight: 1.45,
     },
     filterBar: {
       display: 'flex',
@@ -367,8 +433,9 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       backgroundColor: '#ffffff',
       border: '1px solid #e2e8f0',
       borderRadius: '0.7rem',
-      padding: '0.75rem',
+      padding: isMobile ? '0.9rem' : '1rem',
       marginBottom: '1rem',
+      boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
     },
     chipGroup: {
       display: 'flex',
@@ -380,14 +447,21 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       borderRadius: '999px',
       backgroundColor: '#ffffff',
       color: '#334155',
-      padding: '0.4rem 0.8rem',
+      padding: isMobile ? '0.45rem 0.85rem' : '0.55rem 1rem',
       cursor: 'pointer',
-      fontWeight: 600,
+      fontWeight: 700,
+      fontSize: isMobile ? '0.84rem' : '0.93rem',
+      transition: 'all 0.2s ease',
     },
     chipActive: {
       backgroundColor: '#2563eb',
       borderColor: '#2563eb',
       color: '#ffffff',
+      boxShadow: '0 6px 14px rgba(37, 99, 235, 0.24)',
+    },
+    chipMuted: {
+      backgroundColor: '#f8fafc',
+      borderStyle: 'dashed',
     },
     districtDropdown: {
       minWidth: isMobile ? '100%' : '190px',
@@ -396,6 +470,14 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       borderRadius: '0.5rem',
       padding: '0.45rem 0.6rem',
       backgroundColor: '#ffffff',
+      color: '#0f172a',
+      fontWeight: 600,
+    },
+    resultSummary: {
+      marginBottom: '0.85rem',
+      color: '#475569',
+      fontSize: '0.92rem',
+      fontWeight: 600,
     },
     grid: {
       display: 'grid',
@@ -417,6 +499,24 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       borderRadius: '999px',
       backgroundColor: '#e2e8f0',
     },
+    emptyState: {
+      backgroundColor: '#ffffff',
+      border: '1px dashed #cbd5e1',
+      borderRadius: '0.75rem',
+      padding: '1.25rem',
+      color: '#475569',
+      gridColumn: '1 / -1',
+    },
+    emptyTitle: {
+      margin: 0,
+      fontSize: '1rem',
+      fontWeight: 700,
+      color: '#0f172a',
+    },
+    emptyText: {
+      margin: '0.35rem 0 0',
+      lineHeight: 1.5,
+    },
   };
 
   return (
@@ -432,17 +532,25 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         onOpenProfile={onOpenProfile}
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
+        searchPlaceholder="Search service (e.g., Math Tutor, Aircon Cleaning, UI Design)"
       />
 
       <main style={styles.main}>
+        <section style={styles.introSection}>
+          <h1 style={styles.introHeading}>Find Services You Need Today</h1>
+          <p style={styles.introSubHeading}>What service are you looking for today?</p>
+          <p style={styles.introText}>Choose a category to see available providers instantly.</p>
+        </section>
+
         <section style={styles.filterBar}>
           <div style={styles.chipGroup}>
-            {categoryChips.map((chip) => (
+            {topLevelChips.map((chip) => (
               <button
                 key={chip}
                 style={{
                   ...styles.chip,
                   ...(activeCategory === chip ? styles.chipActive : {}),
+                  ...(chip === 'More Services' && activeCategory !== chip ? styles.chipMuted : {}),
                   ...(hoveredChip === chip && activeCategory !== chip ? { backgroundColor: '#f1f5f9' } : {}),
                 }}
                 onClick={() => handleCategoryClick(chip)}
@@ -467,6 +575,11 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
           </select>
         </section>
 
+        <p style={styles.resultSummary}>
+          Showing {filteredProviders.length} {selectedCategoryLabel}
+          {selectedDistrict !== 'All Districts' ? ` in ${selectedDistrict}` : ''}
+        </p>
+
         <section style={styles.grid}>
           {isLoadingCards
             ? Array.from({ length: 6 }).map((_, index) => (
@@ -478,9 +591,16 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
                   <div style={{ ...styles.loadingLine, width: '40%', marginTop: 'auto' }} />
                 </div>
               ))
-            : filteredProviders.map((provider) => (
-                <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
-              ))}
+            : filteredProviders.length > 0
+              ? filteredProviders.map((provider) => (
+                  <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
+                ))
+              : (
+                <div style={styles.emptyState}>
+                  <p style={styles.emptyTitle}>No match for this service view yet.</p>
+                  <p style={styles.emptyText}>{noResultsMessage}</p>
+                </div>
+              )}
         </section>
       </main>
 
