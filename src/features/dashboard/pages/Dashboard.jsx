@@ -599,11 +599,11 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     
     // SERVICE GRID - Responsive auto-fit grid for service cards
     // Desktop: auto-fit 4 columns | Mobile: 1 column
-    // rowGap increased more than columnGap so the 2nd row has extra vertical breathing room
+    // Tracks are slightly wider so content feels more balanced without increasing card height
     grid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
-      columnGap: '2.5rem',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(265px, 1fr))',
+      columnGap: '2rem',
       rowGap: '3.5rem',
     },
     
