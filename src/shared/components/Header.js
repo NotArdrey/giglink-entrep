@@ -16,6 +16,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       message: 'Your GCash payment for Tutoring was confirmed.',
       time: '2m ago',
       isRead: false,
+      type: 'booking',
     },
     {
       id: 'notif-2',
@@ -23,6 +24,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       message: 'Carlo Mendoza accepted your Aircon Cleaning booking.',
       time: '15m ago',
       isRead: false,
+      type: 'booking',
     },
     {
       id: 'notif-3',
@@ -30,6 +32,23 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       message: 'Reminder: Pet Grooming service is scheduled tomorrow at 2:00 PM.',
       time: '1h ago',
       isRead: true,
+      type: 'booking',
+    },
+    {
+      id: 'notif-4',
+      title: 'New Inquiry',
+      message: 'Sarah is interested in your Web Design service.',
+      time: '30m ago',
+      isRead: false,
+      type: 'work',
+    },
+    {
+      id: 'notif-5',
+      title: 'Service Completed',
+      message: 'Your Math Tutoring session with Alex was marked as completed.',
+      time: '3h ago',
+      isRead: true,
+      type: 'work',
     },
   ]);
   const [hoveredKey, setHoveredKey] = useState('');
@@ -158,6 +177,10 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       padding: '0.5rem',
       marginBottom: '0.45rem',
       cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
     },
     unreadItem: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
     itemTop: { display: 'flex', justifyContent: 'space-between', gap: '0.5rem' },
@@ -244,9 +267,24 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
   };
 
   const handleNotificationClick = (id) => {
+    // Mark notification as read
+    const notif = notifications.find((item) => item.id === id);
     setNotifications((prev) =>
       prev.map((item) => (item.id === id ? { ...item, isRead: true } : item))
     );
+
+    // Navigate based on notification type
+    if (notif) {
+      setIsNotificationOpen(false); // Close notification dropdown
+      
+      if (notif.type === 'booking') {
+        onOpenMyBookings && onOpenMyBookings();
+      } else if (notif.type === 'work') {
+        onOpenMyWork && onOpenMyWork();
+      } else if (notif.type === 'message') {
+        onOpenMyBookings && onOpenMyBookings();
+      }
+    }
   };
 
   const requestLogout = () => {
@@ -372,12 +410,23 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
                         type="button"
                         style={{ ...styles.notificationItem, ...(!item.isRead ? styles.unreadItem : {}) }}
                         onClick={() => handleNotificationClick(item.id)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = item.isRead ? '#f8fafc' : '#dbeafe';
+                          e.currentTarget.style.borderColor = item.isRead ? '#cbd5e1' : '#93c5fd';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = item.isRead ? '#ffffff' : '#eff6ff';
+                          e.currentTarget.style.borderColor = item.isRead ? '#e2e8f0' : '#bfdbfe';
+                        }}
                       >
-                        <div style={styles.itemTop}>
-                          <span style={styles.itemTitle}>{item.title}</span>
-                          <span style={styles.itemTime}>{item.time}</span>
+                        <div>
+                          <div style={styles.itemTop}>
+                            <span style={styles.itemTitle}>{item.title}</span>
+                            <span style={styles.itemTime}>{item.time}</span>
+                          </div>
+                          <span style={styles.itemMessage}>{item.message}</span>
                         </div>
-                        <span style={styles.itemMessage}>{item.message}</span>
+                        <span style={{ flex: 'none', marginLeft: '0.5rem', fontSize: '1.2rem', color: '#94a3b8' }}>→</span>
                       </button>
                     ))
                   )}
