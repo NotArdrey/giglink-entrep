@@ -22,7 +22,7 @@ const styles = {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: '1.2rem', // Slightly reduced to keep card height shorter
+    padding: '1.35rem', // Slightly taller again for better breathing room
   },
   
   // CARD HOVER STATE - Elevation and border highlight on mouseover
@@ -36,7 +36,7 @@ const styles = {
   cardContent: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem', // Tighter vertical rhythm for shorter cards
+    gap: '0.85rem', // Add a bit more height to avoid cramped vertical stacking
     flexGrow: 1,
   },
   
@@ -78,7 +78,7 @@ const styles = {
   // RATE BADGE WRAPPER - Container for price and availability badges
   rateBadgeWrap: {
     display: 'flex',
-    gap: '0.75rem', // Slightly wider spacing for larger badges
+    gap: '0.55rem',
     flexWrap: 'wrap',
   },
   
@@ -87,11 +87,11 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: '38px',
-    padding: '0.45rem 0.95rem',
+    minHeight: '34px',
+    padding: '0.34rem 0.8rem',
     borderRadius: '999px',
-    fontSize: '0.88rem',
-    fontWeight: 800,
+    fontSize: '0.8rem',
+    fontWeight: 700,
     color: '#ffffff',
     lineHeight: 1,
   },
