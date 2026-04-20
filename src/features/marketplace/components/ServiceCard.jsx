@@ -22,7 +22,7 @@ const styles = {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: '1.5rem', // Increased from 1rem for better spacing
+    padding: '1.2rem', // Slightly reduced to keep card height shorter
   },
   
   // CARD HOVER STATE - Elevation and border highlight on mouseover
@@ -36,7 +36,7 @@ const styles = {
   cardContent: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1rem', // Increased from 0.75rem for better readability
+    gap: '0.75rem', // Tighter vertical rhythm for shorter cards
     flexGrow: 1,
   },
   
@@ -66,9 +66,13 @@ const styles = {
   // DESCRIPTION - Service details paragraph that explains what the provider does
   description: {
     margin: 0,
-    fontSize: '0.9rem',
-    lineHeight: 1.5,
+    fontSize: '0.97rem',
+    lineHeight: 1.4,
     color: 'var(--text-secondary)',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
   },
   
   // RATE BADGE WRAPPER - Container for price and availability badges
@@ -111,15 +115,15 @@ const styles = {
   ratingBadge: {
     border: '1px solid #cbd5e1',
     borderRadius: '999px',
-    padding: '0.26rem 0.6rem',
+    padding: '0.32rem 0.72rem',
     color: '#0f172a',
-    fontSize: '0.78rem',
+    fontSize: '0.82rem',
     fontWeight: 700,
   },
   
   // PROVIDER ROW - Shows provider avatar, name, and experience (moved to bottom per service-first design)
   providerRow: {
-    marginTop: '0.5rem', // Increased spacing above provider info
+    marginTop: '0.3rem',
     display: 'flex',
     alignItems: 'center',
     gap: '0.6rem',
@@ -162,7 +166,7 @@ const styles = {
     backgroundColor: '#2563eb',
     color: '#ffffff',
     border: 'none',
-    padding: '0.7rem 0.95rem',
+    padding: '0.62rem 0.95rem',
     borderRadius: '0.4rem',
     fontSize: '0.88rem',
     fontWeight: 700,

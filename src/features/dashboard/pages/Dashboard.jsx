@@ -599,12 +599,12 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
     
     // SERVICE GRID - Responsive auto-fit grid for service cards
     // Desktop: auto-fit 4 columns | Mobile: 1 column
-    // Tracks are slightly wider so content feels more balanced without increasing card height
+    // Tracks are wider so cards hold badges/text more naturally while staying compact
     grid: {
       display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(265px, 1fr))',
-      columnGap: '2rem',
-      rowGap: '3.5rem',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(290px, 1fr))',
+      columnGap: '1.6rem',
+      rowGap: '2.1rem',
     },
     
     // SKELETON LOADING CARD - Animated placeholder while data loads
