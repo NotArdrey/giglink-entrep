@@ -604,7 +604,7 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(290px, 1fr))',
       columnGap: '1.6rem',
-      rowGap: '3rem',
+      rowGap: '4.2rem',
     },
     
     // SKELETON LOADING CARD - Animated placeholder while data loads
