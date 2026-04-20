@@ -55,11 +55,12 @@ const styles = {
   
   // SERVICE TYPE HEADING - Primary headline showing what service is offered (Tutor, Cleaner, etc.)
   serviceTypeHeading: {
-    fontSize: '1.25rem',
-    fontWeight: 800,
+    fontSize: '1.45rem',
+    fontWeight: 900,
+    letterSpacing: '-0.02em',
     color: 'var(--text-primary)',
     margin: 0,
-    lineHeight: 1.2,
+    lineHeight: 1.15,
   },
   
   // DESCRIPTION - Service details paragraph that explains what the provider does
@@ -73,23 +74,29 @@ const styles = {
   // RATE BADGE WRAPPER - Container for price and availability badges
   rateBadgeWrap: {
     display: 'flex',
-    gap: '0.6rem', // Increased from 0.5rem
+    gap: '0.75rem', // Slightly wider spacing for larger badges
     flexWrap: 'wrap',
   },
   
   // BASE BADGE STYLE - Reusable badge styling (price, availability, etc.)
   badgeBase: {
-    display: 'inline-block',
-    padding: '0.32rem 0.7rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '38px',
+    padding: '0.45rem 0.95rem',
     borderRadius: '999px',
-    fontSize: '0.75rem',
-    fontWeight: 700,
+    fontSize: '0.88rem',
+    fontWeight: 800,
     color: '#ffffff',
+    lineHeight: 1,
   },
   
   // NEUTRAL BADGE - Dark gray badge for secondary information
   neutralBadge: {
-    backgroundColor: '#334155',
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    border: '1px solid #bfdbfe',
   },
   
   // META ROW - Horizontal flex container for rating, reviews, and location
