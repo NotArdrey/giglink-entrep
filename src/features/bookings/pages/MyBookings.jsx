@@ -438,6 +438,35 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       rating: null,
       review: '',
     },
+    {
+      id: 11,
+      workerId: 111,
+      workerName: 'Rico Santos',
+      serviceType: 'Website Design',
+      status: 'Completed Service',
+      requestDate: '2026-03-23',
+      description: 'Landing page completed, but client requested a partial refund due to missing sections.',
+      quoteAmount: 4200,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-25',
+        timeBlock: { id: 'afternoon', startTime: '01:00 PM', endTime: '03:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'gcash-advance',
+      allowGcashAdvance: true,
+      allowAfterService: false,
+      afterServicePaymentType: 'gcash-only',
+      paymentProofSubmitted: true,
+      paymentReference: 'GCASH-TRX-20260325-11-8841',
+      transactionId: 'GCASH-TRX-20260325-11-8841',
+      refundEligible: true,
+      refundStatus: null,
+      refundReason: 'Client requested a partial refund after delivery review.',
+      refundReference: null,
+      canRate: true,
+      rating: 4,
+      review: 'Good work, but not everything requested was included.',
+    },
   ]);
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
@@ -649,6 +678,34 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           : booking
       )
     );
+  };
+
+  const handleRequestRefund = (bookingId) => {
+    const targetBooking = bookings.find((booking) => booking.id === bookingId);
+    if (!targetBooking) return;
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status: 'Refund Processing',
+              refundStatus: 'requested',
+              refundReason: booking.refundReason || 'Client requested a refund from the booking page.',
+              refundReference: booking.refundReference || `REFUND-REQ-${String(bookingId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`,
+            }
+          : booking
+      )
+    );
+
+    pushHeaderNotification(
+      'Refund Requested',
+      `Your refund request for ${targetBooking.serviceType} has been submitted and is awaiting review.`
+    );
+
+    setPaymentStatusMessage('Refund request submitted. The worker review queue will be notified.');
+    setShowPaymentStatusNotice(true);
+    setTimeout(() => setShowPaymentStatusNotice(false), 3200);
   };
 
   const handleConfirmSlot = (bookingId, slotInfo) => {
@@ -907,6 +964,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
           onOpenSlotSelection={handleOpenSlotSelection}
           onOpenPaymentSelection={() => setUiState('payment')}
+          onRequestRefund={() => handleRequestRefund(currentBooking.id)}
           onStopServiceAccepted={() => handleStopServiceAccepted(currentBooking.id)}
         />
       )}

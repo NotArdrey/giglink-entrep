@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection }) => {
+const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -14,6 +14,8 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
 
   const isRecurringService = booking?.billingCycle === 'weekly' || booking?.billingCycle === 'monthly';
   const isServiceStopped = booking?.status === 'Service Stopped' || booking?.serviceActive === false;
+  const isClosedConversation = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refund Processing', 'Refunded'].includes(booking?.status);
+  const isRefundConversation = booking?.status === 'Refund Processing' || booking?.status === 'Refunded' || booking?.refundStatus === 'requested';
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
   const isRecurringBilling = (targetBooking) => targetBooking?.billingCycle === 'weekly' || targetBooking?.billingCycle === 'monthly';
@@ -309,7 +311,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                     </>
                   )}
 
-                  {msg.type === 'quote' && (
+                  {msg.type === 'quote' && !isClosedConversation && !isRefundConversation && (
                     <div style={styles.quoteCard}>
                       <div style={styles.quoteHeader}>
                         <p style={styles.quoteLabel}>Price Quote</p>
@@ -335,7 +337,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
 
           </div>
 
-          {!booking.quoteApproved && !isServiceStopped && (
+          {!isServiceStopped && booking.status !== 'Cancelled (Cash)' && (
             <div style={styles.inputArea}>
               <input
                 type="text"
@@ -370,7 +372,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
             </div>
           )}
 
-          {booking.quoteApproved && (
+          {booking.quoteApproved && !isClosedConversation && !isRefundConversation && (
             <div style={styles.approvalStatus}>
               <p style={styles.approvalStatusText}>{'\u2713'} Quote Approved - Proceeding to slot selection</p>
             </div>
@@ -486,6 +488,28 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   >
                     Confirm Cash via Worker QR
                   </button>
+                )}
+
+                {booking.refundEligible && !booking.refundStatus && !isServiceStopped && (
+                  <button
+                    style={{ ...styles.actionBtn, background: '#7c3aed', width: '100%' }}
+                    onClick={() => setActiveSidebarPanel(activeSidebarPanel === 'refund' ? null : 'refund')}
+                  >
+                    Request Refund
+                  </button>
+                )}
+
+                {booking.refundEligible && activeSidebarPanel === 'refund' && !booking.refundStatus && (
+                  <div style={styles.sidebarPanel}>
+                    <p style={styles.sidebarPanelTitle}>Refund Request</p>
+                    <p style={styles.sidebarPanelText}>Use this if you need to ask for a refund. The request will be sent inside the system.</p>
+                    <button
+                      style={{ ...styles.actionBtn, background: '#7c3aed', width: '100%', marginTop: '10px' }}
+                      onClick={onRequestRefund}
+                    >
+                      Submit Refund Request
+                    </button>
+                  </div>
                 )}
 
                 {(booking.transactionId || booking.paymentReference) && (
