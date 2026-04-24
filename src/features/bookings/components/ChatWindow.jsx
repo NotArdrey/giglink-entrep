@@ -1,19 +1,35 @@
 import React, { useState, useEffect } from 'react';
 
-const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId }) => {
+const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isStopRequestPending, setIsStopRequestPending] = useState(false);
-  const [isCloseHovered, setIsCloseHovered] = useState(false);
   const [isApproveHovered, setIsApproveHovered] = useState(false);
   const [isSendHovered, setIsSendHovered] = useState(false);
   const [isStopHovered, setIsStopHovered] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [hoveredChatId, setHoveredChatId] = useState(null);
+  const [activeSidebarPanel, setActiveSidebarPanel] = useState(null);
 
   const isRecurringService = booking?.billingCycle === 'weekly' || booking?.billingCycle === 'monthly';
   const isServiceStopped = booking?.status === 'Service Stopped' || booking?.serviceActive === false;
+
+  const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
+  const isRecurringBilling = (targetBooking) => targetBooking?.billingCycle === 'weekly' || targetBooking?.billingCycle === 'monthly';
+  const getBillingLabel = (targetBooking) => {
+    if (targetBooking?.billingCycle === 'weekly') return 'Weekly';
+    if (targetBooking?.billingCycle === 'monthly') return 'Monthly';
+    return '';
+  };
+  const isRecurringChargeDue = (targetBooking) => {
+    if (!isRecurringBilling(targetBooking) || isServiceStopped || !targetBooking?.nextChargeDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(targetBooking.nextChargeDate);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate <= today;
+  };
 
   useEffect(() => {
     setTimeout(() => {
@@ -131,9 +147,9 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
   };
 
   const styles = {
-    // Main 3-column layout
-    overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '0' },
-    mainContainer: { background: 'white', borderRadius: '12px', display: 'grid', gridTemplateColumns: '320px 1fr 340px', width: '95vw', maxWidth: '1400px', height: '85vh', maxHeight: '85vh', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)', overflow: 'hidden' },
+    // Embedded full-page layout (no modal overlay)
+    pageContainer: { width: '100%', height: 'calc(100vh - 72px)', minHeight: '640px', background: 'transparent' },
+    mainContainer: { background: 'white', display: 'grid', gridTemplateColumns: '320px 1fr 340px', width: '100%', height: '100%', overflow: 'hidden', borderTop: '1px solid #dbe3ea' },
     
     // LEFT COLUMN: Chat List
     chatList: { display: 'flex', flexDirection: 'column', borderRight: '1px solid #ecf0f1', background: '#f8f9fa', overflow: 'hidden' },
@@ -146,7 +162,6 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
     chatItemWorkerName: { fontSize: '14px', fontWeight: 600, color: '#2c3e50', margin: '0 0 4px 0' },
     chatItemService: { fontSize: '13px', color: '#666', margin: 0 },
     chatItemStatus: { fontSize: '12px', color: '#999', marginTop: '4px', margin: '4px 0 0 0' },
-    closeBtn: { background: 'none', border: 'none', fontSize: '24px', color: '#7f8c8d', cursor: 'pointer', padding: '0', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
     
     // CENTER COLUMN: Messages & Chat
     chatContainer: { display: 'flex', flexDirection: 'column', background: '#fff' },
@@ -203,6 +218,12 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
     actionBtnSecondary: { background: '#ea580c' },
     actionBtnDanger: { background: '#dc2626' },
     actionBtnDisabled: { background: '#cbd5e1', cursor: 'not-allowed' },
+    actionSection: { display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px', marginTop: '4px', borderTop: '1px solid #ecf0f1' },
+    actionSectionTitle: { margin: 0, fontSize: '12px', fontWeight: 800, color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    actionStack: { display: 'flex', flexDirection: 'column', gap: '8px' },
+    sidebarPanel: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' },
+    sidebarPanelTitle: { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
+    sidebarPanelText: { margin: 0, fontSize: '12px', color: '#475569', lineHeight: 1.5 },
   };
 
   const getMessageStyle = (msg) => {
@@ -217,7 +238,7 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
   };
 
   return (
-    <div style={styles.overlay}>
+    <div style={styles.pageContainer}>
       <div style={styles.mainContainer}>
         {/* LEFT COLUMN: Chat List */}
         <div style={styles.chatList}>
@@ -312,21 +333,6 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
               ))
             )}
 
-            {!isLoading && !booking.quoteApproved && !isServiceStopped && !messages.some((m) => m.sender === 'system') && (
-              <div style={styles.quoteActionBar}>
-                <div style={styles.actionContent}>
-                  <p style={styles.actionPrompt}>Do you want to proceed with this quote?</p>
-                  <button
-                    style={styles.approveBtn}
-                    onMouseEnter={() => setIsApproveHovered(true)}
-                    onMouseLeave={() => setIsApproveHovered(false)}
-                    onClick={handleApproveQuoteClick}
-                  >
-                    Approve Quote & Select Slot
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {!booking.quoteApproved && !isServiceStopped && (
@@ -375,21 +381,6 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
         <div style={styles.rightSidebar}>
           <div style={styles.rightHeader}>
             <h3 style={styles.rightTitle}>Service Details</h3>
-            <button
-              style={{
-                ...styles.closeBtn,
-                position: 'absolute',
-                right: '20px',
-                top: '16px',
-                color: isCloseHovered ? '#2c3e50' : '#7f8c8d',
-              }}
-              onMouseEnter={() => setIsCloseHovered(true)}
-              onMouseLeave={() => setIsCloseHovered(false)}
-              onClick={onCancel}
-              title="Close chat"
-            >
-              {'\u00D7'}
-            </button>
           </div>
           <div style={styles.rightScroll}>
             {/* Service Information */}
@@ -446,21 +437,85 @@ const ChatWindow = ({ booking, onApproveQuote, onCancel, onStopServiceAccepted, 
             )}
 
             {/* Action Buttons */}
-            <div style={{ borderTop: '1px solid #ecf0f1', paddingTop: '12px', marginTop: '4px' }}>
-              {!booking.quoteApproved && !isServiceStopped && (
-                <button
-                  style={{
-                    ...styles.actionBtn,
-                    width: '100%',
-                    marginBottom: '8px',
-                  }}
-                  onMouseEnter={() => setIsApproveHovered(true)}
-                  onMouseLeave={() => setIsApproveHovered(false)}
-                  onClick={handleApproveQuoteClick}
-                >
-                  Approve & Select Slot
-                </button>
-              )}
+            <div style={styles.actionSection}>
+              <p style={styles.actionSectionTitle}>Conversation Actions</p>
+
+              <div style={styles.actionStack}>
+                {!booking.quoteApproved && !isServiceStopped && (
+                  <button
+                    style={{ ...styles.actionBtn, width: '100%' }}
+                    onMouseEnter={() => setIsApproveHovered(true)}
+                    onMouseLeave={() => setIsApproveHovered(false)}
+                    onClick={handleApproveQuoteClick}
+                  >
+                    Approve Quote & Select Slot
+                  </button>
+                )}
+
+                {booking.quoteApproved && !booking.selectedSlot && !isServiceStopped && (
+                  <button
+                    style={{ ...styles.actionBtn, width: '100%' }}
+                    onClick={onOpenSlotSelection}
+                  >
+                    Proceed to Slot Selection
+                  </button>
+                )}
+
+                {booking.selectedSlot && !isServiceStopped && !booking.paymentMethod && (
+                  <button
+                    style={{ ...styles.actionBtn, width: '100%' }}
+                    onClick={onOpenPaymentSelection}
+                  >
+                    Select Payment Method
+                  </button>
+                )}
+
+                {booking.selectedSlot && !isServiceStopped && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && isRecurringBilling(booking) && isRecurringChargeDue(booking) && (
+                  <button
+                    style={{ ...styles.actionBtn, width: '100%' }}
+                    onClick={onOpenPaymentSelection}
+                  >
+                    {`Pay ${getBillingLabel(booking)} Charge`}
+                  </button>
+                )}
+
+                {booking.selectedSlot && !isServiceStopped && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && !isRecurringBilling(booking) && (
+                  <button
+                    style={{ ...styles.actionBtn, width: '100%' }}
+                    onClick={onOpenPaymentSelection}
+                  >
+                    Pay via GCash
+                  </button>
+                )}
+
+                {booking.paymentMethod === 'after-service-cash' && !isServiceStopped && booking.cashConfirmationStatus !== 'approved' && (
+                  <button
+                    style={{ ...styles.actionBtn, ...styles.actionBtnSecondary, width: '100%' }}
+                    onClick={onOpenPaymentSelection}
+                  >
+                    Confirm Cash via Worker QR
+                  </button>
+                )}
+
+                {(booking.transactionId || booking.paymentReference) && (
+                  <button
+                    style={{ ...styles.actionBtn, background: '#0f766e', width: '100%' }}
+                    onClick={() => setActiveSidebarPanel(activeSidebarPanel === 'transaction' ? null : 'transaction')}
+                  >
+                    View Transaction ID
+                  </button>
+                )}
+
+                {(booking.transactionId || booking.paymentReference) && activeSidebarPanel === 'transaction' && (
+                  <div style={styles.sidebarPanel}>
+                    <p style={styles.sidebarPanelTitle}>Transaction Proof</p>
+                    <p style={styles.sidebarPanelText}>Use this ID for verification and proof purposes.</p>
+                    <p style={{ ...styles.sidebarPanelText, marginTop: '8px', fontFamily: "'Courier New', monospace", wordBreak: 'break-all' }}>
+                      {booking.transactionId || booking.paymentReference}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

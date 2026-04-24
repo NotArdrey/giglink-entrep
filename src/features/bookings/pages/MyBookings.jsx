@@ -377,6 +377,10 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     setUiState('chat');
   };
 
+  const handleOpenSlotSelection = () => {
+    setUiState('slots');
+  };
+
   const handleOpenRating = (bookingId) => {
     setRatingTargetId(bookingId);
     setRatingValue(5);
@@ -570,7 +574,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           : booking
       )
     );
-    setUiState('slots');
+    setUiState('chat');
   };
 
   const handleStopServiceAccepted = (bookingId) => {
@@ -845,8 +849,9 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           selectedBookingId={selectedBookingId}
           onSelectBooking={handleOpenChat}
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
+          onOpenSlotSelection={handleOpenSlotSelection}
+          onOpenPaymentSelection={() => setUiState('payment')}
           onStopServiceAccepted={() => handleStopServiceAccepted(currentBooking.id)}
-          onCancel={handleBackToList}
         />
       )}
       {uiState === 'slots' && (
