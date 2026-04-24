@@ -16,6 +16,7 @@ import {
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
+const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
 
 const getMonday = (baseDate = new Date()) => {
   const date = new Date(baseDate);
@@ -404,6 +405,37 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
     const handleStorage = (event) => {
       if (event.key === CASH_CONFIRMATION_REQUESTS_KEY) {
         syncCashConfirmationRequests();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncRefundRequests = () => {
+      const requests = readRefundRequests();
+      const mappedRequests = requests.map(mapRefundRequestToTransaction);
+
+      setTransactions((prev) => {
+        const preservedTransactions = prev.filter((txn) => !txn.sourceRefundRequestId);
+        const next = [...preservedTransactions, ...mappedRequests];
+        return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
+      });
+    };
+
+    syncRefundRequests();
+
+    const interval = window.setInterval(syncRefundRequests, 2500);
+    const handleStorage = (event) => {
+      if (event.key === REFUND_REQUESTS_KEY) {
+        syncRefundRequests();
       }
     };
 
@@ -935,6 +967,41 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
     sourceRequestId: request.id,
   });
 
+  const readRefundRequests = () => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeRefundRequests = (requests) => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(REFUND_REQUESTS_KEY, JSON.stringify(requests));
+  };
+
+  const mapRefundRequestToTransaction = (request) => ({
+    id: request.id,
+    clientName: request.clientName || 'Client',
+    service: request.serviceType || 'Refund Request',
+    scheduleRef: request.scheduleRef || `booking-${request.bookingId}`,
+    paymentMode: 'Advance',
+    paymentChannel: 'gcash',
+    isPaid: true,
+    isDone: false,
+    weekOffset: 0,
+    transactionId: request.transactionId || '',
+    refundStatus: request.status,
+    refundAmount: request.refundAmount || 0,
+    refundReason: request.refundReason || 'Client requested a refund.',
+    refundReference: request.refundReference || `REFUND-REQ-${request.bookingId}`,
+    sourceRefundRequestId: request.id,
+    sourceBookingId: request.bookingId,
+  });
+
   const handleReviewCashConfirmation = (transactionId, decision) => {
     setTransactions((prev) =>
       prev.map((txn) => {
@@ -1013,11 +1080,25 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
         const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
         return {
           ...txn,
-          refundStatus: 'approved',
+          refundStatus: 'approved-awaiting-client-confirmation',
           refundReference: `REFUND-APR-${String(transactionId).toUpperCase()}-${dateStamp}`,
         };
       })
     );
+
+    const nextRequests = readRefundRequests().map((request) => {
+      if (request.id !== transactionId) return request;
+
+      const now = new Date();
+      const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      return {
+        ...request,
+        status: 'approved-awaiting-client-confirmation',
+        refundReference: request.refundReference || `REFUND-APR-${String(transactionId).toUpperCase()}-${dateStamp}`,
+      };
+    });
+
+    writeRefundRequests(nextRequests);
   };
 
   const responsiveClassStyles = isMobile
@@ -1392,8 +1473,21 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
                       <div key={`refund-${txn.id}`} style={sx('refund-card')}>
                         <div style={sx('payment-confirm-meta')}>
                           <strong>{txn.clientName}</strong>
-                          <span style={{ ...sx('confirm-status-pill'), ...(txn.refundStatus === 'approved' ? sx('confirm-status-approved') : sx('confirm-status-pending')) }}>
-                            {txn.refundStatus === 'approved' ? 'Refund Approved' : 'Refund Requested'}
+                          <span
+                            style={{
+                              ...sx('confirm-status-pill'),
+                              ...((txn.refundStatus === 'completed' || txn.refundStatus === 'approved')
+                                ? sx('confirm-status-approved')
+                                : txn.refundStatus === 'approved-awaiting-client-confirmation'
+                                  ? { background: '#dbeafe', color: '#1d4ed8' }
+                                  : sx('confirm-status-pending')),
+                            }}
+                          >
+                            {txn.refundStatus === 'completed' || txn.refundStatus === 'approved'
+                              ? 'Refund Completed'
+                              : txn.refundStatus === 'approved-awaiting-client-confirmation'
+                                ? 'Awaiting Client Confirmation'
+                                : 'Refund Requested'}
                           </span>
                         </div>
                         <p style={{ margin: 0, color: '#3730a3', fontWeight: 700, fontSize: '13px' }}>{txn.service}</p>

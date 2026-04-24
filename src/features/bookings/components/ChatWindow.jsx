@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 
-const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund }) => {
+const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isStopRequestPending, setIsStopRequestPending] = useState(false);
   const [isApproveHovered, setIsApproveHovered] = useState(false);
   const [isSendHovered, setIsSendHovered] = useState(false);
-  const [isStopHovered, setIsStopHovered] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [hoveredChatId, setHoveredChatId] = useState(null);
   const [activeSidebarPanel, setActiveSidebarPanel] = useState(null);
+  const [showRefundRequestModal, setShowRefundRequestModal] = useState(false);
+  const [showRefundConfirmModal, setShowRefundConfirmModal] = useState(false);
+  const [refundReason, setRefundReason] = useState('');
 
   const isRecurringService = booking?.billingCycle === 'weekly' || booking?.billingCycle === 'monthly';
   const isServiceStopped = booking?.status === 'Service Stopped' || booking?.serviceActive === false;
   const isClosedConversation = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refund Processing', 'Refunded'].includes(booking?.status);
   const isRefundConversation = booking?.status === 'Refund Processing' || booking?.status === 'Refunded' || booking?.refundStatus === 'requested';
+  const canRequestRefund = booking?.refundEligible && !booking?.refundStatus;
+  const canConfirmRefund = booking?.refundStatus === 'approved-awaiting-client-confirmation';
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
   const isRecurringBilling = (targetBooking) => targetBooking?.billingCycle === 'weekly' || targetBooking?.billingCycle === 'monthly';
@@ -64,7 +67,6 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
         },
       ]);
       setIsLoading(false);
-      setIsStopRequestPending(false);
     }, 500);
   }, [booking]);
 
@@ -109,43 +111,16 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
     }, 800);
   };
 
-  const handleRequestStopService = () => {
-    if (isStopRequestPending || isServiceStopped) return;
+  const handleSubmitRefundRequest = () => {
+    if (!refundReason.trim()) return;
+    onRequestRefund(refundReason.trim());
+    setShowRefundRequestModal(false);
+    setRefundReason('');
+  };
 
-    const requestMessage = {
-      id: `stop-request-${Date.now()}`,
-      sender: 'client',
-      type: 'text',
-      content: 'I would like to stop this recurring service. Please confirm cancellation.',
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    };
-
-    setMessages((prevMessages) => [...prevMessages, requestMessage]);
-    setIsStopRequestPending(true);
-
-    setTimeout(() => {
-      const workerApprovalMessage = {
-        id: `stop-worker-${Date.now()}`,
-        sender: 'worker',
-        type: 'text',
-        content: 'Understood. I accept your request to stop this recurring service. We will end billing starting this cycle.',
-        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      const systemStopMessage = {
-        id: `stop-system-${Date.now() + 1}`,
-        sender: 'system',
-        type: 'text',
-        content: 'Service stop confirmed by worker. Recurring billing is now stopped.',
-        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setMessages((prevMessages) => [...prevMessages, workerApprovalMessage, systemStopMessage]);
-      setIsStopRequestPending(false);
-      if (onStopServiceAccepted) {
-        onStopServiceAccepted();
-      }
-    }, 1200);
+  const handleConfirmRefundReceived = () => {
+    onConfirmRefundReceived();
+    setShowRefundConfirmModal(false);
   };
 
   const styles = {
@@ -203,7 +178,6 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
     inputArea: { display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid #ecf0f1', background: 'white', flexShrink: 0 },
     messageInput: { flex: 1, padding: '10px 12px', border: `1px solid ${isInputFocused ? '#2563eb' : '#ecf0f1'}`, borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', transition: 'all 0.2s ease', outline: 'none', boxShadow: isInputFocused ? '0 0 0 2px rgba(37, 99, 235, 0.1)' : 'none' },
     sendBtn: { padding: '10px 20px', background: !clientMessage.trim() ? '#bdc3c7' : (isSendHovered ? '#1d4ed8' : '#2563eb'), color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: !clientMessage.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease' },
-    stopServiceBtn: { padding: '10px 14px', background: isStopRequestPending ? '#fca5a5' : (isStopHovered ? '#b91c1c' : '#dc2626'), color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: isStopRequestPending ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease' },
     approvalStatus: { padding: '12px 16px', background: '#dbeafe', borderTop: '1px solid #bfdbfe', textAlign: 'center', flexShrink: 0 },
     approvalStatusText: { fontSize: '13px', color: '#1e3a8a', fontWeight: 600, margin: 0 },
     
@@ -226,6 +200,14 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
     sidebarPanel: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' },
     sidebarPanelTitle: { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
     sidebarPanelText: { margin: 0, fontSize: '12px', color: '#475569', lineHeight: 1.5 },
+    modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1400, padding: '16px' },
+    modalCard: { width: '100%', maxWidth: '540px', background: '#fff', borderRadius: '12px', padding: '18px', boxShadow: '0 20px 45px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '10px' },
+    modalTitle: { margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' },
+    modalText: { margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.5 },
+    modalTextarea: { width: '100%', minHeight: '100px', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
+    modalActions: { display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' },
+    modalBtnCancel: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#e2e8f0', color: '#0f172a', fontWeight: 700, cursor: 'pointer' },
+    modalBtnPrimary: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#7c3aed', color: '#fff', fontWeight: 700, cursor: 'pointer' },
   };
 
   const getMessageStyle = (msg) => {
@@ -293,6 +275,12 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
             </div>
           </div>
 
+          {booking.quoteApproved && !isClosedConversation && !isRefundConversation && (
+            <div style={styles.approvalStatus}>
+              <p style={styles.approvalStatusText}>{'\u2713'} Quote Approved - Proceeding to slot selection</p>
+            </div>
+          )}
+
           <div style={styles.messages}>
             {isLoading ? (
               <div style={styles.loadingState}>
@@ -337,7 +325,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
 
           </div>
 
-          {!isServiceStopped && booking.status !== 'Cancelled (Cash)' && (
+          {booking.status !== 'Cancelled (Cash)' && (
             <div style={styles.inputArea}>
               <input
                 type="text"
@@ -358,23 +346,6 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
               >
                 Send
               </button>
-              {isRecurringService && (
-                <button
-                  style={styles.stopServiceBtn}
-                  onMouseEnter={() => setIsStopHovered(true)}
-                  onMouseLeave={() => setIsStopHovered(false)}
-                  onClick={handleRequestStopService}
-                  disabled={isStopRequestPending}
-                >
-                  {isStopRequestPending ? 'Waiting...' : 'Request Stop'}
-                </button>
-              )}
-            </div>
-          )}
-
-          {booking.quoteApproved && !isClosedConversation && !isRefundConversation && (
-            <div style={styles.approvalStatus}>
-              <p style={styles.approvalStatusText}>{'\u2713'} Quote Approved - Proceeding to slot selection</p>
             </div>
           )}
         </div>
@@ -490,26 +461,22 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   </button>
                 )}
 
-                {booking.refundEligible && !booking.refundStatus && !isServiceStopped && (
+                {canRequestRefund && !isServiceStopped && (
                   <button
                     style={{ ...styles.actionBtn, background: '#7c3aed', width: '100%' }}
-                    onClick={() => setActiveSidebarPanel(activeSidebarPanel === 'refund' ? null : 'refund')}
+                    onClick={() => setShowRefundRequestModal(true)}
                   >
                     Request Refund
                   </button>
                 )}
 
-                {booking.refundEligible && activeSidebarPanel === 'refund' && !booking.refundStatus && (
-                  <div style={styles.sidebarPanel}>
-                    <p style={styles.sidebarPanelTitle}>Refund Request</p>
-                    <p style={styles.sidebarPanelText}>Use this if you need to ask for a refund. The request will be sent inside the system.</p>
-                    <button
-                      style={{ ...styles.actionBtn, background: '#7c3aed', width: '100%', marginTop: '10px' }}
-                      onClick={onRequestRefund}
-                    >
-                      Submit Refund Request
-                    </button>
-                  </div>
+                {canConfirmRefund && (
+                  <button
+                    style={{ ...styles.actionBtn, background: '#0f766e', width: '100%' }}
+                    onClick={() => setShowRefundConfirmModal(true)}
+                  >
+                    Confirm Refund Received
+                  </button>
                 )}
 
                 {(booking.transactionId || booking.paymentReference) && (
@@ -535,6 +502,44 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
           </div>
         </div>
       </div>
+
+      {showRefundRequestModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <h3 style={styles.modalTitle}>Request Refund</h3>
+            <p style={styles.modalText}>Explain your reason. This request will require worker approval and your final confirmation once money is returned.</p>
+            <textarea
+              style={styles.modalTextarea}
+              placeholder="Describe why you are requesting a refund..."
+              value={refundReason}
+              onChange={(event) => setRefundReason(event.target.value)}
+            />
+            <div style={styles.modalActions}>
+              <button style={styles.modalBtnCancel} onClick={() => setShowRefundRequestModal(false)}>Cancel</button>
+              <button
+                style={{ ...styles.modalBtnPrimary, ...(refundReason.trim() ? {} : { background: '#cbd5e1', cursor: 'not-allowed' }) }}
+                onClick={handleSubmitRefundRequest}
+                disabled={!refundReason.trim()}
+              >
+                Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRefundConfirmModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <h3 style={styles.modalTitle}>Confirm Refund Receipt</h3>
+            <p style={styles.modalText}>Confirm that you already received the correct refund amount from the worker/provider.</p>
+            <div style={styles.modalActions}>
+              <button style={styles.modalBtnCancel} onClick={() => setShowRefundConfirmModal(false)}>Not Yet</button>
+              <button style={{ ...styles.modalBtnPrimary, background: '#0f766e' }} onClick={handleConfirmRefundReceived}>Yes, Amount Received</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

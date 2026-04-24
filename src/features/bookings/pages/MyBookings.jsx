@@ -5,6 +5,7 @@ import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
 
 const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
+const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
 
 const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings }) => {
   // Initialize with first booking selected and go directly to chat
@@ -117,6 +118,80 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     const handleStorage = (event) => {
       if (event.key === CASH_CONFIRMATION_REQUESTS_KEY) {
         syncCashRequests();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const readRefundRequests = () => {
+      try {
+        const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const syncRefundRequests = () => {
+      const requests = readRefundRequests();
+      if (!Array.isArray(requests) || requests.length === 0) return;
+
+      setBookings((prevBookings) => {
+        const nextBookings = prevBookings.map((booking) => {
+          const request = [...requests].reverse().find((item) => String(item.bookingId) === String(booking.id));
+          if (!request) return booking;
+
+          if (request.status === 'completed') {
+            return {
+              ...booking,
+              status: 'Refunded',
+              refundStatus: 'approved',
+              refundReference: request.refundReference || booking.refundReference,
+              refundReason: request.refundReason || booking.refundReason,
+              refundAmount: request.refundAmount || booking.refundAmount || booking.quoteAmount,
+            };
+          }
+
+          if (request.status === 'approved-awaiting-client-confirmation') {
+            return {
+              ...booking,
+              status: 'Refund Processing',
+              refundStatus: 'approved-awaiting-client-confirmation',
+              refundReference: request.refundReference || booking.refundReference,
+              refundReason: request.refundReason || booking.refundReason,
+              refundAmount: request.refundAmount || booking.refundAmount || booking.quoteAmount,
+            };
+          }
+
+          return {
+            ...booking,
+            status: 'Refund Processing',
+            refundStatus: 'requested',
+            refundReference: request.refundReference || booking.refundReference,
+            refundReason: request.refundReason || booking.refundReason,
+            refundAmount: request.refundAmount || booking.refundAmount || booking.quoteAmount,
+          };
+        });
+
+        return JSON.stringify(nextBookings) === JSON.stringify(prevBookings) ? prevBookings : nextBookings;
+      });
+    };
+
+    syncRefundRequests();
+    const interval = window.setInterval(syncRefundRequests, 2500);
+
+    const handleStorage = (event) => {
+      if (event.key === REFUND_REQUESTS_KEY) {
+        syncRefundRequests();
       }
     };
 
@@ -680,9 +755,37 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     );
   };
 
-  const handleRequestRefund = (bookingId) => {
+  const handleRequestRefund = (bookingId, reason) => {
     const targetBooking = bookings.find((booking) => booking.id === bookingId);
     if (!targetBooking) return;
+
+    const refundReference = `REFUND-REQ-${String(bookingId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
+    const existingRequests = (() => {
+      try {
+        const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const nextRequests = [
+      ...existingRequests.filter((request) => String(request.bookingId) !== String(bookingId)),
+      {
+        id: `refund-request-${bookingId}-${Date.now()}`,
+        bookingId,
+        clientName: 'Client',
+        workerName: targetBooking.workerName,
+        serviceType: targetBooking.serviceType,
+        refundAmount: targetBooking.refundAmount || targetBooking.quoteAmount,
+        refundReason: reason,
+        refundReference,
+        status: 'requested',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    window.localStorage.setItem(REFUND_REQUESTS_KEY, JSON.stringify(nextRequests));
 
     setBookings((prevBookings) =>
       prevBookings.map((booking) =>
@@ -691,8 +794,9 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
               ...booking,
               status: 'Refund Processing',
               refundStatus: 'requested',
-              refundReason: booking.refundReason || 'Client requested a refund from the booking page.',
-              refundReference: booking.refundReference || `REFUND-REQ-${String(bookingId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`,
+              refundReason: reason,
+              refundReference,
+              refundAmount: booking.refundAmount || booking.quoteAmount,
             }
           : booking
       )
@@ -706,6 +810,45 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     setPaymentStatusMessage('Refund request submitted. The worker review queue will be notified.');
     setShowPaymentStatusNotice(true);
     setTimeout(() => setShowPaymentStatusNotice(false), 3200);
+  };
+
+  const handleConfirmRefundReceived = (bookingId) => {
+    const targetBooking = bookings.find((booking) => booking.id === bookingId);
+    if (!targetBooking) return;
+
+    const existingRequests = (() => {
+      try {
+        const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const nextRequests = existingRequests.map((request) =>
+      String(request.bookingId) === String(bookingId)
+        ? { ...request, status: 'completed', completedAt: new Date().toISOString() }
+        : request
+    );
+
+    window.localStorage.setItem(REFUND_REQUESTS_KEY, JSON.stringify(nextRequests));
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status: 'Refunded',
+              refundStatus: 'approved',
+            }
+          : booking
+      )
+    );
+
+    pushHeaderNotification(
+      'Refund Confirmed',
+      `You confirmed receiving the refund for ${targetBooking.serviceType}.`
+    );
   };
 
   const handleConfirmSlot = (bookingId, slotInfo) => {
@@ -964,7 +1107,8 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
           onOpenSlotSelection={handleOpenSlotSelection}
           onOpenPaymentSelection={() => setUiState('payment')}
-          onRequestRefund={() => handleRequestRefund(currentBooking.id)}
+          onRequestRefund={(reason) => handleRequestRefund(currentBooking.id, reason)}
+          onConfirmRefundReceived={() => handleConfirmRefundReceived(currentBooking.id)}
           onStopServiceAccepted={() => handleStopServiceAccepted(currentBooking.id)}
         />
       )}
