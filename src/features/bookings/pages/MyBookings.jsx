@@ -4,6 +4,8 @@ import ChatWindow from '../components/ChatWindow';
 import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
 
+const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
+
 const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings }) => {
   // Initialize with first booking selected and go directly to chat
   const [selectedBookingId, setSelectedBookingId] = useState(1);
@@ -54,6 +56,76 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const readCashRequests = () => {
+      try {
+        const raw = window.localStorage.getItem(CASH_CONFIRMATION_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const syncCashRequests = () => {
+      const requests = readCashRequests();
+      if (!Array.isArray(requests) || requests.length === 0) return;
+
+      setBookings((prevBookings) => {
+        const nextBookings = prevBookings.map((booking) => {
+          const request = [...requests].reverse().find((item) => String(item.bookingId) === String(booking.id));
+          if (!request) return booking;
+
+          if (request.status === 'approved') {
+            return {
+              ...booking,
+              cashConfirmationStatus: 'approved',
+              paymentProofSubmitted: true,
+              paymentReference: request.transactionId || booking.paymentReference,
+              transactionId: request.transactionId || booking.transactionId,
+              canRate: true,
+              status: 'Completed Service',
+            };
+          }
+
+          if (request.status === 'denied') {
+            return {
+              ...booking,
+              cashConfirmationStatus: 'denied',
+              status: 'Cash Verification Denied',
+            };
+          }
+
+          return {
+            ...booking,
+            cashConfirmationStatus: 'pending-worker-review',
+            submittedCashAmount: request.submittedCashAmount ?? booking.submittedCashAmount,
+            status: 'Cash Verification Pending',
+          };
+        });
+
+        return JSON.stringify(nextBookings) === JSON.stringify(prevBookings) ? prevBookings : nextBookings;
+      });
+    };
+
+    syncCashRequests();
+    const interval = window.setInterval(syncCashRequests, 2500);
+
+    const handleStorage = (event) => {
+      if (event.key === CASH_CONFIRMATION_REQUESTS_KEY) {
+        syncCashRequests();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const parseDateOnly = (dateString) => {
@@ -468,8 +540,10 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       return;
     }
 
+    const requestId = `cash-request-${cashConfirmBookingId}-${Date.now()}`;
+
     setCashReviewState('pending');
-    setCashReviewMessage('Amount sent. Waiting for worker verification...');
+    setCashReviewMessage('Cash confirmation sent to the worker review queue.');
 
     setBookings((prevBookings) =>
       prevBookings.map((booking) =>
@@ -479,69 +553,51 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
               cashConfirmationStatus: 'pending-worker-review',
               submittedCashAmount: parsedAmount,
               status: 'Cash Verification Pending',
+              paymentProofSubmitted: true,
+              transactionId: '',
+              paymentReference: '',
             }
           : booking
       )
     );
 
-    setTimeout(() => {
-      const isApproved = Math.round(parsedAmount * 100) === Math.round(targetBooking.quoteAmount * 100);
-
-      if (isApproved) {
-        const transactionId = buildMockTransactionId(cashConfirmBookingId, 'cash');
-        setBookings((prevBookings) =>
-          prevBookings.map((booking) =>
-            booking.id === cashConfirmBookingId
-              ? {
-                  ...booking,
-                  cashConfirmationStatus: 'approved',
-                  paymentProofSubmitted: true,
-                  paymentReference: transactionId,
-                  transactionId,
-                  canRate: true,
-                  status: 'Completed Service',
-                }
-              : booking
-          )
-        );
-
-        pushHeaderNotification(
-          'Cash Payment Confirmed',
-          `Worker approved your cash confirmation for ${targetBooking.serviceType}. Transaction ID: ${transactionId}.`
-        );
-
-        setPaymentStatusMessage(`Cash payment approved. Transaction ID: ${transactionId}`);
-        setShowPaymentStatusNotice(true);
-        setTimeout(() => setShowPaymentStatusNotice(false), 3200);
-
-        setCashReviewState('approved');
-        setCashReviewMessage('Worker approved the cash payment. Your transaction proof is now available in My Bookings.');
-      } else {
-        setBookings((prevBookings) =>
-          prevBookings.map((booking) =>
-            booking.id === cashConfirmBookingId
-              ? {
-                  ...booking,
-                  cashConfirmationStatus: 'denied',
-                  status: 'Cash Verification Denied',
-                }
-              : booking
-          )
-        );
-
-        pushHeaderNotification(
-          'Cash Payment Denied',
-          `Worker denied the cash confirmation for ${targetBooking.serviceType} due to amount mismatch.`
-        );
-
-        setPaymentStatusMessage('Cash payment denied: submitted amount does not match the expected quote.');
-        setShowPaymentStatusNotice(true);
-        setTimeout(() => setShowPaymentStatusNotice(false), 3200);
-
-        setCashReviewState('denied');
-        setCashReviewMessage('Worker denied the payment confirmation because the submitted amount does not match the quote.');
+    const existingRequests = (() => {
+      try {
+        const raw = window.localStorage.getItem(CASH_CONFIRMATION_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
       }
-    }, 1600);
+    })();
+
+    const nextRequests = [
+      ...existingRequests.filter((request) => String(request.bookingId) !== String(cashConfirmBookingId)),
+      {
+        id: requestId,
+        bookingId: cashConfirmBookingId,
+        clientName: 'Client',
+        workerName: targetBooking.workerName,
+        serviceType: targetBooking.serviceType,
+        submittedCashAmount: parsedAmount,
+        expectedCashAmount: targetBooking.quoteAmount,
+        status: 'pending-worker-review',
+        transactionId: '',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    window.localStorage.setItem(CASH_CONFIRMATION_REQUESTS_KEY, JSON.stringify(nextRequests));
+
+    pushHeaderNotification(
+      'Cash Confirmation Sent',
+      `Your cash payment for ${targetBooking.serviceType} is now waiting for worker verification.`
+    );
+
+    setPaymentStatusMessage('Cash confirmation submitted. Waiting for worker verification.');
+    setShowPaymentStatusNotice(true);
+    setTimeout(() => setShowPaymentStatusNotice(false), 3200);
+
+    setCashReviewMessage('Your cash confirmation is now in the worker review queue.');
   };
 
   const handleSubmitRating = () => {
@@ -902,7 +958,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
               >
                 Back to My Bookings
               </button>
-              <p style={styles.confirmationNote}>A confirmation SMS has been sent to your registered number. The worker will contact you shortly to confirm the details.</p>
+              <p style={styles.confirmationNote}>Cash confirmation has been sent to the worker review queue. Once approved, a transaction ID will appear here automatically.</p>
             </div>
           </div>
         </div>

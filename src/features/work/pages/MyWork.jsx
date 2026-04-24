@@ -15,6 +15,7 @@ import {
 
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
 
 const getMonday = (baseDate = new Date()) => {
   const date = new Date(baseDate);
@@ -381,6 +382,37 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const syncCashConfirmationRequests = () => {
+      const requests = readCashConfirmationRequests();
+      const mappedRequests = requests.map(mapCashRequestToTransaction);
+
+      setTransactions((prev) => {
+        const preservedTransactions = prev.filter((txn) => !txn.sourceRequestId);
+        const next = [...preservedTransactions, ...mappedRequests];
+        return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
+      });
+    };
+
+    syncCashConfirmationRequests();
+
+    const interval = window.setInterval(syncCashConfirmationRequests, 2500);
+    const handleStorage = (event) => {
+      if (event.key === CASH_CONFIRMATION_REQUESTS_KEY) {
+        syncCashConfirmationRequests();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
   
   // Helper function to get the appropriate schedule based on worker index
@@ -868,6 +900,41 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
     return `CASH-TRX-${dateStamp}-${transactionId.toUpperCase()}-${suffix}`;
   };
 
+  const readCashConfirmationRequests = () => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const raw = window.localStorage.getItem(CASH_CONFIRMATION_REQUESTS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const writeCashConfirmationRequests = (requests) => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(CASH_CONFIRMATION_REQUESTS_KEY, JSON.stringify(requests));
+  };
+
+  const mapCashRequestToTransaction = (request) => ({
+    id: request.id,
+    clientName: request.clientName || 'Client',
+    service: request.serviceType || 'Cash Confirmation',
+    scheduleRef: request.scheduleRef || `booking-${request.bookingId}`,
+    paymentMode: 'After Service',
+    paymentChannel: 'cash',
+    isPaid: request.status === 'approved',
+    isDone: request.status === 'approved',
+    weekOffset: 0,
+    expectedCashAmount: request.expectedCashAmount || 0,
+    submittedCashAmount: request.submittedCashAmount || 0,
+    cashConfirmationStatus: request.status,
+    cashConfirmationQrId: request.cashConfirmationQrId || `CASHQR-REQUEST-${request.bookingId}`,
+    transactionId: request.transactionId || '',
+    sourceBookingId: request.bookingId,
+    sourceRequestId: request.id,
+  });
+
   const handleReviewCashConfirmation = (transactionId, decision) => {
     setTransactions((prev) =>
       prev.map((txn) => {
@@ -878,6 +945,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
             ...txn,
             cashConfirmationStatus: 'approved',
             isPaid: true,
+            isDone: true,
             transactionId: txn.transactionId || buildCashTransactionId(transactionId),
           };
         }
@@ -890,6 +958,27 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
         };
       })
     );
+
+    const updatedRequests = readCashConfirmationRequests().map((request) => {
+      if (request.id !== transactionId) return request;
+
+      if (decision === 'approve') {
+        const approvedTransactionId = request.transactionId || buildCashTransactionId(transactionId);
+        return {
+          ...request,
+          status: 'approved',
+          transactionId: approvedTransactionId,
+        };
+      }
+
+      return {
+        ...request,
+        status: 'denied',
+        transactionId: '',
+      };
+    });
+
+    writeCashConfirmationRequests(updatedRequests);
   };
 
   const handleRequestCashConfirmationReview = (transaction, decision) => {
