@@ -1211,6 +1211,9 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
       {uiState === 'chat' && (
         <ChatWindow
           booking={currentBooking}
+          bookings={bookings}
+          selectedBookingId={selectedBookingId}
+          onSelectBooking={handleOpenChat}
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
           onStopServiceAccepted={() => handleStopServiceAccepted(currentBooking.id)}
           onCancel={handleBackToList}
