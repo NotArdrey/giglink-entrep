@@ -427,15 +427,6 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
               </div>
             )}
 
-            {booking.transactionId && (
-              <div style={styles.detailSection}>
-                <p style={styles.detailLabel}>Transaction ID</p>
-                <p style={{ ...styles.detailValue, fontSize: '11px', fontFamily: "'Courier New', monospace", wordBreak: 'break-all' }}>
-                  {booking.transactionId}
-                </p>
-              </div>
-            )}
-
             {/* Action Buttons */}
             <div style={styles.actionSection}>
               <p style={styles.actionSectionTitle}>Conversation Actions</p>
@@ -461,7 +452,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   </button>
                 )}
 
-                {booking.selectedSlot && !isServiceStopped && !booking.paymentMethod && (
+                {booking.selectedSlot && !isServiceStopped && !booking.transactionId && !booking.paymentMethod && (
                   <button
                     style={{ ...styles.actionBtn, width: '100%' }}
                     onClick={onOpenPaymentSelection}
@@ -470,7 +461,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   </button>
                 )}
 
-                {booking.selectedSlot && !isServiceStopped && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && isRecurringBilling(booking) && isRecurringChargeDue(booking) && (
+                {booking.selectedSlot && !isServiceStopped && !booking.transactionId && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && isRecurringBilling(booking) && isRecurringChargeDue(booking) && (
                   <button
                     style={{ ...styles.actionBtn, width: '100%' }}
                     onClick={onOpenPaymentSelection}
@@ -479,7 +470,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   </button>
                 )}
 
-                {booking.selectedSlot && !isServiceStopped && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && !isRecurringBilling(booking) && (
+                {booking.selectedSlot && !isServiceStopped && !booking.transactionId && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && !isRecurringBilling(booking) && (
                   <button
                     style={{ ...styles.actionBtn, width: '100%' }}
                     onClick={onOpenPaymentSelection}
@@ -488,7 +479,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   </button>
                 )}
 
-                {booking.paymentMethod === 'after-service-cash' && !isServiceStopped && booking.cashConfirmationStatus !== 'approved' && (
+                {booking.paymentMethod === 'after-service-cash' && !isServiceStopped && !booking.transactionId && booking.cashConfirmationStatus !== 'approved' && (
                   <button
                     style={{ ...styles.actionBtn, ...styles.actionBtnSecondary, width: '100%' }}
                     onClick={onOpenPaymentSelection}
