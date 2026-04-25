@@ -110,7 +110,7 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
       id: messages.length + 1,
       sender: 'system',
       type: 'text',
-      content: 'You approved the quote. Proceeding to slot selection...',
+      content: 'You approved the quote. Proceeding to calendar/slot selection...',
       timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     };
     setMessages([...messages, approvalMessage]);
@@ -190,7 +190,7 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
     quoteActionBar: { background: 'white', borderTop: '1px solid #ecf0f1', padding: '16px', marginTop: 'auto', flexShrink: 0 },
     actionContent: { textAlign: 'center' },
     actionPrompt: { fontSize: '13px', color: '#2c3e50', fontWeight: 600, margin: '0 0 12px 0' },
-    approveBtn: { padding: '12px 24px', background: isApproveHovered ? '#1d4ed8' : '#2563eb', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s ease', width: '100%', textTransform: 'uppercase', letterSpacing: '0.5px', transform: isApproveHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isApproveHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
+    approveBtn: { padding: '12px 24px', background: isApproveHovered ? '#1d4ed8' : '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: '8px 0 0 8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s ease', width: '100%', textTransform: 'uppercase', letterSpacing: '0.5px', transform: isApproveHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isApproveHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
     inputArea: { display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid #ecf0f1', background: 'white', flexShrink: 0 },
     messageInput: { flex: 1, padding: '10px 12px', border: `1px solid ${isInputFocused ? '#2563eb' : '#ecf0f1'}`, borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', transition: 'all 0.2s ease', outline: 'none', boxShadow: isInputFocused ? '0 0 0 2px rgba(37, 99, 235, 0.1)' : 'none' },
     sendBtn: { padding: '10px 20px', background: !clientMessage.trim() ? '#bdc3c7' : (isSendHovered ? '#1d4ed8' : '#2563eb'), color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: !clientMessage.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease' },
@@ -224,8 +224,8 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
     modalActions: { display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' },
     modalBtnCancel: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#e2e8f0', color: '#0f172a', fontWeight: 700, cursor: 'pointer' },
     modalBtnPrimary: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#7c3aed', color: '#fff', fontWeight: 700, cursor: 'pointer' },
-    quoteDecisionActions: { display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' },
-    rejectQuoteBtn: { padding: '12px 20px', background: '#f8fafc', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' },
+    quoteDecisionActions: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 0, width: '100%', maxWidth: '100%', alignItems: 'stretch' },
+    rejectQuoteBtn: { padding: '12px 18px', minWidth: '138px', background: '#f8fafc', color: '#b91c1c', border: '1px solid #2563eb', borderLeft: 'none', borderRadius: '0 8px 8px 0', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
   };
 
   const getMessageStyle = (msg) => {
