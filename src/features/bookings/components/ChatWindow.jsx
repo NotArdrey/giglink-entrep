@@ -19,6 +19,12 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
   const isRefundConversation = booking?.status === 'Refund Processing' || booking?.status === 'Refunded' || booking?.refundStatus === 'requested';
   const canRequestRefund = booking?.refundEligible && !booking?.refundStatus;
   const canConfirmRefund = booking?.refundStatus === 'approved-awaiting-client-confirmation';
+  const shouldShowSlotSelectionNotice =
+    booking?.quoteApproved
+    && !booking?.selectedSlot
+    && booking?.status === 'Awaiting Slot Selection'
+    && !isClosedConversation
+    && !isRefundConversation;
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
   const isRecurringBilling = (targetBooking) => targetBooking?.billingCycle === 'weekly' || targetBooking?.billingCycle === 'monthly';
@@ -275,12 +281,6 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
             </div>
           </div>
 
-          {booking.quoteApproved && !isClosedConversation && !isRefundConversation && (
-            <div style={styles.approvalStatus}>
-              <p style={styles.approvalStatusText}>{'\u2713'} Quote Approved - Proceeding to slot selection</p>
-            </div>
-          )}
-
           <div style={styles.messages}>
             {isLoading ? (
               <div style={styles.loadingState}>
@@ -324,6 +324,12 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
             )}
 
           </div>
+
+          {shouldShowSlotSelectionNotice && (
+            <div style={styles.approvalStatus}>
+              <p style={styles.approvalStatusText}>{'\u2713'} Quote Approved - Proceeding to slot selection</p>
+            </div>
+          )}
 
           {booking.status !== 'Cancelled (Cash)' && (
             <div style={styles.inputArea}>
@@ -416,7 +422,7 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
                   </button>
                 )}
 
-                {booking.quoteApproved && !booking.selectedSlot && !isServiceStopped && (
+                {shouldShowSlotSelectionNotice && (
                   <button
                     style={{ ...styles.actionBtn, width: '100%' }}
                     onClick={onOpenSlotSelection}
