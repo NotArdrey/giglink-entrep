@@ -325,6 +325,22 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
 
           </div>
 
+          {!booking.quoteApproved && !isClosedConversation && !isRefundConversation && (
+            <div style={styles.quoteActionBar}>
+              <div style={styles.actionContent}>
+                <p style={styles.actionPrompt}>Do you want to proceed with this quote?</p>
+                <button
+                  style={styles.approveBtn}
+                  onMouseEnter={() => setIsApproveHovered(true)}
+                  onMouseLeave={() => setIsApproveHovered(false)}
+                  onClick={handleApproveQuoteClick}
+                >
+                  Approve Quote & Select Slot
+                </button>
+              </div>
+            </div>
+          )}
+
           {shouldShowSlotSelectionNotice && (
             <div style={styles.approvalStatus}>
               <p style={styles.approvalStatusText}>{'\u2713'} Quote Approved - Proceeding to slot selection</p>
@@ -411,17 +427,6 @@ const ChatWindow = ({ booking, onApproveQuote, onStopServiceAccepted, bookings, 
               <p style={styles.actionSectionTitle}>Conversation Actions</p>
 
               <div style={styles.actionStack}>
-                {!booking.quoteApproved && !isServiceStopped && (
-                  <button
-                    style={{ ...styles.actionBtn, width: '100%' }}
-                    onMouseEnter={() => setIsApproveHovered(true)}
-                    onMouseLeave={() => setIsApproveHovered(false)}
-                    onClick={handleApproveQuoteClick}
-                  >
-                    Approve Quote & Select Slot
-                  </button>
-                )}
-
                 {shouldShowSlotSelectionNotice && (
                   <button
                     style={{ ...styles.actionBtn, width: '100%' }}
