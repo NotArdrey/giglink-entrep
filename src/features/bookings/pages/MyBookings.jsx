@@ -730,10 +730,28 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     setBookings((prevBookings) =>
       prevBookings.map((booking) =>
         booking.id === bookingId
-          ? { ...booking, quoteApproved: true, status: 'Awaiting Slot Selection' }
+          ? { ...booking, quoteApproved: true, status: 'Awaiting Slot Selection', quoteRejectionReason: null }
           : booking
       )
     );
+    setUiState('chat');
+  };
+
+  const handleRejectQuote = (bookingId, reason) => {
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              quoteApproved: false,
+              status: 'Quote Rejected',
+              quoteRejectionReason: reason,
+            }
+          : booking
+      )
+    );
+
+    pushHeaderNotification('Quote Rejected', 'Your reason was sent to the worker so they can review or revise the quote.');
     setUiState('chat');
   };
 
@@ -1048,6 +1066,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
     'Cash Verification Denied': { background: '#fee2e2', color: '#b91c1c' },
     'Cancelled (Cash)': { background: '#fee2e2', color: '#991b1b' },
     'Refund Processing': { background: '#e0e7ff', color: '#3730a3' },
+    'Quote Rejected': { background: '#fee2e2', color: '#991b1b' },
     Refunded: { background: '#dcfce7', color: '#166534' },
   };
 
@@ -1105,6 +1124,7 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
           selectedBookingId={selectedBookingId}
           onSelectBooking={handleOpenChat}
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
+          onRejectQuote={(reason) => handleRejectQuote(currentBooking.id, reason)}
           onOpenSlotSelection={handleOpenSlotSelection}
           onOpenPaymentSelection={() => setUiState('payment')}
           onRequestRefund={(reason) => handleRequestRefund(currentBooking.id, reason)}
