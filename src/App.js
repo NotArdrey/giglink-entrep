@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { LandingPage, SellerOnboarding } from './features';
-import { LoadingScreen } from './shared/components';
+import { LoadingScreen, SuccessNotification, ErrorNotification } from './shared/components';
 import { useAppNavigation, renderView } from './features/navigation';
 
 function App() {
@@ -52,7 +52,21 @@ function App() {
 
   // Show landing page if not logged in
   if (!navigationContext.isLoggedIn) {
-    return <LandingPage onLogin={navigationContext.handleLogin} />;
+    return (
+      <>
+        <LandingPage onLogin={navigationContext.handleLogin} />
+        <SuccessNotification
+          message={navigationContext.successNotification.message}
+          isVisible={navigationContext.successNotification.isVisible}
+          onClose={navigationContext.hideSuccessNotification}
+        />
+        <ErrorNotification
+          message={navigationContext.errorNotification.message}
+          isVisible={navigationContext.errorNotification.isVisible}
+          onClose={navigationContext.hideErrorNotification}
+        />
+      </>
+    );
   }
 
   // Onboarding overlay
@@ -71,6 +85,16 @@ function App() {
     <>
       {content}
       {sellerOnboardingOverlay}
+      <SuccessNotification
+        message={navigationContext.successNotification.message}
+        isVisible={navigationContext.successNotification.isVisible}
+        onClose={navigationContext.hideSuccessNotification}
+      />
+      <ErrorNotification
+        message={navigationContext.errorNotification.message}
+        isVisible={navigationContext.errorNotification.isVisible}
+        onClose={navigationContext.hideErrorNotification}
+      />
     </>
   );
 

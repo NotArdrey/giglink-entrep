@@ -42,6 +42,8 @@ export const useAppNavigation = () => {
   const [isSellerOnboardingOpen, setIsSellerOnboardingOpen] = useState(false);
   const [resetToken, setResetToken] = useState(null);
   const [resetEmail, setResetEmail] = useState(null);
+  const [successNotification, setSuccessNotification] = useState({ isVisible: false, message: '' });
+  const [errorNotification, setErrorNotification] = useState({ isVisible: false, message: '' });
 
   const hydrateAuthenticatedUser = async (user, source = {}) => {
     if (!user) return null;
@@ -139,6 +141,22 @@ export const useAppNavigation = () => {
   }, []);
 
   // Handler functions
+  const showSuccessNotification = (message) => {
+    setSuccessNotification({ isVisible: true, message });
+  };
+
+  const hideSuccessNotification = () => {
+    setSuccessNotification({ isVisible: false, message: '' });
+  };
+
+  const showErrorNotification = (message) => {
+    setErrorNotification({ isVisible: true, message });
+  };
+
+  const hideErrorNotification = () => {
+    setErrorNotification({ isVisible: false, message: '' });
+  };
+
   const handleLogin = async (formData, isLoginMode = true) => {
     setIsLoadingTransition(true);
 
@@ -149,11 +167,13 @@ export const useAppNavigation = () => {
           password: formData.password,
         });
         const profile = await syncAuthenticatedUserProfile(user);
-        return await hydrateAuthenticatedUser(user, profile);
+        const result = await hydrateAuthenticatedUser(user, profile);
+        showSuccessNotification('Welcome back! You have successfully logged in.');
+        return result;
       }
 
       const result = await signUpWithEmail(formData);
-      return await hydrateAuthenticatedUser(result.user, result.profile || {
+      await hydrateAuthenticatedUser(result.user, result.profile || {
         userId: result.user.id,
         fullName: formData.name,
         email: formData.email,
@@ -165,9 +185,12 @@ export const useAppNavigation = () => {
         },
         isWorker: false,
       });
+      showSuccessNotification('Account created successfully! Welcome to GigLink.');
+      return result.user;
     } catch (error) {
       setIsLoggedIn(false);
       setAuthUser(null);
+      showErrorNotification(error?.message || 'Authentication failed. Please try again.');
       throw error;
     } finally {
       setIsLoadingTransition(false);
@@ -321,6 +344,8 @@ export const useAppNavigation = () => {
     isSellerOnboardingOpen,
     resetToken,
     resetEmail,
+    successNotification,
+    errorNotification,
 
     // Handlers
     handleLogin,
@@ -341,5 +366,9 @@ export const useAppNavigation = () => {
     handleOpenForgotPassword,
     handleOpenResetPassword,
     handleBackToLogin,
+    showSuccessNotification,
+    hideSuccessNotification,
+    showErrorNotification,
+    hideErrorNotification,
   };
 };

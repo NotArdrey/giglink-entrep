@@ -169,6 +169,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
     try {
       setIsSubmitting(true);
       await onSubmit(formData, isLoginMode);
+      // Success - reset form and close modal
       setFormData({
         email: '',
         password: '',
@@ -183,6 +184,8 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
       setSelectedCityMunicipalityCode('');
       setCities([]);
       setBarangays([]);
+      // Close the modal after successful authentication
+      onClose();
     } catch (error) {
       setSubmitError(error?.message || 'Unable to complete authentication.');
     } finally {
