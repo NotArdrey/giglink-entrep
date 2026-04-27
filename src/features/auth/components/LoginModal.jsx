@@ -25,6 +25,8 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
   const [loadingBarangays, setLoadingBarangays] = useState(false);
   const [apiError, setApiError] = useState('');
   const [hoveredButton, setHoveredButton] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (isOpen && !isLoginMode) {
@@ -145,28 +147,47 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
     }));
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!isLoginMode && (!formData.province || !formData.city || !formData.barangay || !formData.address)) {
-      setApiError('Please fill in all location fields');
+    setSubmitError('');
+
+    if (!isLoginMode && formData.password !== formData.confirmPassword) {
+      setSubmitError('Password and confirm password do not match.');
       return;
     }
 
-    onSubmit(formData);
-    setFormData({
-      email: '',
-      password: '',
-      name: '',
-      confirmPassword: '',
-      province: '',
-      city: '',
-      barangay: '',
-      address: '',
-    });
-    setSelectedProvinceCode('');
-    setSelectedCityMunicipalityCode('');
-    setCities([]);
-    setBarangays([]);
+    if (!isLoginMode && (!formData.province || !formData.city || !formData.barangay || !formData.address)) {
+      setSubmitError('Please fill in all location fields.');
+      return;
+    }
+
+    if (typeof onSubmit !== 'function') {
+      setSubmitError('Authentication is not available yet.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData, isLoginMode);
+      setFormData({
+        email: '',
+        password: '',
+        name: '',
+        confirmPassword: '',
+        province: '',
+        city: '',
+        barangay: '',
+        address: '',
+      });
+      setSelectedProvinceCode('');
+      setSelectedCityMunicipalityCode('');
+      setCities([]);
+      setBarangays([]);
+    } catch (error) {
+      setSubmitError(error?.message || 'Unable to complete authentication.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleMode = () => {
@@ -306,6 +327,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
     <div style={styles.overlay}>
       <div style={styles.content}>
         <button
+          type="button"
           onClick={onClose}
           style={styles.closeButton}
           aria-label="Close modal"
@@ -387,13 +409,19 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
             </>
           )}
 
+          {submitError && <div style={styles.errorBox}>{submitError}</div>}
+
           <button
             type="submit"
-            style={styles.submit}
+            style={{
+              ...styles.submit,
+              ...(isSubmitting ? { backgroundColor: '#94a3b8', cursor: 'not-allowed' } : {}),
+            }}
             onMouseEnter={() => setHoveredButton('submit')}
             onMouseLeave={() => setHoveredButton('')}
+            disabled={isSubmitting}
           >
-            {isLoginMode ? 'Login' : 'Create Account'}
+            {isSubmitting ? (isLoginMode ? 'Logging in...' : 'Creating Account...') : (isLoginMode ? 'Login' : 'Create Account')}
           </button>
         </form>
 
@@ -401,6 +429,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
           <p style={styles.toggleText}>
             {isLoginMode ? "Don't have an account? " : 'Already have an account? '}
             <button
+              type="button"
               onClick={toggleMode}
               style={styles.toggleLink}
               onMouseEnter={() => setHoveredButton('toggle')}
@@ -412,6 +441,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
           {isLoginMode && (
             <p style={styles.toggleText}>
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   onForgotPassword?.();

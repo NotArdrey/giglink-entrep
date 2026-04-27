@@ -487,9 +487,8 @@ function LandingPage({ onLogin, onForgotPassword }) {
     setIsLoginModalOpen(false);
   };
 
-  const handleLoginSubmit = (formData) => {
-    setIsLoginModalOpen(false);
-    onLogin && onLogin(formData);
+  const handleLoginSubmit = (formData, isLoginMode) => {
+    return onLogin && onLogin(formData, isLoginMode);
   };
 
   const handleForgotPasswordClick = () => {

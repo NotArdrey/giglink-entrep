@@ -1,4 +1,12 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../../shared/services/supabaseClient';
+import {
+  signInWithEmail,
+  signUpWithEmail,
+  signOutUser,
+  syncAuthenticatedUserProfile,
+  syncWorkerSetup,
+} from '../../shared/services/gigadvanceAuth';
 
 const getSystemTheme = () => {
   if (typeof window === 'undefined' || !window.matchMedia) {
@@ -17,7 +25,8 @@ const getStoredThemeMode = () => {
 export const useAppNavigation = () => {
   // State management
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoadingTransition, setIsLoadingTransition] = useState(false);
+  const [isLoadingTransition, setIsLoadingTransition] = useState(true);
+  const [authUser, setAuthUser] = useState(null);
   const [currentView, setCurrentView] = useState('client-dashboard');
   const [previousView, setPreviousView] = useState('client-dashboard');
   const [sellerProfile, setSellerProfile] = useState(null);
@@ -33,6 +42,21 @@ export const useAppNavigation = () => {
   const [isSellerOnboardingOpen, setIsSellerOnboardingOpen] = useState(false);
   const [resetToken, setResetToken] = useState(null);
   const [resetEmail, setResetEmail] = useState(null);
+
+  const hydrateAuthenticatedUser = async (user, source = {}) => {
+    if (!user) return null;
+
+    const profile = source && source.userId
+      ? source
+      : await syncAuthenticatedUserProfile(user, source);
+
+    setAuthUser(user);
+    setSellerProfile(profile);
+    setUserLocation(profile?.location || null);
+    setIsLoggedIn(true);
+    setCurrentView('client-dashboard');
+    return profile;
+  };
 
   // Theme effect
   useEffect(() => {
@@ -72,42 +96,113 @@ export const useAppNavigation = () => {
     document.documentElement.lang = appLanguage === 'fil' ? 'fil' : 'en';
   }, [appLanguage]);
 
+  // Authentication bootstrap effect
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        const sessionUser = data.session?.user || null;
+        if (!isMounted) return;
+
+        if (sessionUser) {
+          const profile = await syncAuthenticatedUserProfile(sessionUser);
+
+          if (!isMounted) return;
+          setAuthUser(sessionUser);
+          setSellerProfile(profile);
+          setUserLocation(profile?.location || null);
+          setIsLoggedIn(true);
+          setCurrentView('client-dashboard');
+        }
+      } catch (error) {
+        console.error('Unable to restore Supabase session:', error);
+        if (isMounted) {
+          setIsLoggedIn(false);
+          setAuthUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingTransition(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Handler functions
-  const handleLogin = (formData) => {
+  const handleLogin = async (formData, isLoginMode = true) => {
     setIsLoadingTransition(true);
 
-    if (formData && formData.province) {
-      setUserLocation({
-        province: formData.province,
-        city: formData.city,
-        barangay: formData.barangay,
-        address: formData.address,
-      });
-    }
+    try {
+      if (isLoginMode) {
+        const user = await signInWithEmail({
+          email: formData.email,
+          password: formData.password,
+        });
+        const profile = await syncAuthenticatedUserProfile(user);
+        return await hydrateAuthenticatedUser(user, profile);
+      }
 
-    setTimeout(() => {
-      setIsLoggedIn(true);
-      setCurrentView('client-dashboard');
+      const result = await signUpWithEmail(formData);
+      return await hydrateAuthenticatedUser(result.user, result.profile || {
+        userId: result.user.id,
+        fullName: formData.name,
+        email: formData.email,
+        location: {
+          province: formData.province,
+          city: formData.city,
+          barangay: formData.barangay,
+          address: formData.address,
+        },
+        isWorker: false,
+      });
+    } catch (error) {
+      setIsLoggedIn(false);
+      setAuthUser(null);
+      throw error;
+    } finally {
       setIsLoadingTransition(false);
-    }, 1500);
+    }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsLoadingTransition(true);
 
-    setTimeout(() => {
+    try {
+      await signOutUser();
+    } catch (error) {
+      console.error('Supabase sign out failed:', error);
+    } finally {
       setIsLoggedIn(false);
+      setAuthUser(null);
+      setSellerProfile(null);
+      setUserLocation(null);
+      setIsSellerOnboardingOpen(false);
       setCurrentView('client-dashboard');
       setIsLoadingTransition(false);
-    }, 1500);
+    }
   };
 
   const handleOpenSellerOnboarding = () => {
     setIsSellerOnboardingOpen(true);
   };
 
-  const handleOnboardingComplete = (profileData, destination = 'my-work') => {
-    setSellerProfile(profileData);
+  const handleOnboardingComplete = async (profileData, destination = 'my-work') => {
+    const userId = authUser?.id || sellerProfile?.userId;
+    if (!userId) return;
+
+    const mergedProfile = await syncWorkerSetup(userId, profileData);
+    setSellerProfile(mergedProfile);
+    setUserLocation(mergedProfile?.location || null);
     setIsSellerOnboardingOpen(false);
     if (destination === 'home') {
       setCurrentView('client-dashboard');
@@ -120,10 +215,32 @@ export const useAppNavigation = () => {
     setIsSellerOnboardingOpen(false);
   };
 
-  const handleProfileUpdate = (updatedProfileFields) => {
+  const handleProfileUpdate = async (updatedProfileFields) => {
+    const currentUser = authUser || {
+      id: sellerProfile?.userId,
+      email: sellerProfile?.email,
+      user_metadata: {},
+    };
+
+    if (!currentUser?.id) return;
+
+    const mergedProfile = await syncAuthenticatedUserProfile(currentUser, {
+      ...sellerProfile,
+      ...updatedProfileFields,
+      name: updatedProfileFields.fullName || sellerProfile?.fullName,
+    });
+
     setSellerProfile((prev) => ({
       ...(prev || {}),
+      ...(mergedProfile || {}),
       ...updatedProfileFields,
+    }));
+    setUserLocation((prev) => ({
+      ...(prev || {}),
+      province: updatedProfileFields.province ?? prev?.province ?? sellerProfile?.province ?? '',
+      city: updatedProfileFields.city ?? prev?.city ?? sellerProfile?.city ?? '',
+      barangay: updatedProfileFields.barangay ?? prev?.barangay ?? sellerProfile?.barangay ?? '',
+      address: updatedProfileFields.address ?? prev?.address ?? sellerProfile?.address ?? '',
     }));
   };
 
@@ -136,6 +253,11 @@ export const useAppNavigation = () => {
   };
 
   const handleOpenMyWork = () => {
+    if (!sellerProfile?.isWorker) {
+      setIsSellerOnboardingOpen(true);
+      return;
+    }
+
     setCurrentView('my-work');
   };
 
@@ -161,6 +283,7 @@ export const useAppNavigation = () => {
       setThemeMode('system');
       return;
     }
+
     setThemeMode(nextTheme === 'dark' ? 'dark' : 'light');
   };
 

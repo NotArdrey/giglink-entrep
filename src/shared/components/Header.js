@@ -348,7 +348,9 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
     backgroundColor: hoveredKey === key ? '#f1f5f9' : '#ffffff',
   });
 
-  const primaryActionTheme = sellerProfile
+  const isWorkerAccount = Boolean(sellerProfile?.isWorker);
+
+  const primaryActionTheme = isWorkerAccount
     ? { key: 'my-work', base: '#2563eb', hover: '#1d4ed8' }
     : { key: 'become-seller', base: '#27ae60', hover: '#219653' };
 
@@ -386,7 +388,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
         </div>}
 
         {isDesktop && <div style={styles.actions}>
-          {sellerProfile ? (
+          {isWorkerAccount ? (
             <button
               style={primaryActionStyle}
               onMouseEnter={() => setHoveredKey('my-work')}
@@ -509,7 +511,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
           </div>
 
           <div style={styles.mobileActions}>
-            {sellerProfile ? (
+            {isWorkerAccount ? (
               <button
                 style={{ ...styles.primaryButton, backgroundColor: primaryActionTheme.base }}
                 onClick={() => {
