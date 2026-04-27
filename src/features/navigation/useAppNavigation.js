@@ -210,16 +210,17 @@ export const useAppNavigation = () => {
   };
 
   const handleLogin = async (formData, isLoginMode = true) => {
-    setIsLoadingTransition(true);
-
     try {
       if (isLoginMode) {
         const user = await signInWithEmail({
           email: formData.email,
           password: formData.password,
         });
+        // Only show the loading screen AFTER we know auth succeeded
+        setIsLoadingTransition(true);
         const result = await hydrateAuthenticatedUser(user);
         showSuccessNotification('Welcome back! You have successfully logged in.');
+        setIsLoadingTransition(false);
         return result;
       }
 
@@ -230,6 +231,8 @@ export const useAppNavigation = () => {
         return result.user;
       }
 
+      // Only show the loading screen AFTER we know signup succeeded
+      setIsLoadingTransition(true);
       await hydrateAuthenticatedUser(result.user, result.profile || {
         userId: result.user.id,
         fullName: formData.name,
@@ -243,14 +246,13 @@ export const useAppNavigation = () => {
         isWorker: false,
       });
       showSuccessNotification('Account created successfully! Welcome to GigLink.');
+      setIsLoadingTransition(false);
       return result.user;
     } catch (error) {
+      setIsLoadingTransition(false);
       setIsLoggedIn(false);
       setAuthUser(null);
-      showErrorNotification(error?.message || 'Authentication failed. Please try again.');
       throw error;
-    } finally {
-      setIsLoadingTransition(false);
     }
   };
 
