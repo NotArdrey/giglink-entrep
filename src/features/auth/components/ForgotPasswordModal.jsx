@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
+function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -158,11 +158,19 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
+    try {
+      setIsLoading(true);
+      if (typeof onSubmit !== 'function') {
+        throw new Error('Password reset is not available right now.');
+      }
+
+      await onSubmit(email);
       setIsLoading(false);
       setIsSubmitted(true);
-    }, 1500);
+    } catch (submitError) {
+      setIsLoading(false);
+      setError(submitError?.message || 'Unable to send password reset link.');
+    }
   };
 
   if (!isOpen) return null;
@@ -190,23 +198,9 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
             <div style={styles.successMessage}>
               <div style={styles.successTitle}>✓ Success!</div>
               <div style={styles.successText}>
-                We've sent a password reset link to <strong>{email}</strong>. Click the button below to reset your password.
+                We've sent a password reset link to <strong>{email}</strong>. Open the link from your email to create a new password.
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                onResetPassword(
-                  `mock_${Date.now()}_${email.replace(/[^a-zA-Z0-9]/g, '')}`,
-                  email
-                );
-              }}
-              onMouseEnter={() => setHoveredButton('submit')}
-              onMouseLeave={() => setHoveredButton('')}
-              style={styles.button}
-            >
-              Reset Password
-            </button>
 
             <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginTop: '1rem', textAlign: 'center' }}>
               Didn't receive the email? Check your spam folder or{' '}
@@ -254,7 +248,13 @@ function ForgotPasswordModal({ isOpen, onClose, onResetPassword }) {
         )}
 
         <button
-          onClick={onClose}
+          onClick={() => {
+            if (typeof onBackToLogin === 'function') {
+              onBackToLogin();
+              return;
+            }
+            onClose();
+          }}
           onMouseEnter={() => setHoveredButton('secondary')}
           onMouseLeave={() => setHoveredButton('')}
           style={hoveredButton === 'secondary' ? { ...styles.secondaryButton, ...styles.secondaryButtonHover } : styles.secondaryButton}

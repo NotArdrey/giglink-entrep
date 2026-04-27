@@ -5,6 +5,8 @@ const getCleanString = (value) => {
   return value.trim();
 };
 
+const normalizeEmail = (value) => getCleanString(value).toLowerCase();
+
 const getNullableString = (value) => {
   const cleanValue = getCleanString(value);
   return cleanValue.length > 0 ? cleanValue : null;
@@ -14,6 +16,14 @@ const getNullableNumber = (value) => {
   if (value === null || value === undefined || value === '') return null;
   const parsedValue = Number(value);
   return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
+const toReadableDatabaseSetupError = (error) => {
+  const message = String(error?.message || '');
+  if (/Could not find the table 'public\.profiles' in the schema cache/i.test(message)) {
+    return new Error('Database setup incomplete: table public.profiles is not available to the API yet. Run supabase/schema.sql in the same project and ensure schema "public" is exposed in API settings.');
+  }
+  return error;
 };
 
 const getTimestamp = () => new Date().toISOString();
@@ -115,6 +125,7 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
   };
 };
 
+
 export const fetchUserProfileBundle = async (userId) => {
   if (!userId) return null;
 
@@ -124,7 +135,7 @@ export const fetchUserProfileBundle = async (userId) => {
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (profileError) throw profileError;
+  if (profileError) throw toReadableDatabaseSetupError(profileError);
 
   const { data: workerRow, error: workerError } = await supabase
     .from('worker_profiles')
@@ -132,7 +143,7 @@ export const fetchUserProfileBundle = async (userId) => {
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (workerError) throw workerError;
+  if (workerError) throw toReadableDatabaseSetupError(workerError);
 
   return mapAppProfile(profileRow, workerRow);
 };
@@ -146,14 +157,14 @@ export const upsertClientProfile = async (user, source = {}) => {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (existingError) throw existingError;
+  if (existingError) throw toReadableDatabaseSetupError(existingError);
 
   const payload = buildProfilePayload(user, source, existingProfile);
   const { error } = await supabase
     .from('profiles')
     .upsert(payload, { onConflict: 'user_id' });
 
-  if (error) throw error;
+  if (error) throw toReadableDatabaseSetupError(error);
 
   return fetchUserProfileBundle(user.id);
 };
@@ -166,7 +177,7 @@ export const upsertWorkerProfile = async (userId, source = {}) => {
     .from('worker_profiles')
     .upsert(payload, { onConflict: 'user_id' });
 
-  if (workerError) throw workerError;
+  if (workerError) throw toReadableDatabaseSetupError(workerError);
 
   const { error: profileError } = await supabase
     .from('profiles')
@@ -179,21 +190,41 @@ export const upsertWorkerProfile = async (userId, source = {}) => {
       { onConflict: 'user_id' }
     );
 
-  if (profileError) throw profileError;
+  if (profileError) throw toReadableDatabaseSetupError(profileError);
 
   return fetchUserProfileBundle(userId);
 };
 
 export const signInWithEmail = async ({ email, password }) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  const normalizedEmail = normalizeEmail(email);
+  const cleanPassword = typeof password === 'string' ? password : '';
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: normalizedEmail,
+    password: cleanPassword,
+  });
+
+  if (error) {
+    const message = String(error?.message || '');
+    if (/email not confirmed/i.test(message)) {
+      throw new Error('Email not verified yet. Please verify your email first, then log in.');
+    }
+    if (/invalid login credentials/i.test(message)) {
+      throw new Error('Invalid login credentials. Check your email/password. If you just signed up, verify your email first.');
+    }
+    throw error;
+  }
+
   return data.session?.user || data.user || null;
 };
 
 export const signUpWithEmail = async (formData = {}) => {
+  const normalizedEmail = normalizeEmail(formData.email);
+  const cleanPassword = typeof formData.password === 'string' ? formData.password : '';
+
   const { data, error } = await supabase.auth.signUp({
-    email: formData.email,
-    password: formData.password,
+    email: normalizedEmail,
+    password: cleanPassword,
     options: {
       data: {
         full_name: formData.name || '',
@@ -213,18 +244,50 @@ export const signUpWithEmail = async (formData = {}) => {
   if (error) throw error;
 
   if (!data.session?.user) {
-    throw new Error('Account created. Please check your email to verify your account, then log in.');
+    return {
+      user: data.user || null,
+      profile: null,
+      requiresEmailVerification: true,
+    };
   }
 
   const profile = await upsertClientProfile(data.session.user, formData);
   return {
     user: data.session.user,
     profile,
+    requiresEmailVerification: false,
   };
 };
 
 export const signOutUser = async () => {
   const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+};
+
+export const resendSignupVerificationEmail = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw new Error('Please enter your email address first.');
+  }
+
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: normalizedEmail,
+  });
+
+  if (error) throw error;
+};
+
+export const sendPasswordResetEmail = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    throw new Error('Please enter your email address.');
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+  });
+
   if (error) throw error;
 };
 

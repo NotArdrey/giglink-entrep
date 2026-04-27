@@ -6,6 +6,8 @@ import {
   signOutUser,
   syncAuthenticatedUserProfile,
   syncWorkerSetup,
+  resendSignupVerificationEmail,
+  sendPasswordResetEmail,
 } from '../../shared/services/gigadvanceAuth';
 
 const getSystemTheme = () => {
@@ -20,6 +22,37 @@ const getStoredThemeMode = () => {
   return savedThemeMode === 'light' || savedThemeMode === 'dark' || savedThemeMode === 'system'
     ? savedThemeMode
     : 'system';
+};
+
+const isProfilesTableApiError = (error) => {
+  const message = String(error?.message || '');
+  return /table public\.profiles is not available to the API yet/i.test(message)
+    || /Could not find the table 'public\.profiles' in the schema cache/i.test(message);
+};
+
+const buildAuthOnlyProfile = (user, source = {}) => {
+  const metadata = user?.user_metadata || {};
+  const email = user?.email || source?.email || '';
+  const province = source?.province || metadata?.province || '';
+  const city = source?.city || metadata?.city || '';
+  const barangay = source?.barangay || metadata?.barangay || '';
+  const address = source?.address || metadata?.address || '';
+
+  return {
+    userId: user?.id || null,
+    fullName: source?.name || metadata?.full_name || metadata?.name || (email ? email.split('@')[0] : 'GigLink User'),
+    email,
+    phoneNumber: source?.phoneNumber || metadata?.phone_number || '',
+    profilePhoto: source?.profilePhoto || metadata?.profile_photo || '',
+    bio: source?.bio || metadata?.bio || '',
+    province,
+    city,
+    barangay,
+    address,
+    location: { province, city, barangay, address },
+    isClient: true,
+    isWorker: false,
+  };
 };
 
 export const useAppNavigation = () => {
@@ -48,9 +81,20 @@ export const useAppNavigation = () => {
   const hydrateAuthenticatedUser = async (user, source = {}) => {
     if (!user) return null;
 
-    const profile = source && source.userId
-      ? source
-      : await syncAuthenticatedUserProfile(user, source);
+    let profile = source && source.userId ? source : null;
+    if (!profile) {
+      try {
+        profile = await syncAuthenticatedUserProfile(user, source);
+      } catch (error) {
+        if (!isProfilesTableApiError(error)) {
+          throw error;
+        }
+
+        // Keep login usable even if profile table API is temporarily unavailable.
+        profile = buildAuthOnlyProfile(user, source);
+        showErrorNotification('Logged in with limited profile mode. Database profile table is not reachable yet.');
+      }
+    }
 
     setAuthUser(user);
     setSellerProfile(profile);
@@ -111,14 +155,22 @@ export const useAppNavigation = () => {
         if (!isMounted) return;
 
         if (sessionUser) {
-          const profile = await syncAuthenticatedUserProfile(sessionUser);
+          let profile;
+          try {
+            profile = await syncAuthenticatedUserProfile(sessionUser);
+          } catch (profileError) {
+            if (!isProfilesTableApiError(profileError)) {
+              throw profileError;
+            }
+            profile = buildAuthOnlyProfile(sessionUser);
+          }
 
-          if (!isMounted) return;
           setAuthUser(sessionUser);
           setSellerProfile(profile);
           setUserLocation(profile?.location || null);
           setIsLoggedIn(true);
           setCurrentView('client-dashboard');
+          if (!isMounted) return;
         }
       } catch (error) {
         console.error('Unable to restore Supabase session:', error);
@@ -166,13 +218,18 @@ export const useAppNavigation = () => {
           email: formData.email,
           password: formData.password,
         });
-        const profile = await syncAuthenticatedUserProfile(user);
-        const result = await hydrateAuthenticatedUser(user, profile);
+        const result = await hydrateAuthenticatedUser(user);
         showSuccessNotification('Welcome back! You have successfully logged in.');
         return result;
       }
 
       const result = await signUpWithEmail(formData);
+
+      if (result.requiresEmailVerification) {
+        showSuccessNotification('Account created. Please verify your email first, then log in.');
+        return result.user;
+      }
+
       await hydrateAuthenticatedUser(result.user, result.profile || {
         userId: result.user.id,
         fullName: formData.name,
@@ -318,6 +375,16 @@ export const useAppNavigation = () => {
     setCurrentView('forgot-password');
   };
 
+  const handleResendVerification = async (email) => {
+    await resendSignupVerificationEmail(email);
+    showSuccessNotification('Verification email sent. Please check your inbox.');
+  };
+
+  const handleForgotPasswordSubmit = async (email) => {
+    await sendPasswordResetEmail(email);
+    showSuccessNotification('Password reset link sent. Please check your inbox.');
+  };
+
   const handleOpenResetPassword = (token, email) => {
     setResetToken(token);
     setResetEmail(email);
@@ -364,6 +431,8 @@ export const useAppNavigation = () => {
     handleThemeChange,
     handleLanguageChange,
     handleOpenForgotPassword,
+    handleResendVerification,
+    handleForgotPasswordSubmit,
     handleOpenResetPassword,
     handleBackToLogin,
     showSuccessNotification,

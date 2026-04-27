@@ -54,7 +54,11 @@ function App() {
   if (!navigationContext.isLoggedIn) {
     return (
       <>
-        <LandingPage onLogin={navigationContext.handleLogin} />
+        <LandingPage
+          onLogin={navigationContext.handleLogin}
+          onResendVerification={navigationContext.handleResendVerification}
+          onForgotPasswordSubmit={navigationContext.handleForgotPasswordSubmit}
+        />
         <SuccessNotification
           message={navigationContext.successNotification.message}
           isVisible={navigationContext.successNotification.isVisible}

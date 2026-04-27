@@ -3,7 +3,6 @@ import Navigation from '../../../shared/components/Navigation';
 import HeroSlider from '../components/HeroSlider';
 import LoginModal from '../../auth/components/LoginModal';
 import ForgotPasswordModal from '../../auth/components/ForgotPasswordModal';
-import ResetPasswordModal from '../../auth/components/ResetPasswordModal';
 
 const LANDING_STATS = [
   { id: 1, value: '80+', label: 'Active service categories' },
@@ -453,12 +452,9 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
   );
 }
 
-function LandingPage({ onLogin, onForgotPassword }) {
+function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
-  const [resetToken, setResetToken] = useState(null);
-  const [resetEmail, setResetEmail] = useState(null);
   const [socialLinkHovered, setSocialLinkHovered] = useState(null);
   const [footerLinkHovered, setFooterLinkHovered] = useState(null);
   const [isMobile, setIsMobile] = useState(() =>
@@ -496,18 +492,8 @@ function LandingPage({ onLogin, onForgotPassword }) {
     setIsForgotPasswordModalOpen(true);
   };
 
-  const handleOpenResetPassword = (token, email) => {
-    setIsForgotPasswordModalOpen(false);
-    setResetToken(token);
-    setResetEmail(email);
-    setIsResetPasswordModalOpen(true);
-  };
-
   const handleBackToLogin = () => {
-    setIsResetPasswordModalOpen(false);
     setIsForgotPasswordModalOpen(false);
-    setResetToken(null);
-    setResetEmail(null);
     setIsLoginModalOpen(true);
   };
 
@@ -732,20 +718,14 @@ function LandingPage({ onLogin, onForgotPassword }) {
         onClose={handleCloseModal}
         onSubmit={handleLoginSubmit}
         onForgotPassword={handleForgotPasswordClick}
+        onResendVerification={onResendVerification}
       />
       
       <ForgotPasswordModal
         isOpen={isForgotPasswordModalOpen}
         onClose={() => setIsForgotPasswordModalOpen(false)}
-        onResetPassword={handleOpenResetPassword}
-      />
-      
-      <ResetPasswordModal
-        isOpen={isResetPasswordModalOpen}
-        token={resetToken}
-        email={resetEmail}
-        onClose={() => setIsResetPasswordModalOpen(false)}
-        onBack={handleBackToLogin}
+        onBackToLogin={handleBackToLogin}
+        onSubmit={onForgotPasswordSubmit}
       />
     </div>
   );

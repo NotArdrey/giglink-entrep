@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
-function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
+function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerification }) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -27,6 +27,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
   const [hoveredButton, setHoveredButton] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   useEffect(() => {
     if (isOpen && !isLoginMode) {
@@ -197,6 +198,28 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
     setIsLoginMode((prev) => !prev);
   };
 
+  const handleResendVerification = async () => {
+    const email = formData.email?.trim();
+    if (!email) {
+      setSubmitError('Enter your email first, then resend verification.');
+      return;
+    }
+
+    if (typeof onResendVerification !== 'function') {
+      setSubmitError('Resend verification is not available right now.');
+      return;
+    }
+
+    try {
+      setIsResendingVerification(true);
+      await onResendVerification(email);
+    } catch (error) {
+      setSubmitError(error?.message || 'Unable to resend verification email.');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const styles = {
@@ -295,15 +318,15 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
       color: '#4b5563',
       margin: 0,
     },
-    toggleLink: {
+    toggleLink: (key) => ({
       background: 'none',
       border: 'none',
-      color: hoveredButton === 'toggle' ? '#1d4ed8' : '#2563eb',
+      color: hoveredButton === key ? '#1d4ed8' : '#2563eb',
       fontWeight: 600,
       cursor: 'pointer',
-      textDecoration: hoveredButton === 'toggle' ? 'underline' : 'none',
+      textDecoration: hoveredButton === key ? 'underline' : 'none',
       transition: 'color 0.3s ease',
-    },
+    }),
     locationHeader: {
       marginTop: '20px',
       paddingTop: '20px',
@@ -434,7 +457,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
             <button
               type="button"
               onClick={toggleMode}
-              style={styles.toggleLink}
+              style={styles.toggleLink('toggle')}
               onMouseEnter={() => setHoveredButton('toggle')}
               onMouseLeave={() => setHoveredButton('')}
             >
@@ -449,11 +472,25 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword }) {
                   e.preventDefault();
                   onForgotPassword?.();
                 }}
-                style={styles.toggleLink}
+                style={styles.toggleLink('forgot')}
                 onMouseEnter={() => setHoveredButton('forgot')}
                 onMouseLeave={() => setHoveredButton('')}
               >
                 Forgot Password?
+              </button>
+            </p>
+          )}
+          {isLoginMode && /verify your email|email not verified|email not confirmed/i.test(submitError || '') && (
+            <p style={styles.toggleText}>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                style={styles.toggleLink('resend')}
+                onMouseEnter={() => setHoveredButton('resend')}
+                onMouseLeave={() => setHoveredButton('')}
+                disabled={isResendingVerification}
+              >
+                {isResendingVerification ? 'Resending verification...' : 'Resend verification email'}
               </button>
             </p>
           )}
