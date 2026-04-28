@@ -9,6 +9,7 @@ import {
   resendSignupVerificationEmail,
   sendPasswordResetEmail,
 } from '../../shared/services/gigadvanceAuth';
+import { getThemeTokens } from '../../shared/styles/themeTokens';
 
 const getSystemTheme = () => {
   if (typeof window === 'undefined' || !window.matchMedia) {
@@ -28,6 +29,18 @@ const isProfilesTableApiError = (error) => {
   const message = String(error?.message || '');
   return /table public\.profiles is not available to the API yet/i.test(message)
     || /Could not find the table 'public\.profiles' in the schema cache/i.test(message);
+};
+
+const toErrorMessage = (error, fallbackMessage) => {
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return fallbackMessage;
 };
 
 const buildAuthOnlyProfile = (user, source = {}) => {
@@ -64,6 +77,7 @@ export const useAppNavigation = () => {
   const [previousView, setPreviousView] = useState('client-dashboard');
   const [sellerProfile, setSellerProfile] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [currentSearchQuery, setCurrentSearchQuery] = useState('');
   const [themeMode, setThemeMode] = useState(() => getStoredThemeMode());
   const [appTheme, setAppTheme] = useState(() => {
     const initialMode = getStoredThemeMode();
@@ -132,8 +146,46 @@ export const useAppNavigation = () => {
   // Dark theme class effect
   useEffect(() => {
     const isDarkTheme = appTheme === 'dark';
+    const tokens = getThemeTokens(appTheme);
+
     document.body.classList.toggle('app-theme-dark', isDarkTheme);
     document.body.classList.toggle('app-theme-light', !isDarkTheme);
+    document.documentElement.setAttribute('data-theme', appTheme);
+    document.documentElement.style.colorScheme = isDarkTheme ? 'dark' : 'light';
+
+    const cssVars = {
+      '--giglink-page-bg': tokens.pageBg,
+      '--giglink-page-bg-alt': tokens.pageBgAlt,
+      '--giglink-surface': tokens.surface,
+      '--giglink-surface-alt': tokens.surfaceAlt,
+      '--giglink-surface-soft': tokens.surfaceSoft,
+      '--giglink-border': tokens.border,
+      '--giglink-text-primary': tokens.textPrimary,
+      '--giglink-text-secondary': tokens.textSecondary,
+      '--giglink-text-muted': tokens.textMuted,
+      '--giglink-input-bg': tokens.inputBg,
+      '--giglink-input-border': tokens.inputBorder,
+      '--giglink-input-text': tokens.inputText,
+      '--giglink-accent': tokens.accent,
+      '--giglink-accent-soft': tokens.accentSoft,
+      '--giglink-shadow': tokens.shadow,
+      '--giglink-shadow-soft': tokens.shadowSoft,
+      '--giglink-nav-bg': tokens.navBg,
+      '--giglink-nav-border': tokens.navBorder,
+      '--giglink-badge-bg': tokens.badgeBg,
+      '--giglink-badge-text': tokens.badgeText,
+      '--giglink-success-bg': tokens.successBg,
+      '--giglink-success-text': tokens.successText,
+      '--giglink-success-border': tokens.successBorder,
+      '--giglink-danger': tokens.danger,
+    };
+
+    Object.entries(cssVars).forEach(([key, value]) => {
+      document.documentElement.style.setProperty(key, value);
+    });
+
+    document.body.style.backgroundColor = tokens.pageBg;
+    document.body.style.color = tokens.textPrimary;
   }, [appTheme]);
 
   // Language effect
@@ -202,7 +254,10 @@ export const useAppNavigation = () => {
   };
 
   const showErrorNotification = (message) => {
-    setErrorNotification({ isVisible: true, message });
+    setErrorNotification({
+      isVisible: true,
+      message: toErrorMessage(message, 'Something went wrong. Please try again.'),
+    });
   };
 
   const hideErrorNotification = () => {
@@ -282,15 +337,45 @@ export const useAppNavigation = () => {
     const userId = authUser?.id || sellerProfile?.userId;
     if (!userId) return;
 
-    const mergedProfile = await syncWorkerSetup(userId, profileData);
-    setSellerProfile(mergedProfile);
-    setUserLocation(mergedProfile?.location || null);
-    setIsSellerOnboardingOpen(false);
-    if (destination === 'home') {
-      setCurrentView('client-dashboard');
-      return;
+    const resolvedLocation = profileData?.location || userLocation || sellerProfile?.location || {};
+    const profilePayload = {
+      ...profileData,
+      fullName: profileData?.fullName || sellerProfile?.fullName || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || '',
+      email: profileData?.email || authUser?.email || sellerProfile?.email || '',
+      province: profileData?.province || resolvedLocation.province || '',
+      city: profileData?.city || resolvedLocation.city || '',
+      barangay: profileData?.barangay || resolvedLocation.barangay || '',
+      address: profileData?.address || resolvedLocation.address || '',
+      location: resolvedLocation,
+    };
+
+    try {
+      const mergedProfile = await syncWorkerSetup(userId, profilePayload);
+      setSellerProfile(mergedProfile);
+      setUserLocation(mergedProfile?.location || null);
+      setIsSellerOnboardingOpen(false);
+      if (destination === 'home') {
+        setCurrentView('client-dashboard');
+        return;
+      }
+      setCurrentView('my-work');
+    } catch (error) {
+      console.error('Failed to complete seller onboarding:', error);
+      const fallbackProfile = {
+        ...(sellerProfile || {}),
+        ...profilePayload,
+        userId,
+        isWorker: true,
+        location: resolvedLocation || null,
+      };
+      setSellerProfile(fallbackProfile);
+      setUserLocation(fallbackProfile.location);
+      setIsSellerOnboardingOpen(false);
+      setCurrentView(destination === 'home' ? 'client-dashboard' : 'my-work');
+      showErrorNotification(
+        `${toErrorMessage(error, 'Unable to sync seller onboarding right now.')} Continuing in local mode for now.`
+      );
     }
-    setCurrentView('my-work');
   };
 
   const handleCloseSellerOnboarding = () => {
@@ -373,6 +458,12 @@ export const useAppNavigation = () => {
     setAppLanguage(nextLanguage === 'fil' ? 'fil' : 'en');
   };
 
+  const handleSearchChange = (event) => {
+    if (event && event.target) {
+      setCurrentSearchQuery(event.target.value);
+    }
+  };
+
   const handleOpenForgotPassword = () => {
     setCurrentView('forgot-password');
   };
@@ -407,6 +498,7 @@ export const useAppNavigation = () => {
     previousView,
     sellerProfile,
     userLocation,
+    currentSearchQuery,
     themeMode,
     appTheme,
     appLanguage,
@@ -432,6 +524,7 @@ export const useAppNavigation = () => {
     handleBackFromSettings,
     handleThemeChange,
     handleLanguageChange,
+    handleSearchChange,
     handleOpenForgotPassword,
     handleResendVerification,
     handleForgotPasswordSubmit,

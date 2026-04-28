@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react';
 // ============================================================================
 
 // Import shared navigation component
-import Header from '../../../shared/components/Header';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 
 // Import marketplace components
 import ServiceCard from '../../marketplace/components/ServiceCard';
@@ -46,7 +46,7 @@ const getDisplayServiceType = (provider) => {
 };
 
 
-function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
+function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
   // ============================================================================
   // MOCK DATA - Service Provider List (Static for skeleton/demo)
   // ============================================================================
@@ -663,8 +663,9 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
   // ============================================================================
   return (
     <div style={styles.page} id="dashboard-home">
-      {/* NAVIGATION BAR - Sticky header with search and user menu */}
-      <Header
+      {/* NAVIGATION BAR - Dashboard-specific header (Facebook-like) */}
+      <DashboardNavigation
+        appTheme={appTheme}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
         onLogout={onLogout}
@@ -675,7 +676,6 @@ function Dashboard({ onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, 
         onOpenProfile={onOpenProfile}
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
-        searchPlaceholder="Search service (e.g., Math Tutor, Aircon Cleaning, UI Design)"
       />
 
       <main style={styles.main}>

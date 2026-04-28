@@ -1,6 +1,19 @@
 import React, { useEffect, useState } from 'react';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 
 const Settings = ({
+  currentView,
+  searchQuery,
+  onSearchChange,
+  onLogout,
+  onOpenSellerSetup,
+  onOpenMyBookings,
+  sellerProfile,
+  onOpenMyWork,
+  onOpenProfile,
+  onOpenAccountSettings,
+  onOpenSettings,
+  onOpenDashboard,
   onBack,
   appTheme = 'light',
   themeMode = 'system',
@@ -460,18 +473,21 @@ const Settings = ({
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
-        <button
-          style={styles.backBtn}
-          onMouseEnter={() => setIsBackHovered(true)}
-          onMouseLeave={() => setIsBackHovered(false)}
-          onClick={onBack}
-        >
-          {t.backButton}
-        </button>
-        <h1 style={styles.title}>{t.title}</h1>
-        <div style={styles.spacer}></div>
-      </div>
+      <DashboardNavigation
+        appTheme={appTheme}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        onLogout={onLogout}
+        onOpenSellerSetup={onOpenSellerSetup}
+        onOpenMyBookings={onOpenMyBookings}
+        sellerProfile={sellerProfile}
+        onOpenMyWork={onOpenMyWork}
+        onOpenProfile={onOpenProfile}
+        onOpenAccountSettings={onOpenAccountSettings}
+        onOpenSettings={onOpenSettings}
+        onOpenDashboard={onOpenDashboard}
+      />
 
       <main style={styles.main}>
         <div style={styles.card}>

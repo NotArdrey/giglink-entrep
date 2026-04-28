@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Header from '../../../shared/components/Header';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import ChatWindow from '../components/ChatWindow';
 import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
@@ -7,7 +7,7 @@ import PaymentModal from '../components/PaymentModal';
 const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
 const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
 
-const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings }) => {
+const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard }) => {
   // Initialize with first booking selected and go directly to chat
   const [selectedBookingId, setSelectedBookingId] = useState(1);
   const [uiState, setUiState] = useState('chat');
@@ -1103,19 +1103,20 @@ const MyBookings = ({ onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, selle
 
   return (
     <div style={styles.myBookings}>
-      <Header
-        searchQuery=""
-        onSearchChange={() => {}}
+      <DashboardNavigation
+        appTheme={appTheme}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
-        onOpenMyBookings={() => {}}
+        onOpenMyBookings={onOpenMyBookings}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
-        onGoHome={onGoHome}
         onOpenProfile={onOpenProfile}
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
-        externalNotifications={headerNotifications}
+        onOpenDashboard={onOpenDashboard}
       />
       {uiState === 'chat' && (
         <ChatWindow

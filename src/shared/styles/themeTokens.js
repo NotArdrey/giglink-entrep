@@ -1,0 +1,61 @@
+export const getThemeTokens = (appTheme = 'light') => {
+  const isDarkMode = appTheme === 'dark';
+
+  if (isDarkMode) {
+    return {
+      isDarkMode: true,
+      pageBg: '#0f172a',
+      pageBgAlt: '#111827',
+      surface: '#172033',
+      surfaceAlt: '#1f2937',
+      surfaceSoft: '#243044',
+      border: '#334155',
+      textPrimary: '#f8fafc',
+      textSecondary: '#cbd5e1',
+      textMuted: '#94a3b8',
+      inputBg: '#111827',
+      inputBorder: '#334155',
+      inputText: '#f8fafc',
+      accent: '#3b82f6',
+      accentSoft: 'rgba(59, 130, 246, 0.16)',
+      shadow: '0 12px 28px rgba(2, 6, 23, 0.35)',
+      shadowSoft: '0 8px 20px rgba(2, 6, 23, 0.24)',
+      navBg: '#0b1220',
+      navBorder: '#1f2a3d',
+      badgeBg: '#1d4ed8',
+      badgeText: '#eff6ff',
+      successBg: '#052e16',
+      successText: '#86efac',
+      successBorder: '#166534',
+      danger: '#f87171',
+    };
+  }
+
+  return {
+    isDarkMode: false,
+    pageBg: '#f8fafc',
+    pageBgAlt: '#ffffff',
+    surface: '#ffffff',
+    surfaceAlt: '#f8fafc',
+    surfaceSoft: '#eef2ff',
+    border: '#e5e7eb',
+    textPrimary: '#1f2937',
+    textSecondary: '#4b5563',
+    textMuted: '#6b7280',
+    inputBg: '#ffffff',
+    inputBorder: '#d1d5db',
+    inputText: '#111827',
+    accent: '#2563eb',
+    accentSoft: 'rgba(37, 99, 235, 0.10)',
+    shadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
+    shadowSoft: '0 8px 20px rgba(15, 23, 42, 0.06)',
+    navBg: '#ffffff',
+    navBorder: '#e6eef6',
+    badgeBg: '#dbeafe',
+    badgeText: '#1d4ed8',
+    successBg: '#dcfce7',
+    successText: '#166534',
+    successBorder: '#86efac',
+    danger: '#b91c1c',
+  };
+};

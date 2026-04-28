@@ -78,6 +78,56 @@ const buildWorkerProfilePayload = (userId, source = {}) => ({
   updated_at: getTimestamp(),
 });
 
+const ensureWorkerProfileBaseRow = async (userId, source = {}) => {
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from('profiles')
+    .select('full_name, email')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingProfileError) throw toReadableDatabaseSetupError(existingProfileError);
+
+  const existingFullName = getNullableString(existingProfile?.full_name);
+  const existingEmail = getNullableString(existingProfile?.email);
+
+  if (existingFullName && existingEmail) {
+    return;
+  }
+
+  let resolvedEmail = existingEmail || normalizeEmail(source.email || '');
+  if (!resolvedEmail) {
+    const { data: userData, error: authUserError } = await supabase.auth.getUser();
+    if (authUserError) throw authUserError;
+    resolvedEmail = normalizeEmail(userData?.user?.email || '');
+  }
+
+  if (!resolvedEmail) {
+    throw new Error('Unable to complete seller setup because the account email is missing. Please log out and log back in, then try again.');
+  }
+
+  const resolvedFullName =
+    existingFullName
+    || getNullableString(source.fullName || source.name)
+    || resolvedEmail.split('@')[0]
+    || 'GigLink User';
+
+  const { error: profileUpsertError } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        user_id: userId,
+        full_name: resolvedFullName,
+        email: resolvedEmail,
+        is_client: true,
+        is_worker: true,
+        updated_at: getTimestamp(),
+      },
+      { onConflict: 'user_id' }
+    );
+
+  if (profileUpsertError) throw toReadableDatabaseSetupError(profileUpsertError);
+};
+
 const mapLocation = (profileRow) => ({
   province: profileRow?.province || '',
   city: profileRow?.city || '',
@@ -172,6 +222,8 @@ export const upsertClientProfile = async (user, source = {}) => {
 export const upsertWorkerProfile = async (userId, source = {}) => {
   if (!userId) throw new Error('Missing authenticated user.');
 
+  await ensureWorkerProfileBaseRow(userId, source);
+
   const payload = buildWorkerProfilePayload(userId, source);
   const { error: workerError } = await supabase
     .from('worker_profiles')
@@ -181,14 +233,11 @@ export const upsertWorkerProfile = async (userId, source = {}) => {
 
   const { error: profileError } = await supabase
     .from('profiles')
-    .upsert(
-      {
-        user_id: userId,
-        is_worker: true,
-        updated_at: getTimestamp(),
-      },
-      { onConflict: 'user_id' }
-    );
+    .update({
+      is_worker: true,
+      updated_at: getTimestamp(),
+    })
+    .eq('user_id', userId);
 
   if (profileError) throw toReadableDatabaseSetupError(profileError);
 

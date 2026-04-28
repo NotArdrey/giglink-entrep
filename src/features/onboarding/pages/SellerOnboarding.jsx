@@ -219,6 +219,15 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
               <button type="button" style={{ ...styles.toggleButton, ...(formData.pricingModel === 'inquiry' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('pricingModel', 'inquiry')}>Inquiry Based</button>
             </div>
 
+            <p style={styles.fieldLabel}>Rate Basis</p>
+            <div style={styles.toggleGroup}>
+              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-hour' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-hour')}>Per Hour Rate</button>
+              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-day' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-day')}>Per Day Rate</button>
+              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-week' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-week')}>Per Week Rate</button>
+              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-month' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-month')}>Per Month Rate</button>
+              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-project' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-project')}>Per Project Rate</button>
+            </div>
+
             {formData.pricingModel === 'fixed' && (
               <>
                 <label htmlFor="fixedPrice" style={styles.fieldLabel}>{fixedPriceLabel}</label>
@@ -268,15 +277,6 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
             <div style={styles.toggleGroup}>
               <button type="button" style={{ ...styles.toggleButton, ...(formData.bookingMode === 'calendar-only' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('bookingMode', 'calendar-only')}>Calendar Only</button>
               <button type="button" style={{ ...styles.toggleButton, ...(formData.bookingMode === 'with-slots' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('bookingMode', 'with-slots')}>With Slots</button>
-            </div>
-
-            <p style={styles.fieldLabel}>Rate Basis</p>
-            <div style={styles.toggleGroup}>
-              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-hour' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-hour')}>Per Hour Rate</button>
-              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-day' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-day')}>Per Day Rate</button>
-              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-week' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-week')}>Per Week Rate</button>
-              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-month' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-month')}>Per Month Rate</button>
-              <button type="button" style={{ ...styles.toggleButton, ...(formData.rateBasis === 'per-project' ? styles.toggleButtonActive : {}) }} onClick={() => updateField('rateBasis', 'per-project')}>Per Project Rate</button>
             </div>
 
             <p style={styles.setupHint}>

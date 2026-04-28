@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
@@ -14,7 +15,7 @@ const BULACAN_CODE = '031400000';
  * - If mismatch: show red error message.
  * - If match: clear error and show success toast notification.
  */
-function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
+function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onBackToProfile }) {
   const profileName = sellerProfile?.fullName || 'Juan Dela Cruz';
   const initialCityRef = useRef(userLocation?.city || 'Baliwag');
   const initialBarangayRef = useRef(userLocation?.barangay || 'Sabang');
@@ -222,10 +223,23 @@ function AccountSettings({ sellerProfile, userLocation, onBackToProfile }) {
 
   return (
     <div style={styles.page}>
+      <DashboardNavigation
+        appTheme={appTheme}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        onLogout={onLogout}
+        onOpenSellerSetup={onOpenSellerSetup}
+        onOpenMyBookings={onOpenMyBookings}
+        sellerProfile={sellerProfile}
+        onOpenMyWork={onOpenMyWork}
+        onOpenProfile={onOpenProfile}
+        onOpenAccountSettings={onOpenAccountSettings}
+        onOpenSettings={onOpenSettings}
+        onOpenDashboard={onOpenDashboard}
+      />
+
       <div style={styles.card}>
-        <button style={styles.backButton} onClick={onBackToProfile}>
-          ← Back to Profile
-        </button>
 
         <h1>Account & Privacy Settings</h1>
         <p style={styles.ownerText}>Managing account for: {profileName}</p>

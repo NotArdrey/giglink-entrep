@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile }) {
+function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile }) {
   const fallbackName = 'Juan Dela Cruz';
   const fallbackBio = 'Dedicated service provider focused on quality, punctuality, and client satisfaction.';
   const fallbackPhoto = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop';
@@ -26,6 +28,7 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
 
   const cameraInputRef = useRef(null);
   const deviceInputRef = useRef(null);
+  const themeTokens = getThemeTokens(appTheme);
 
   useEffect(() => {
     const nextName = sellerProfile?.fullName || fallbackName;
@@ -93,39 +96,39 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
   };
 
   const styles = {
-    page: { minHeight: '100vh', background: '#ffffff', color: '#2c3e50', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'center' },
-    header: { width: '100%', boxSizing: 'border-box', backgroundColor: '#ffffff', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '12px 14px' : '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' },
-    backBtn: { border: `1px solid ${isBackHovered ? '#2563eb' : '#e5e7eb'}`, background: isBackHovered ? '#f9f9f9' : 'transparent', color: isBackHovered ? '#2563eb' : '#2c3e50', padding: isMobile ? '7px 11px' : '8px 14px', borderRadius: '6px', fontSize: isMobile ? '12px' : '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
-    title: { fontSize: isMobile ? '20px' : '24px', fontWeight: 700, margin: 0, color: '#2c3e50' },
+    page: { minHeight: '100vh', background: themeTokens.pageBg, color: themeTokens.textPrimary, fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'stretch' },
+    header: { width: '100%', boxSizing: 'border-box', backgroundColor: themeTokens.surface, borderBottom: `1px solid ${themeTokens.border}`, padding: isMobile ? '12px 14px' : '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50, boxShadow: themeTokens.shadowSoft },
+    backBtn: { border: `1px solid ${isBackHovered ? themeTokens.accent : themeTokens.border}`, background: isBackHovered ? themeTokens.surfaceAlt : 'transparent', color: isBackHovered ? themeTokens.accent : themeTokens.textPrimary, padding: isMobile ? '7px 11px' : '8px 14px', borderRadius: '6px', fontSize: isMobile ? '12px' : '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
+    title: { fontSize: isMobile ? '20px' : '24px', fontWeight: 700, margin: 0, color: themeTokens.textPrimary },
     headerSpacer: { width: isMobile ? '0' : '92px' },
-    main: { width: '100%', maxWidth: '900px', margin: '0 auto', padding: isMobile ? '20px 12px' : '32px 16px', boxSizing: 'border-box' },
-    card: { width: '100%', maxWidth: '760px', margin: '0 auto', boxSizing: 'border-box', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', padding: isMobile ? '18px 14px' : '32px' },
+    main: { width: '100%', maxWidth: 'none', margin: 0, padding: isMobile ? '20px 12px' : '32px 24px', boxSizing: 'border-box' },
+    card: { width: '100%', maxWidth: 'none', margin: 0, boxSizing: 'border-box', background: themeTokens.surface, border: `1px solid ${themeTokens.border}`, borderRadius: '12px', boxShadow: themeTokens.shadow, padding: isMobile ? '18px 14px' : '32px' },
     hero: { textAlign: 'center', margin: '0 0 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' },
     profilePhotoButton: { border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' },
-    profilePhoto: { width: isMobile ? '120px' : '150px', height: isMobile ? '120px' : '150px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #e5e7eb', display: 'block', margin: '0 auto' },
-    profileAvatarSkeleton: { width: isMobile ? '120px' : '150px', height: isMobile ? '120px' : '150px', borderRadius: '50%', border: '4px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' },
-    avatarPlaceholder: { width: isMobile ? '112px' : '142px', height: isMobile ? '112px' : '142px', borderRadius: '50%', background: '#dbe3ef' },
-    textPlaceholder: { height: '12px', borderRadius: '999px', background: '#dbe3ef' },
-    profilePhotoEdit: { fontSize: '12px', fontWeight: 700, color: '#2563eb' },
+    profilePhoto: { width: isMobile ? '120px' : '150px', height: isMobile ? '120px' : '150px', borderRadius: '50%', objectFit: 'cover', border: `4px solid ${themeTokens.border}`, display: 'block', margin: '0 auto' },
+    profileAvatarSkeleton: { width: isMobile ? '120px' : '150px', height: isMobile ? '120px' : '150px', borderRadius: '50%', border: `4px solid ${themeTokens.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: themeTokens.surfaceAlt },
+    avatarPlaceholder: { width: isMobile ? '112px' : '142px', height: isMobile ? '112px' : '142px', borderRadius: '50%', background: themeTokens.surfaceSoft },
+    textPlaceholder: { height: '12px', borderRadius: '999px', background: themeTokens.surfaceSoft },
+    profilePhotoEdit: { fontSize: '12px', fontWeight: 700, color: themeTokens.accent },
     inlineEditRow: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', justifyContent: 'center', flexWrap: 'wrap' },
-    inlineEditInput: { minWidth: isMobile ? '0' : '260px', width: isMobile ? '100%' : 'auto', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 10px', fontSize: '16px' },
-    inlineEditSave: { border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, background: '#2563eb', color: '#ffffff' },
-    inlineEditCancel: { border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, background: '#e5e7eb', color: '#1f2937' },
-    editableHeading: { margin: '12px 0 8px', color: isHeadingHovered ? '#2563eb' : '#1f2937', cursor: 'pointer' },
-    verifiedBadge: { display: 'inline-block', background: '#dcfce7', color: '#166534', border: '1px solid #86efac', borderRadius: '999px', padding: '6px 12px', fontSize: '12px', fontWeight: 700 },
-    profileSection: { marginBottom: '18px', padding: '14px', border: '1px solid #e5e7eb', borderRadius: '10px', background: '#f8fafc' },
-    portfolioSection: { background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)', border: '2px solid #bfdbfe' },
-    h2: { margin: '0 0 8px', color: '#2c3e50', fontSize: '18px' },
-    h2Portfolio: { margin: '0 0 8px', color: '#0c4a6e', fontSize: '18px' },
+    inlineEditInput: { minWidth: isMobile ? '0' : '260px', width: isMobile ? '100%' : 'auto', border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '8px', padding: '8px 10px', fontSize: '16px', background: themeTokens.inputBg, color: themeTokens.inputText },
+    inlineEditSave: { border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, background: themeTokens.accent, color: '#ffffff' },
+    inlineEditCancel: { border: 'none', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, background: themeTokens.surfaceAlt, color: themeTokens.textPrimary },
+    editableHeading: { margin: '12px 0 8px', color: isHeadingHovered ? themeTokens.accent : themeTokens.textPrimary, cursor: 'pointer' },
+    verifiedBadge: { display: 'inline-block', background: themeTokens.successBg, color: themeTokens.successText, border: `1px solid ${themeTokens.successBorder}`, borderRadius: '999px', padding: '6px 12px', fontSize: '12px', fontWeight: 700 },
+    profileSection: { marginBottom: '18px', padding: '14px', border: `1px solid ${themeTokens.border}`, borderRadius: '10px', background: themeTokens.surfaceAlt },
+    portfolioSection: { background: themeTokens.accentSoft, border: `2px solid ${themeTokens.accent}` },
+    h2: { margin: '0 0 8px', color: themeTokens.textPrimary, fontSize: '18px' },
+    h2Portfolio: { margin: '0 0 8px', color: themeTokens.accent, fontSize: '18px' },
     sectionHeadingRow: { display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: isMobile ? '8px' : '0', flexWrap: isMobile ? 'wrap' : 'nowrap', marginBottom: '8px' },
-    sectionEditBtn: { border: '1px solid #cbd5e1', borderRadius: '8px', background: '#ffffff', color: '#1f2937', padding: '4px 10px', fontWeight: 700, cursor: 'pointer' },
+    sectionEditBtn: { border: `1px solid ${themeTokens.border}`, borderRadius: '8px', background: themeTokens.surface, color: themeTokens.textPrimary, padding: '4px 10px', fontWeight: 700, cursor: 'pointer' },
     bioEditWrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
-    bioEditInput: { border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', resize: 'vertical', minHeight: '90px' },
+    bioEditInput: { border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '8px', padding: '10px', resize: 'vertical', minHeight: '90px', background: themeTokens.inputBg, color: themeTokens.inputText },
     bioEditActions: { display: 'flex', gap: '8px' },
-    paragraph: { margin: 0, color: '#4b5563', lineHeight: 1.55 },
-    portfolioParagraph: { margin: 0, color: '#1e40af', lineHeight: 1.55 },
-    generatePortfolioBtn: { width: '100%', border: 'none', borderRadius: '8px', padding: '12px', background: isPortfolioHovered ? '#1d4ed8' : '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px', transition: 'all 0.3s ease', transform: isPortfolioHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isPortfolioHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
-    manageAccountBtn: { width: '100%', border: 'none', borderRadius: '10px', padding: '14px', background: isManageHovered ? '#1f3042' : '#2c3e50', color: '#ffffff', fontWeight: 700, fontSize: '15px', cursor: 'pointer' },
+    paragraph: { margin: 0, color: themeTokens.textSecondary, lineHeight: 1.55 },
+    portfolioParagraph: { margin: 0, color: themeTokens.textPrimary, lineHeight: 1.55 },
+    generatePortfolioBtn: { width: '100%', border: 'none', borderRadius: '8px', padding: '12px', background: isPortfolioHovered ? themeTokens.accent : themeTokens.accent, color: '#ffffff', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px', transition: 'all 0.3s ease', transform: isPortfolioHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isPortfolioHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
+    manageAccountBtn: { width: '100%', border: 'none', borderRadius: '10px', padding: '14px', background: isManageHovered ? themeTokens.surfaceAlt : themeTokens.surfaceSoft, color: themeTokens.textPrimary, fontWeight: 700, fontSize: '15px', cursor: 'pointer' },
     photoSourceOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 220 },
     photoSourceModal: { width: 'min(360px, 90vw)', background: '#ffffff', borderRadius: '12px', padding: '16px', boxShadow: '0 12px 24px rgba(15, 23, 42, 0.2)' },
     modalTitle: { margin: '0 0 8px' },
@@ -137,18 +140,20 @@ function Profile({ sellerProfile, userLocation, onManageAccount, onBackToDashboa
 
   return (
     <div style={styles.page}>
-      <div style={styles.header}>
-        <button
-          style={styles.backBtn}
-          onMouseEnter={() => setIsBackHovered(true)}
-          onMouseLeave={() => setIsBackHovered(false)}
-          onClick={onBackToDashboard}
-        >
-          &larr; Back
-        </button>
-        <h1 style={styles.title}>Profile</h1>
-        <div style={styles.headerSpacer}></div>
-      </div>
+      <DashboardNavigation
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        onLogout={onLogout}
+        onOpenSellerSetup={onOpenSellerSetup}
+        onOpenMyBookings={onOpenMyBookings}
+        sellerProfile={sellerProfile}
+        onOpenMyWork={onOpenMyWork}
+        onOpenProfile={onOpenProfile}
+        onOpenAccountSettings={onOpenAccountSettings}
+        onOpenSettings={onOpenSettings}
+        onOpenDashboard={onOpenDashboard}
+      />
 
       <main style={styles.main}>
         <div style={styles.card}>

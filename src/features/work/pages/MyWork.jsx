@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import SimulatedChat from '../components/SimulatedChat';
 import SlotEditModal from '../components/SlotEditModal';
 import ProfileEditModal from '../components/ProfileEditModal';
@@ -328,29 +329,68 @@ const hoverStyles = {
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
  */
-const MyWork = ({ sellerProfile, onBackToDashboard }) => {
+const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToDashboard, onAddNewWork }) => {
   // ============ STATE MANAGEMENT ============
   
-  // Default Joshua Paul Santos profile if sellerProfile not provided
-  const defaultSellerProfile = {
-    fullName: 'Joshua Paul Santos',
-    serviceType: 'Pilot Service for Valorant',
-    description: 'Professional Valorant coaching and rank support services',
-    pricingModel: 'hourly',
-    hourlyRate: 250,
-    paymentAdvance: true,
-    paymentAfterService: true,
-    afterServicePaymentType: 'both',
-    gcashNumber: '09054891105',
-    bookingMode: 'with-slots',
-    location: {
-      barangay: 'Sabang',
-      city: 'Baliwag',
-      province: 'Bulacan'
+  // Mock services for demonstration
+  const mockServices = [
+    {
+      fullName: 'Joshua Paul Santos',
+      serviceType: 'Valorant Coaching',
+      description: 'Professional Valorant coaching and rank support services',
+      pricingModel: 'hourly',
+      hourlyRate: 250,
+      paymentAdvance: true,
+      paymentAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      bookingMode: 'with-slots',
+      location: {
+        barangay: 'Sabang',
+        city: 'Baliwag',
+        province: 'Bulacan'
+      }
+    },
+    {
+      fullName: 'Joshua Paul Santos',
+      serviceType: 'Math Tutoring',
+      description: 'High school and college math tutoring',
+      pricingModel: 'hourly',
+      hourlyRate: 300,
+      paymentAdvance: true,
+      paymentAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      bookingMode: 'with-slots',
+      location: {
+        barangay: 'Sabang',
+        city: 'Baliwag',
+        province: 'Bulacan'
+      }
+    },
+    {
+      fullName: 'Joshua Paul Santos',
+      serviceType: 'Laptop Repair',
+      description: 'Computer and laptop repair services',
+      pricingModel: 'fixed',
+      fixedPrice: 500,
+      paymentAdvance: false,
+      paymentAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      bookingMode: 'calendar-only',
+      location: {
+        barangay: 'Sabang',
+        city: 'Baliwag',
+        province: 'Bulacan'
+      }
     }
-  };
+  ];
 
-  const [currentProfile, setCurrentProfile] = useState(sellerProfile || defaultSellerProfile);
+  const [workerServices, setWorkerServices] = useState([sellerProfile || mockServices[0], mockServices[1], mockServices[2]]);
+  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
+  const [activeServiceIndex, setActiveServiceIndex] = useState(0);
+  const currentProfile = workerServices[activeServiceIndex] || mockServices[0];
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [weeklySchedule, setWeeklySchedule] = useState(INITIAL_WEEKLY_SCHEDULE);
   const [calendarAvailability, setCalendarAvailability] = useState(INITIAL_CALENDAR_AVAILABILITY);
@@ -371,6 +411,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
   const [hoverKey, setHoverKey] = useState('');
   const [cashPaymentView, setCashPaymentView] = useState('pending'); // 'pending' or 'history'
   const [workSectionFilter, setWorkSectionFilter] = useState('all'); // all | inquiries | cash-approvals | refunds | cancelled
+  const [isWorkNavDropdownOpen, setIsWorkNavDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
@@ -902,10 +943,14 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
   };
 
   const handleSaveProfileEdit = (updatedData) => {
-    setCurrentProfile((prev) => ({
-      ...prev,
-      ...updatedData,
-    }));
+    setWorkerServices((prev) => {
+      const next = [...prev];
+      next[activeServiceIndex] = {
+        ...next[activeServiceIndex],
+        ...updatedData,
+      };
+      return next;
+    });
     setProfileEditModalOpen(false);
   };
 
@@ -1169,6 +1214,16 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
   const showCashApprovalSection = workSectionFilter === 'all' || workSectionFilter === 'cash-approvals';
   const showRefundSection = workSectionFilter === 'all' || workSectionFilter === 'refunds';
   const showCancelledSection = workSectionFilter === 'all' || workSectionFilter === 'cancelled';
+  const showScheduleSection = workSectionFilter === 'all' || workSectionFilter === 'schedule';
+  const workSectionOptions = [
+    { label: 'Show All', value: 'all', description: 'Overview of every work section' },
+    { label: 'Active Inquiries', value: 'inquiries', description: 'Client requests waiting for a response' },
+    { label: 'Payment Confirmations', value: 'cash-approvals', description: 'Cash payment review queue' },
+    { label: 'Refund Cases', value: 'refunds', description: 'GCash refund tracking' },
+    { label: 'Cancelled Bookings', value: 'cancelled', description: 'Cancelled cash bookings' },
+    { label: 'Weekly Schedule', value: 'schedule', description: 'Weekly availability and booking blocks' },
+  ];
+  const activeWorkSectionLabel = workSectionOptions.find((option) => option.value === workSectionFilter)?.label || 'Show All';
   
   // ============ HELPER FUNCTIONS ============
   
@@ -1208,18 +1263,21 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
   
   return (
     <div style={sx('my-work-page')}>
-      <div style={sx('my-work-header-bar')}>
-        <button
-          style={{ ...sx('back-to-dashboard-btn'), ...(isHovered('back-to-dashboard') ? hoverStyles.backButton : {}), ...(isMobile ? {} : { position: 'absolute', left: '24px' }) }}
-          onMouseEnter={() => setHoverKey('back-to-dashboard')}
-          onMouseLeave={() => setHoverKey('')}
-          onClick={onBackToDashboard}
-        >
-          ← Back to Dashboard
-        </button>
-        <h1 style={sx('my-work-title')}>My Work Portal</h1>
-        <div style={sx('header-spacer')} aria-hidden="true"></div>
-      </div>
+      <DashboardNavigation
+        appTheme={appTheme}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        onLogout={onLogout}
+        onOpenSellerSetup={onOpenSellerSetup}
+        onOpenMyBookings={onOpenMyBookings}
+        sellerProfile={sellerProfile}
+        onOpenMyWork={onOpenMyWork}
+        onOpenProfile={onOpenProfile}
+        onOpenAccountSettings={onOpenAccountSettings}
+        onOpenSettings={onOpenSettings}
+        onOpenDashboard={onOpenDashboard}
+      />
       
       <main style={sx('my-work-main')}>
         
@@ -1227,7 +1285,23 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
           <div style={sx('empty-state-banner')}>
             <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
             <p style={{ fontSize: '16px', color: '#92400e', margin: '0 0 20px 0' }}>Complete your service profile to start receiving inquiries from clients.</p>
-            <button style={{ padding: '12px 28px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>Edit Profile</button>
+            <button
+              style={{
+                padding: '12px 28px',
+                background: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                ...(isHovered('empty-add-work') ? { background: '#d97706' } : {}),
+              }}
+              onMouseEnter={() => setHoverKey('empty-add-work')}
+              onMouseLeave={() => setHoverKey('')}
+              onClick={onAddNewWork}
+            >
+              Get Started
+            </button>
           </div>
         )}
         
@@ -1289,12 +1363,74 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
               </div>
             </div>
 
-            <div style={sx('section-filter-row')}>
-              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'all' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('all')}>Show All</button>
-              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'inquiries' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('inquiries')}>Inquiries</button>
-              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'cash-approvals' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('cash-approvals')}>Cash Payments Approval</button>
-              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'refunds' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('refunds')}>Refund Cases</button>
-              <button style={{ ...sx('section-filter-btn'), ...(workSectionFilter === 'cancelled' ? sx('section-filter-btn-active') : {}) }} onClick={() => setWorkSectionFilter('cancelled')}>Cancelled (Cash)</button>
+            <div style={{ ...sx('section-filter-row'), justifyContent: 'flex-start', position: 'relative' }}>
+              <div style={{ position: 'relative', minWidth: isMobile ? '100%' : '320px' }}>
+                <button
+                  type="button"
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: isWorkNavDropdownOpen ? '0 8px 24px rgba(37, 99, 235, 0.12)' : 'none',
+                  }}
+                  onClick={() => setIsWorkNavDropdownOpen((prev) => !prev)}
+                >
+                  <span>Navigate Work Sections</span>
+                  <span style={{ color: '#2563eb', fontSize: '12px' }}>{activeWorkSectionLabel} ▼</span>
+                </button>
+
+                {isWorkNavDropdownOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    left: 0,
+                    background: '#ffffff',
+                    border: '1px solid #dbe4ee',
+                    borderRadius: '12px',
+                    boxShadow: '0 14px 32px rgba(15, 23, 42, 0.14)',
+                    zIndex: 20,
+                    overflow: 'hidden',
+                  }}>
+                    {workSectionOptions.map((option, index) => {
+                      const isSelected = workSectionFilter === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '12px 14px',
+                            border: 'none',
+                            background: isSelected ? '#eff6ff' : '#ffffff',
+                            color: isSelected ? '#1d4ed8' : '#0f172a',
+                            cursor: 'pointer',
+                            borderBottom: index < workSectionOptions.length - 1 ? '1px solid #eef2f7' : 'none',
+                          }}
+                          onClick={() => {
+                            setWorkSectionFilter(option.value);
+                            setIsWorkNavDropdownOpen(false);
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: '14px' }}>{option.label}</div>
+                          <div style={{ fontSize: '12px', color: isSelected ? '#2563eb' : '#64748b', marginTop: '2px' }}>{option.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
             
             {showInquiriesSection && <section style={sx('inquiries-section')}>
@@ -1547,7 +1683,7 @@ const MyWork = ({ sellerProfile, onBackToDashboard }) => {
               </section>
             )}
 
-            {workSectionFilter === 'all' && <section style={sx('schedule-section')}>
+            {showScheduleSection && <section style={sx('schedule-section')}>
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
                 <p style={sx('section-subtitle')}>

@@ -263,7 +263,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                     checked={selectedMethod === 'gcash-advance'}
                     onChange={() => {}}
                   />
-                  <div style={styles.icon}>💳</div>
+                  <div style={styles.icon}></div>
                   <h3>GCash Advance Payment</h3>
                 </div>
 
@@ -303,7 +303,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                     checked={selectedMethod === 'after-service'}
                     onChange={() => {}}
                   />
-                  <div style={styles.icon}>🎯</div>
+                  <div style={styles.icon}></div>
                   <h3>Pay After Service</h3>
                 </div>
 

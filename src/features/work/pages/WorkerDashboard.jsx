@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import CalendarAvailabilityModal from '../components/CalendarAvailabilityModal';
 import SellerScheduleModal from '../components/SellerScheduleModal';
 import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
 
 
-function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
+function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToClient }) {
   const workerName = sellerProfile?.fullName || 'New Seller';
   const serviceType =
     sellerProfile?.serviceType === 'Others'
@@ -148,18 +149,21 @@ function WorkerDashboard({ sellerProfile, onBackToClient, onLogout }) {
 
   return (
     <div style={styles.page}>
-      <header style={styles.header}>
-        <a href="#worker-home" style={styles.logo}>GigLink Worker</a>
-        <div style={styles.headerActions}>
-          <button style={styles.headerButton} onClick={onBackToClient}>Client Dashboard</button>
-          <button
-            style={{ ...styles.headerButton, ...styles.logoutButton }}
-            onClick={() => setIsLogoutConfirmOpen(true)}
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <DashboardNavigation
+        appTheme={appTheme}
+        currentView={currentView}
+        searchQuery={searchQuery}
+        onSearchChange={onSearchChange}
+        onLogout={onLogout}
+        onOpenSellerSetup={onOpenSellerSetup}
+        onOpenMyBookings={onOpenMyBookings}
+        sellerProfile={sellerProfile}
+        onOpenMyWork={onOpenMyWork}
+        onOpenProfile={onOpenProfile}
+        onOpenAccountSettings={onOpenAccountSettings}
+        onOpenSettings={onOpenSettings}
+        onOpenDashboard={onOpenDashboard}
+      />
 
       <main style={styles.main} id="worker-home">
         <section style={styles.card}>
