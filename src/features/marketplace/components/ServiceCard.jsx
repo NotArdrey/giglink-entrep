@@ -14,10 +14,10 @@ import { useState } from 'react';
 const styles = {
   // CARD CONTAINER - Main wrapper with responsive flex layout
   card: {
-    backgroundColor: 'var(--bg-surface)',
+    backgroundColor: 'var(--giglink-surface)',
     borderRadius: '0.8rem',
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.08)',
+    border: '1px solid var(--giglink-border)',
+    boxShadow: 'var(--giglink-shadow-soft)',
     transition: 'all 0.3s ease',
     height: '100%',
     display: 'flex',
@@ -27,9 +27,9 @@ const styles = {
   
   // CARD HOVER STATE - Elevation and border highlight on mouseover
   cardHover: {
-    boxShadow: '0 12px 22px rgba(15, 23, 42, 0.13)',
+    boxShadow: 'var(--giglink-shadow)',
     transform: 'translateY(-3px)',
-    borderColor: '#bfdbfe',
+    borderColor: 'var(--giglink-accent)',
   },
   
   // CARD CONTENT WRAPPER - Flex column with increased gaps for breathing room
@@ -44,8 +44,8 @@ const styles = {
   serviceTypePill: {
     alignSelf: 'flex-start',
     borderRadius: '999px',
-    backgroundColor: '#dbeafe',
-    color: '#1d4ed8',
+    backgroundColor: 'var(--giglink-badge-bg)',
+    color: 'var(--giglink-badge-text)',
     fontSize: '0.74rem',
     fontWeight: 800,
     letterSpacing: '0.03em',
@@ -98,9 +98,9 @@ const styles = {
   
   // NEUTRAL BADGE - Dark gray badge for secondary information
   neutralBadge: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    border: '1px solid #bfdbfe',
+    backgroundColor: 'var(--giglink-surface-soft)',
+    color: 'var(--giglink-text-primary)',
+    border: '1px solid var(--giglink-border)',
   },
   
   // META ROW - Horizontal flex container for rating, reviews, and location
@@ -113,10 +113,10 @@ const styles = {
   
   // RATING BADGE - Star rating and review count display
   ratingBadge: {
-    border: '1px solid #cbd5e1',
+    border: '1px solid var(--giglink-border)',
     borderRadius: '999px',
     padding: '0.32rem 0.72rem',
-    color: '#0f172a',
+    color: 'var(--giglink-text-primary)',
     fontSize: '0.82rem',
     fontWeight: 700,
   },
@@ -135,8 +135,8 @@ const styles = {
     height: '42px',
     borderRadius: '999px',
     objectFit: 'cover',
-    border: '2px solid #e2e8f0',
-    backgroundColor: '#f1f5f9',
+    border: '2px solid var(--giglink-border)',
+    backgroundColor: 'var(--giglink-surface-soft)',
   },
   
   // PROVIDER META - Flex column for provider name and experience
@@ -158,12 +158,12 @@ const styles = {
   providerSubline: {
     margin: 0,
     fontSize: '0.76rem',
-    color: '#64748b',
+    color: 'var(--giglink-text-secondary)',
   },
   
   // CALL-TO-ACTION BUTTON - "View Service" button at bottom of card
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: 'var(--giglink-accent)',
     color: '#ffffff',
     border: 'none',
     padding: '0.62rem 0.95rem',
@@ -185,7 +185,7 @@ const styles = {
 // BADGE COLOR MAPPING - Associates pricing models with brand colors
 // per-hour: blue (#3b82f6) | per-day: green (#10b981) | per-project: amber (#f59e0b)
 const badgeColors = {
-  'per-hour': '#3b82f6',
+  'per-hour': 'var(--giglink-accent)',
   'per-day': '#10b981',
   'per-project': '#f59e0b',
 };
@@ -238,7 +238,7 @@ function ServiceCard({ provider, onViewProfile }) {
   // Falls back to default blue (#2563eb) if rateBasis is undefined
   const badgeStyle = {
     ...styles.badgeBase,
-    backgroundColor: badgeColors[provider.rateBasis] || '#2563eb',
+    backgroundColor: badgeColors[provider.rateBasis] || 'var(--giglink-accent)',
   };
 
   // ============================================================================

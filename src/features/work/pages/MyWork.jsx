@@ -12,6 +12,7 @@ import {
   PROJECT_SLOTS_SCHEDULE,
   HOURLY_CALENDAR,
 } from '../data/MockWorkers';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 
 const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

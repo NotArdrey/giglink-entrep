@@ -24,6 +24,7 @@ import WorkerDetailModal from '../../marketplace/components/WorkerDetailModal';
 import BookingCalendarModal from '../../bookings/components/BookingCalendarModal';
 import PaymentModal from '../../bookings/components/PaymentModal';
 import BookingNotification from '../../bookings/components/BookingNotification';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 // SERVICE CATEGORY CONSTANTS - Core + additional service categories
 const CORE_SERVICE_CHIPS = ['Tutor', 'Technician', 'Cleaner'];
@@ -487,11 +488,14 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
   // All styling is done with inline style objects (no external CSS file for Dashboard)
   // Responsive values adjust based on isMobile breakpoint
   
+  const themeTokens = getThemeTokens(appTheme);
+
   const styles = {
     // PAGE LAYOUT
     page: {
       minHeight: '100vh',
-      backgroundColor: '#f8fafc',
+      backgroundColor: themeTokens.pageBg,
+      color: themeTokens.textPrimary,
     },
     
     // MAIN CONTENT CONTAINER - Centered column with responsive padding
@@ -503,29 +507,29 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     
     // HERO SECTION - Service-first headline and intro text
     introSection: {
-      backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
+      backgroundColor: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '1rem',
       padding: isMobile ? '1rem' : '1.35rem 1.45rem',
       marginBottom: '0.85rem',
-      boxShadow: '0 10px 25px rgba(15, 23, 42, 0.06)',
+      boxShadow: `0 10px 25px ${appTheme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(15, 23, 42, 0.06)'}`,
     },
     introHeading: {
       margin: 0,
-      color: '#0f172a',
+      color: themeTokens.textPrimary,
       fontWeight: 800,
       fontSize: isMobile ? '1.25rem' : '1.75rem',
       letterSpacing: '-0.02em',
     },
     introSubHeading: {
       margin: '0.4rem 0 0.2rem',
-      color: '#1e293b',
+      color: themeTokens.textPrimary,
       fontWeight: 600,
       fontSize: isMobile ? '0.95rem' : '1rem',
     },
     introText: {
       margin: '0.15rem 0 0',
-      color: '#64748b',
+      color: themeTokens.textSecondary,
       fontSize: isMobile ? '0.86rem' : '0.92rem',
       lineHeight: 1.45,
     },
@@ -537,12 +541,12 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       flexDirection: isMobile ? 'column' : 'row',
       gap: '0.75rem',
       flexWrap: 'wrap',
-      backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
+      backgroundColor: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.7rem',
       padding: isMobile ? '0.9rem' : '1rem',
       marginBottom: '1rem',
-      boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)',
+      boxShadow: `0 6px 18px ${appTheme === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(15, 23, 42, 0.04)'}`,
     },
     
     // CATEGORY CHIPS GROUP - Horizontal flex for All/Tutor/Technician/Cleaner/More Services
@@ -554,10 +558,10 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     
     // INDIVIDUAL CHIP - Clickable service category button (inactive state)
     chip: {
-      border: '1px solid #cbd5e1',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '999px',
-      backgroundColor: '#ffffff',
-      color: '#334155',
+      backgroundColor: themeTokens.surface,
+      color: themeTokens.textPrimary,
       padding: isMobile ? '0.45rem 0.85rem' : '0.55rem 1rem',
       cursor: 'pointer',
       fontWeight: 700,
@@ -567,15 +571,15 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     
     // ACTIVE CHIP STATE - Selected category highlighted in blue with shadow
     chipActive: {
-      backgroundColor: '#2563eb',
-      borderColor: '#2563eb',
+      backgroundColor: themeTokens.accent,
+      borderColor: themeTokens.accent,
       color: '#ffffff',
-      boxShadow: '0 6px 14px rgba(37, 99, 235, 0.24)',
+      boxShadow: `0 6px 14px ${appTheme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(37, 99, 235, 0.24)'}`,
     },
     
     // MUTED CHIP STATE - "More Services" chip with dashed border when inactive
     chipMuted: {
-      backgroundColor: '#f8fafc',
+      backgroundColor: appTheme === 'dark' ? '#1f2937' : '#f8fafc',
       borderStyle: 'dashed',
     },
     
@@ -583,16 +587,16 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     districtDropdown: {
       minWidth: isMobile ? '100%' : '190px',
       width: isMobile ? '100%' : 'auto',
-      border: '1px solid #cbd5e1',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.5rem',
       padding: '0.45rem 0.6rem',
-      backgroundColor: '#ffffff',
-      color: '#0f172a',
+      backgroundColor: themeTokens.surface,
+      color: themeTokens.textPrimary,
       fontWeight: 600,
     },
     resultSummary: {
       marginBottom: '0.85rem',
-      color: '#475569',
+      color: themeTokens.textSecondary,
       fontSize: '0.92rem',
       fontWeight: 600,
     },
@@ -610,8 +614,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     // SKELETON LOADING CARD - Animated placeholder while data loads
     // Shows 6 cards with gray placeholder lines
     loadingCard: {
-      backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
+      backgroundColor: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.75rem',
       padding: '0.9rem',
       minHeight: '180px',
@@ -623,17 +627,18 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     // SKELETON LINE - Gray animated placeholder for text content
     loadingLine: {
       height: '12px',
-      borderRadius: '999px',
-      backgroundColor: '#e2e8f0',
+      borderRadius: '4px',
+      backgroundColor: `${appTheme === 'dark' ? '#374151' : '#e2e8f0'}`,
+      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
     },
     
     // EMPTY STATE MESSAGE - Shows when no providers match the filters
     emptyState: {
-      backgroundColor: '#ffffff',
-      border: '1px dashed #cbd5e1',
+      backgroundColor: themeTokens.surface,
+      border: `1px dashed ${themeTokens.border}`,
       borderRadius: '0.75rem',
       padding: '1.25rem',
-      color: '#475569',
+      color: themeTokens.textSecondary,
       gridColumn: '1 / -1', // Spans full width of grid
     },
     
@@ -641,12 +646,13 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       margin: 0,
       fontSize: '1rem',
       fontWeight: 700,
-      color: '#0f172a',
+      color: themeTokens.textPrimary,
     },
     
     emptyText: {
       margin: '0.35rem 0 0',
       lineHeight: 1.5,
+      color: themeTokens.textSecondary,
     },
   };
 

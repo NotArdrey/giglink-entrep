@@ -141,6 +141,7 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
   return (
     <div style={styles.page}>
       <DashboardNavigation
+        appTheme={appTheme}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

@@ -75,11 +75,19 @@ function App() {
 
   // Onboarding overlay
   const sellerOnboardingOverlay = navigationContext.isSellerOnboardingOpen ? (
-    <div style={styles.sellerOnboardingOverlay} role="dialog" aria-modal="true">
+    <div
+      style={{
+        ...styles.sellerOnboardingOverlay,
+        backgroundColor: navigationContext.appTheme === 'dark' ? 'rgba(15, 23, 42, 0.65)' : styles.sellerOnboardingOverlay.backgroundColor,
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
       <SellerOnboarding
         onBack={navigationContext.handleCloseSellerOnboarding}
         onComplete={navigationContext.handleOnboardingComplete}
         userLocation={navigationContext.userLocation}
+        appTheme={navigationContext.appTheme}
         isFloating
       />
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived }) => {
+const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -139,93 +140,115 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
     setRejectQuoteReason('');
   };
 
+  const themeTokens = getThemeTokens(appTheme);
+  const isDarkMode = appTheme === 'dark';
+  const chatTheme = isDarkMode
+    ? {
+        bgPrimary: '#2f343c',
+        bgSecondary: '#3a414b',
+        bgTertiary: '#464e5a',
+        border: '#58606c',
+        textPrimary: '#f2f5fa',
+        textSecondary: '#c7ceda',
+        textMuted: '#9aa5b5',
+      }
+    : {
+        bgPrimary: '#ffffff',
+        bgSecondary: '#f8f9fa',
+        bgTertiary: '#f1f5f9',
+        border: '#ecf0f1',
+        textPrimary: '#2c3e50',
+        textSecondary: '#64748b',
+        textMuted: '#94a3b8',
+      };
+
   const styles = {
     // Embedded full-page layout (no modal overlay)
-    pageContainer: { width: '100%', height: 'calc(100vh - 72px)', minHeight: '640px', background: 'transparent' },
-    mainContainer: { background: 'white', display: 'grid', gridTemplateColumns: '320px 1fr 340px', width: '100%', height: '100%', overflow: 'hidden', borderTop: '1px solid #dbe3ea' },
+    pageContainer: { width: '100%', height: 'calc(100vh - 72px)', minHeight: '640px', background: chatTheme.bgPrimary },
+    mainContainer: { background: chatTheme.bgPrimary, display: 'grid', gridTemplateColumns: '320px 1fr 340px', width: '100%', height: '100%', overflow: 'hidden', borderTop: `1px solid ${chatTheme.border}` },
     
     // LEFT COLUMN: Chat List
-    chatList: { display: 'flex', flexDirection: 'column', borderRight: '1px solid #ecf0f1', background: '#f8f9fa', overflow: 'hidden' },
-    chatListHeader: { padding: '16px', borderBottom: '1px solid #ecf0f1', background: '#fff', flexShrink: 0 },
-    chatListTitle: { fontSize: '16px', fontWeight: 700, color: '#2c3e50', margin: 0 },
+    chatList: { display: 'flex', flexDirection: 'column', borderRight: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, overflow: 'hidden' },
+    chatListHeader: { padding: '16px', borderBottom: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, flexShrink: 0 },
+    chatListTitle: { fontSize: '16px', fontWeight: 700, color: chatTheme.textPrimary, margin: 0 },
     chatListScroll: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 },
-    chatItem: { padding: '12px 16px', borderBottom: '1px solid #ecf0f1', background: '#fff', cursor: 'pointer', transition: 'all 0.2s ease', borderLeft: '4px solid transparent' },
-    chatItemHovered: { background: '#f0f1f2', borderLeftColor: '#2563eb' },
-    chatItemActive: { background: '#e8f1ff', borderLeftColor: '#2563eb' },
-    chatItemWorkerName: { fontSize: '14px', fontWeight: 600, color: '#2c3e50', margin: '0 0 4px 0' },
-    chatItemService: { fontSize: '13px', color: '#666', margin: 0 },
-    chatItemStatus: { fontSize: '12px', color: '#999', marginTop: '4px', margin: '4px 0 0 0' },
+    chatItem: { padding: '12px 16px', borderBottom: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, cursor: 'pointer', transition: 'all 0.2s ease', borderLeft: '4px solid transparent' },
+    chatItemHovered: { background: chatTheme.bgTertiary, borderLeftColor: themeTokens.accent },
+    chatItemActive: { background: isDarkMode ? '#4a5565' : '#e8f1ff', borderLeftColor: themeTokens.accent },
+    chatItemWorkerName: { fontSize: '14px', fontWeight: 600, color: chatTheme.textPrimary, margin: '0 0 4px 0' },
+    chatItemService: { fontSize: '13px', color: chatTheme.textSecondary, margin: 0 },
+    chatItemStatus: { fontSize: '12px', color: chatTheme.textMuted, marginTop: '4px', margin: '4px 0 0 0' },
     
     // CENTER COLUMN: Messages & Chat
-    chatContainer: { display: 'flex', flexDirection: 'column', background: '#fff' },
-    header: { display: 'flex', justifyContent: 'flex-start', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #ecf0f1', flexShrink: 0, background: '#fff' },
+    chatContainer: { display: 'flex', flexDirection: 'column', background: chatTheme.bgPrimary },
+    header: { display: 'flex', justifyContent: 'flex-start', alignItems: 'center', padding: '16px 20px', borderBottom: `1px solid ${chatTheme.border}`, flexShrink: 0, background: chatTheme.bgSecondary },
     workerInfo: { display: 'flex', gap: '12px', flex: 1 },
     workerAvatar: { width: '48px', height: '48px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '20px', flexShrink: 0 },
-    workerName: { fontSize: '15px', fontWeight: 700, color: '#2c3e50', margin: 0 },
-    workerService: { fontSize: '13px', color: '#7f8c8d', margin: '2px 0 0 0' },
-    workerStatus: { fontSize: '12px', color: '#2563eb', margin: '4px 0 0 0', fontWeight: 600 },
+    workerName: { fontSize: '15px', fontWeight: 700, color: chatTheme.textPrimary, margin: 0 },
+    workerService: { fontSize: '13px', color: chatTheme.textSecondary, margin: '2px 0 0 0' },
+    workerStatus: { fontSize: '12px', color: themeTokens.accent, margin: '4px 0 0 0', fontWeight: 600 },
     recurringBadge: { fontSize: '11px', margin: '6px 0 0 0', fontWeight: 700, color: '#1d4ed8' },
     stoppedBadge: { fontSize: '11px', margin: '6px 0 0 0', fontWeight: 700, color: '#b91c1c' },
-    messages: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8f9fa' },
-    loadingState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px', color: '#7f8c8d' },
-    loadingBubble: { height: '14px', borderRadius: '999px', background: '#e2e8f0' },
+    messages: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: isDarkMode ? '#353b45' : '#f8f9fa' },
+    loadingState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px', color: chatTheme.textSecondary },
+    loadingBubble: { height: '14px', borderRadius: '999px', background: isDarkMode ? '#58606c' : '#e2e8f0' },
     chatMessage: { display: 'flex', flexDirection: 'column', marginBottom: '8px', gap: '4px' },
     chatMessageWorker: { alignSelf: 'flex-start', maxWidth: '70%' },
     chatMessageClient: { alignSelf: 'flex-end', maxWidth: '70%', alignItems: 'flex-end' },
     chatMessageSystem: { alignSelf: 'center', maxWidth: '100%' },
-    chatMessageTextBase: { padding: '12px 16px', borderRadius: '12px', margin: 0, fontSize: '14px', color: '#333', lineHeight: 1.5, wordWrap: 'break-word', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' },
-    chatMessageTextWorker: { background: 'white', border: '1px solid #ecf0f1', borderRadius: '12px 12px 12px 2px' },
-    chatMessageTextClient: { background: '#2563eb', color: 'white', border: 'none', borderRadius: '12px 12px 2px 12px', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)' },
-    chatMessageTime: { fontSize: '11px', color: '#95a5a6', padding: '0 4px' },
-    chatSystemMessage: { background: '#ecf0f1', color: '#555', padding: '8px 12px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', margin: 0 },
-    quoteCard: { background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)', border: '2px solid #2563eb', maxWidth: '320px' },
-    quoteHeader: { background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', padding: '12px 16px', color: 'white' },
+    chatMessageTextBase: { padding: '12px 16px', borderRadius: '12px', margin: 0, fontSize: '14px', color: chatTheme.textPrimary, lineHeight: 1.5, wordWrap: 'break-word', boxShadow: isDarkMode ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.1)' },
+    chatMessageTextWorker: { background: chatTheme.bgSecondary, border: `1px solid ${chatTheme.border}`, borderRadius: '12px 12px 12px 2px' },
+    chatMessageTextClient: { background: themeTokens.accent, color: 'white', border: 'none', borderRadius: '12px 12px 2px 12px', boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.3)' },
+    chatMessageTime: { fontSize: '11px', color: chatTheme.textMuted, padding: '0 4px' },
+    chatSystemMessage: { background: chatTheme.bgTertiary, color: chatTheme.textSecondary, padding: '8px 12px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', margin: 0 },
+    quoteCard: { background: chatTheme.bgSecondary, borderRadius: '12px', overflow: 'hidden', boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.12)', border: `2px solid ${themeTokens.accent}`, maxWidth: '320px' },
+    quoteHeader: { background: `linear-gradient(135deg, ${themeTokens.accent}, ${isDarkMode ? '#1d4ed8' : '#1d4ed8'})`, padding: '12px 16px', color: 'white' },
     quoteLabel: { fontSize: '13px', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' },
     quoteBody: { padding: '16px' },
-    quoteAmount: { fontSize: '32px', fontWeight: 700, color: '#2563eb', margin: '0 0 8px 0' },
-    quoteDescription: { fontSize: '13px', color: '#555', margin: '0 0 12px 0', lineHeight: 1.5 },
-    quoteDelivery: { fontSize: '12px', color: '#7f8c8d', margin: '0 0 8px 0', display: 'flex', justifyContent: 'space-between' },
-    label: { fontWeight: 600, color: '#2c3e50' },
-    quoteNote: { fontSize: '12px', color: '#7f8c8d', margin: 0, padding: '12px', background: '#f8f9fa', borderRadius: '6px', borderLeft: '3px solid #2563eb' },
-    quoteActionBar: { background: 'white', borderTop: '1px solid #ecf0f1', padding: '16px', marginTop: 'auto', flexShrink: 0 },
+    quoteAmount: { fontSize: '32px', fontWeight: 700, color: themeTokens.accent, margin: '0 0 8px 0' },
+    quoteDescription: { fontSize: '13px', color: chatTheme.textSecondary, margin: '0 0 12px 0', lineHeight: 1.5 },
+    quoteDelivery: { fontSize: '12px', color: chatTheme.textSecondary, margin: '0 0 8px 0', display: 'flex', justifyContent: 'space-between' },
+    label: { fontWeight: 600, color: chatTheme.textPrimary },
+    quoteNote: { fontSize: '12px', color: chatTheme.textSecondary, margin: 0, padding: '12px', background: chatTheme.bgTertiary, borderRadius: '6px', borderLeft: `3px solid ${themeTokens.accent}` },
+    quoteActionBar: { background: chatTheme.bgSecondary, borderTop: `1px solid ${chatTheme.border}`, padding: '16px', marginTop: 'auto', flexShrink: 0 },
     actionContent: { textAlign: 'center' },
-    actionPrompt: { fontSize: '13px', color: '#2c3e50', fontWeight: 600, margin: '0 0 12px 0' },
-    approveBtn: { padding: '12px 24px', background: isApproveHovered ? '#1d4ed8' : '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: '8px 0 0 8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s ease', width: '100%', textTransform: 'uppercase', letterSpacing: '0.5px', transform: isApproveHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isApproveHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
-    inputArea: { display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid #ecf0f1', background: 'white', flexShrink: 0 },
-    messageInput: { flex: 1, padding: '10px 12px', border: `1px solid ${isInputFocused ? '#2563eb' : '#ecf0f1'}`, borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', transition: 'all 0.2s ease', outline: 'none', boxShadow: isInputFocused ? '0 0 0 2px rgba(37, 99, 235, 0.1)' : 'none' },
-    sendBtn: { padding: '10px 20px', background: !clientMessage.trim() ? '#bdc3c7' : (isSendHovered ? '#1d4ed8' : '#2563eb'), color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: !clientMessage.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease' },
-    approvalStatus: { padding: '12px 16px', background: '#dbeafe', borderTop: '1px solid #bfdbfe', textAlign: 'center', flexShrink: 0 },
-    approvalStatusText: { fontSize: '13px', color: '#1e3a8a', fontWeight: 600, margin: 0 },
+    actionPrompt: { fontSize: '13px', color: chatTheme.textPrimary, fontWeight: 600, margin: '0 0 12px 0' },
+    approveBtn: { padding: '12px 24px', background: isApproveHovered ? '#1d4ed8' : themeTokens.accent, color: 'white', border: `1px solid ${themeTokens.accent}`, borderRadius: '8px 0 0 8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.3s ease', width: '100%', textTransform: 'uppercase', letterSpacing: '0.5px', transform: isApproveHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isDarkMode ? 'none' : (isApproveHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none') },
+    inputArea: { display: 'flex', gap: '8px', padding: '12px', borderTop: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, flexShrink: 0 },
+    messageInput: { flex: 1, padding: '10px 12px', border: `1px solid ${isInputFocused ? themeTokens.accent : chatTheme.border}`, borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', transition: 'all 0.2s ease', outline: 'none', boxShadow: isInputFocused ? `0 0 0 2px ${themeTokens.accentSoft}` : 'none', background: chatTheme.bgTertiary, color: chatTheme.textPrimary },
+    sendBtn: { padding: '10px 20px', background: !clientMessage.trim() ? (isDarkMode ? '#687282' : '#bdc3c7') : (isSendHovered ? '#1d4ed8' : themeTokens.accent), color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: !clientMessage.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s ease' },
+    approvalStatus: { padding: '12px 16px', background: isDarkMode ? '#1e3a8a' : '#dbeafe', borderTop: `1px solid ${isDarkMode ? '#2563eb' : '#bfdbfe'}`, textAlign: 'center', flexShrink: 0 },
+    approvalStatusText: { fontSize: '13px', color: isDarkMode ? '#dbeafe' : '#1e3a8a', fontWeight: 600, margin: 0 },
     
     // RIGHT COLUMN: Service Details & Actions
-    rightSidebar: { display: 'flex', flexDirection: 'column', borderLeft: '1px solid #ecf0f1', background: '#f8f9fa', overflow: 'hidden' },
-    rightHeader: { padding: '16px', borderBottom: '1px solid #ecf0f1', background: '#fff', flexShrink: 0 },
-    rightTitle: { fontSize: '14px', fontWeight: 700, color: '#2c3e50', margin: 0 },
+    rightSidebar: { display: 'flex', flexDirection: 'column', borderLeft: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, overflow: 'hidden' },
+    rightHeader: { padding: '16px', borderBottom: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, flexShrink: 0 },
+    rightTitle: { fontSize: '14px', fontWeight: 700, color: chatTheme.textPrimary, margin: 0 },
     rightScroll: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' },
-    detailSection: { display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: '#fff', borderRadius: '8px', border: '1px solid #ecf0f1' },
-    detailLabel: { fontSize: '11px', fontWeight: 700, color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 },
-    detailValue: { fontSize: '13px', color: '#2c3e50', fontWeight: 500, margin: 0 },
-    detailValueLarge: { fontSize: '18px', fontWeight: 700, color: '#27ae60', margin: 0 },
-    actionBtn: { padding: '10px 12px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px' },
+    detailSection: { display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: chatTheme.bgTertiary, borderRadius: '8px', border: `1px solid ${chatTheme.border}` },
+    detailLabel: { fontSize: '11px', fontWeight: 700, color: chatTheme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 },
+    detailValue: { fontSize: '13px', color: chatTheme.textPrimary, fontWeight: 500, margin: 0 },
+    detailValueLarge: { fontSize: '18px', fontWeight: 700, color: themeTokens.successText, margin: 0 },
+    actionBtn: { padding: '10px 12px', background: themeTokens.accent, color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px' },
     actionBtnSecondary: { background: '#ea580c' },
     actionBtnDanger: { background: '#dc2626' },
-    actionBtnDisabled: { background: '#cbd5e1', cursor: 'not-allowed' },
-    actionSection: { display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px', marginTop: '4px', borderTop: '1px solid #ecf0f1' },
-    actionSectionTitle: { margin: 0, fontSize: '12px', fontWeight: 800, color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    actionBtnDisabled: { background: isDarkMode ? '#687282' : '#cbd5e1', cursor: 'not-allowed' },
+    actionSection: { display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px', marginTop: '4px', borderTop: `1px solid ${chatTheme.border}` },
+    actionSectionTitle: { margin: 0, fontSize: '12px', fontWeight: 800, color: chatTheme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' },
     actionStack: { display: 'flex', flexDirection: 'column', gap: '8px' },
-    sidebarPanel: { background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px' },
-    sidebarPanelTitle: { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
-    sidebarPanelText: { margin: 0, fontSize: '12px', color: '#475569', lineHeight: 1.5 },
+    sidebarPanel: { background: chatTheme.bgTertiary, border: `1px solid ${chatTheme.border}`, borderRadius: '8px', padding: '12px' },
+    sidebarPanelTitle: { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: chatTheme.textPrimary },
+    sidebarPanelText: { margin: 0, fontSize: '12px', color: chatTheme.textSecondary, lineHeight: 1.5 },
     modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1400, padding: '16px' },
-    modalCard: { width: '100%', maxWidth: '540px', background: '#fff', borderRadius: '12px', padding: '18px', boxShadow: '0 20px 45px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '10px' },
-    modalTitle: { margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a' },
-    modalText: { margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.5 },
-    modalTextarea: { width: '100%', minHeight: '100px', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' },
+    modalCard: { width: '100%', maxWidth: '540px', background: chatTheme.bgSecondary, borderRadius: '12px', padding: '18px', boxShadow: '0 20px 45px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '10px', border: `1px solid ${chatTheme.border}` },
+    modalTitle: { margin: 0, fontSize: '18px', fontWeight: 700, color: chatTheme.textPrimary },
+    modalText: { margin: 0, fontSize: '13px', color: chatTheme.textSecondary, lineHeight: 1.5 },
+    modalTextarea: { width: '100%', minHeight: '100px', border: `1px solid ${chatTheme.border}`, borderRadius: '8px', padding: '10px', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: chatTheme.bgTertiary, color: chatTheme.textPrimary },
     modalActions: { display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' },
-    modalBtnCancel: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#e2e8f0', color: '#0f172a', fontWeight: 700, cursor: 'pointer' },
+    modalBtnCancel: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: isDarkMode ? '#58606c' : '#e2e8f0', color: chatTheme.textPrimary, fontWeight: 700, cursor: 'pointer' },
     modalBtnPrimary: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#7c3aed', color: '#fff', fontWeight: 700, cursor: 'pointer' },
     quoteDecisionActions: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 0, width: '100%', maxWidth: '100%', alignItems: 'stretch' },
-    rejectQuoteBtn: { padding: '12px 18px', minWidth: '138px', background: '#f8fafc', color: '#b91c1c', border: '1px solid #2563eb', borderLeft: 'none', borderRadius: '0 8px 8px 0', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
+    rejectQuoteBtn: { padding: '12px 18px', minWidth: '138px', background: chatTheme.bgTertiary, color: '#ef4444', border: `1px solid ${themeTokens.accent}`, borderLeft: 'none', borderRadius: '0 8px 8px 0', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
   };
 
   const getMessageStyle = (msg) => {
@@ -267,7 +290,7 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
                 </div>
               ))
             ) : (
-              <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+              <div style={{ padding: '20px', textAlign: 'center', color: chatTheme.textMuted }}>
                 <p>No active chats</p>
               </div>
             )}
@@ -299,7 +322,7 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
                 <div style={{ ...styles.loadingBubble, width: '65%', alignSelf: 'flex-start' }} />
                 <div style={{ ...styles.loadingBubble, width: '55%', alignSelf: 'flex-start' }} />
                 <div style={{ ...styles.loadingBubble, width: '60%', alignSelf: 'flex-end' }} />
-                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>Loading conversation...</p>
+                <p style={{ margin: 0, fontSize: '12px', color: chatTheme.textMuted }}>Loading conversation...</p>
               </div>
             ) : (
               messages.map((msg) => (
@@ -368,12 +391,12 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
           )}
 
           {isQuoteRejected && (
-            <div style={{ ...styles.approvalStatus, background: '#fef2f2', borderColor: '#fecaca' }}>
-              <p style={{ ...styles.approvalStatusText, color: '#991b1b' }}>
+            <div style={{ ...styles.approvalStatus, background: isDarkMode ? '#7f1d1d' : '#fef2f2', borderColor: isDarkMode ? '#991b1b' : '#fecaca' }}>
+              <p style={{ ...styles.approvalStatusText, color: isDarkMode ? '#fecaca' : '#991b1b' }}>
                 {'\u2715'} Quote Rejected - waiting for worker response
               </p>
               {booking?.quoteRejectionReason && (
-                <p style={{ margin: '8px 0 0', color: '#7f1d1d', fontSize: '13px', textAlign: 'center' }}>
+                <p style={{ margin: '8px 0 0', color: isDarkMode ? '#fecaca' : '#7f1d1d', fontSize: '13px', textAlign: 'center' }}>
                   Reason sent: {booking.quoteRejectionReason}
                 </p>
               )}
@@ -561,7 +584,7 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
             <div style={styles.modalActions}>
               <button style={styles.modalBtnCancel} onClick={() => setShowRefundRequestModal(false)}>Cancel</button>
               <button
-                style={{ ...styles.modalBtnPrimary, ...(refundReason.trim() ? {} : { background: '#cbd5e1', cursor: 'not-allowed' }) }}
+                style={{ ...styles.modalBtnPrimary, ...(refundReason.trim() ? {} : { background: isDarkMode ? '#687282' : '#cbd5e1', cursor: 'not-allowed' }) }}
                 onClick={handleSubmitRefundRequest}
                 disabled={!refundReason.trim()}
               >
@@ -599,7 +622,7 @@ const ChatWindow = ({ booking, onApproveQuote, onRejectQuote, onStopServiceAccep
             <div style={styles.modalActions}>
               <button style={styles.modalBtnCancel} onClick={() => setShowRejectQuoteModal(false)}>Cancel</button>
               <button
-                style={{ ...styles.modalBtnPrimary, ...(rejectQuoteReason.trim() ? { background: '#b91c1c' } : { background: '#cbd5e1', cursor: 'not-allowed' }) }}
+                style={{ ...styles.modalBtnPrimary, ...(rejectQuoteReason.trim() ? { background: '#b91c1c' } : { background: isDarkMode ? '#687282' : '#cbd5e1', cursor: 'not-allowed' }) }}
                 onClick={handleSubmitRejectQuote}
                 disabled={!rejectQuoteReason.trim()}
               >
