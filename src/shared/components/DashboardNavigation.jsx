@@ -70,6 +70,7 @@ function DashboardNavigation({
 
   const isDesktop = windowWidth > 600;
   const themeTokens = getThemeTokens(appTheme);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   const styles = {
     nav: {
@@ -90,24 +91,102 @@ function DashboardNavigation({
         }
       : {
           width: '100%',
-          display: 'grid',
-          gridTemplateColumns: '1fr auto',
+          display: 'flex',
           alignItems: 'center',
-          columnGap: '0.5rem',
+          justifyContent: 'space-between',
+          gap: '0.35rem',
         },
-    left: { display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 },
-    logo: { color: themeTokens.accent, fontWeight: 800, fontSize: '1.85rem', margin: 0, lineHeight: 1, fontFamily: "'Times New Roman', Georgia, serif" },
-    smallIconBtn: { width: '36px', height: '36px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'transparent', border: 'none' },
+    left: { display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0 },
+    logo: {
+      color: themeTokens.accent,
+      fontWeight: 800,
+      fontSize: isDesktop ? '1.85rem' : '1.25rem',
+      margin: 0,
+      lineHeight: 1,
+      fontFamily: "'Times New Roman', Georgia, serif",
+      whiteSpace: 'nowrap',
+    },
+    smallIconBtn: {
+      width: '36px',
+      height: '36px',
+      borderRadius: '999px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      background: 'transparent',
+      border: `1px solid transparent`,
+      transition: 'all 0.2s ease',
+    },
+    smallIconBtnActive: {
+      backgroundColor: themeTokens.badgeBg,
+      borderColor: themeTokens.accent,
+      boxShadow: `0 0 0 4px ${appTheme === 'dark' ? 'rgba(37, 99, 235, 0.22)' : 'rgba(37, 99, 235, 0.14)'}`,
+      color: themeTokens.accent,
+    },
     search: { flex: 1, minWidth: 0 },
     searchInput: { width: '100%', height: '44px', borderRadius: '999px', border: `1px solid ${themeTokens.inputBorder}`, padding: '0 1rem', fontSize: '1.08rem', backgroundColor: themeTokens.inputBg, color: themeTokens.inputText },
-    center: { display: 'flex', alignItems: 'center', gap: isDesktop ? '1.15rem' : '0.5rem', justifyContent: 'center' },
-    navItem: { cursor: 'pointer', width: '52px', height: '48px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 700, color: themeTokens.textPrimary, background: 'transparent', border: 'none' },
+    center: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: isDesktop ? '1.15rem' : '0.2rem',
+      justifyContent: 'center',
+      flex: isDesktop ? 'none' : 1,
+      minWidth: 0,
+    },
+    navItem: {
+      cursor: 'pointer',
+      width: isDesktop ? '52px' : '40px',
+      height: isDesktop ? '48px' : '40px',
+      borderRadius: '999px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '0.5rem',
+      fontWeight: 700,
+      color: themeTokens.textPrimary,
+      background: 'transparent',
+      border: 'none',
+      flexShrink: 0,
+    },
     navItemActive: { borderBottom: `3px solid ${themeTokens.accent}`, paddingBottom: '6px' },
-    myWorkWrap: { width: '58px', height: '58px', borderRadius: '999px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: themeTokens.surface, boxShadow: themeTokens.shadowSoft, cursor: 'pointer', border: `1px solid ${themeTokens.border}` },
-    right: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.45rem' },
+    myWorkWrap: {
+      width: isDesktop ? '58px' : '44px',
+      height: isDesktop ? '58px' : '44px',
+      borderRadius: '999px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: themeTokens.surface,
+      boxShadow: themeTokens.shadowSoft,
+      cursor: 'pointer',
+      border: `1px solid ${themeTokens.border}`,
+      flexShrink: 0,
+    },
+    right: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.35rem', flexShrink: 0 },
     rightItemWrap: { position: 'relative' },
-    roundIconBtn: { width: '42px', height: '42px', borderRadius: '999px', border: `1px solid ${themeTokens.border}`, backgroundColor: themeTokens.surfaceAlt, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: themeTokens.textPrimary },
-    avatar: { width: '42px', height: '42px', borderRadius: '999px', background: themeTokens.surfaceSoft, border: `1px solid ${themeTokens.border}`, cursor: 'pointer' },
+    roundIconBtn: {
+      width: isDesktop ? '42px' : '36px',
+      height: isDesktop ? '42px' : '36px',
+      borderRadius: '999px',
+      border: `1px solid ${themeTokens.border}`,
+      backgroundColor: themeTokens.surfaceAlt,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      cursor: 'pointer',
+      color: themeTokens.textPrimary,
+      flexShrink: 0,
+    },
+    avatar: {
+      width: isDesktop ? '42px' : '36px',
+      height: isDesktop ? '42px' : '36px',
+      borderRadius: '999px',
+      background: themeTokens.surfaceSoft,
+      border: `1px solid ${themeTokens.border}`,
+      cursor: 'pointer',
+      flexShrink: 0,
+    },
     dropdown: {
       position: 'absolute',
       top: '52px',
@@ -201,7 +280,7 @@ function DashboardNavigation({
       <div style={styles.container}>
         <div style={styles.left}>
           <h1 style={styles.logo}>GigLink</h1>
-          {isDesktop && (
+          {isDesktop ? (
             <div style={styles.search}>
               <input
                 value={searchQuery}
@@ -210,6 +289,18 @@ function DashboardNavigation({
                 style={styles.searchInput}
               />
             </div>
+          ) : (
+            <button
+              aria-label="Open search"
+              aria-pressed={showMobileSearch}
+              onClick={() => setShowMobileSearch((s) => !s)}
+              style={{
+                ...styles.smallIconBtn,
+                ...(showMobileSearch ? styles.smallIconBtnActive : {}),
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="6"/><path d="M21 21l-4.35-4.35"/></svg>
+            </button>
           )}
         </div>
 
@@ -313,6 +404,17 @@ function DashboardNavigation({
           </div>
         </div>
       </div>
+      {/* Mobile search expansion shown below nav when toggled */}
+      {!isDesktop && showMobileSearch && (
+        <div style={{ padding: '0.6rem', borderTop: `1px solid ${themeTokens.navBorder}`, background: themeTokens.navBg }}>
+          <input
+            value={searchQuery}
+            onChange={(e) => onSearchChange && onSearchChange(e)}
+            placeholder="Search service (e.g., Math Tutor, Aircon Cleaning)"
+            style={{ ...styles.searchInput, width: '100%', height: '44px' }}
+          />
+        </div>
+      )}
     </div>
   );
 }

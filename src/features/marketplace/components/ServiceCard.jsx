@@ -174,6 +174,30 @@ const styles = {
     transition: 'all 0.3s ease',
     marginTop: 'auto', // Pushes button to bottom of card
   },
+  reviewButton: {
+    backgroundColor: 'transparent',
+    color: 'var(--giglink-accent)',
+    border: '1px solid var(--giglink-border)',
+    padding: '0.5rem 0.7rem',
+    borderRadius: '0.4rem',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    marginTop: '0.5rem'
+  },
+  viewButtonLarge: {
+    backgroundColor: 'var(--giglink-accent)',
+    color: '#ffffff',
+    border: 'none',
+    padding: '0.62rem 0.95rem',
+    borderRadius: '0.4rem',
+    fontSize: '0.92rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    transition: 'all 0.18s ease',
+    flex: 1,
+    textAlign: 'center',
+  },
   
   // BUTTON HOVER STATE - Darker blue and slight scale-up for interactivity feedback
   buttonHover: {
@@ -201,7 +225,7 @@ const badgeColors = {
 //   - isHovered: boolean flag for card elevation/highlight effect
 //   - isButtonHovered: boolean flag for button visual feedback
 // ============================================================================
-function ServiceCard({ provider, onViewProfile }) {
+function ServiceCard({ provider, onViewProfile, onViewReviews }) {
   // LOCAL STATE - Manages hover interactions for visual feedback
   const [isHovered, setIsHovered] = useState(false);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
@@ -297,15 +321,25 @@ function ServiceCard({ provider, onViewProfile }) {
           </div>
         </div>
 
-        {/* SECTION 7: CALL-TO-ACTION BUTTON - Opens provider detail modal */}
-        <button
-          onClick={() => onViewProfile(provider)}
-          style={{ ...styles.button, ...(isButtonHovered ? styles.buttonHover : {}) }}
-          onMouseEnter={() => setIsButtonHovered(true)}
-          onMouseLeave={() => setIsButtonHovered(false)}
-        >
-          View Service
-        </button>
+        {/* SECTION 7: ACTIONS - Reviews + View Service */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: 'auto' }}>
+          <button
+            onClick={() => onViewProfile(provider)}
+            style={{ ...styles.viewButtonLarge, ...(isButtonHovered ? styles.buttonHover : {}) }}
+            onMouseEnter={() => setIsButtonHovered(true)}
+            onMouseLeave={() => setIsButtonHovered(false)}
+          >
+            View Service
+          </button>
+
+          <button
+            onClick={() => onViewReviews && onViewReviews(provider)}
+            style={styles.reviewButton}
+            title="View provider reviews"
+          >
+            Reviews
+          </button>
+        </div>
       </div>
     </div>
   );

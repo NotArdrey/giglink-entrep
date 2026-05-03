@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived }) => {
+const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived, onLeaveRating }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -15,6 +15,9 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   const [refundReason, setRefundReason] = useState('');
   const [showRejectQuoteModal, setShowRejectQuoteModal] = useState(false);
   const [rejectQuoteReason, setRejectQuoteReason] = useState('');
+  const [mockRating, setMockRating] = useState(booking?.rating || 0);
+  const [ratingComment, setRatingComment] = useState(booking?.ratingComment || '');
+  const [ratingSubmitted, setRatingSubmitted] = useState(!!booking?.rating);
 
   const isRecurringService = booking?.billingCycle === 'weekly' || booking?.billingCycle === 'monthly';
   const isServiceStopped = booking?.status === 'Service Stopped' || booking?.serviceActive === false;
@@ -47,6 +50,11 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   };
 
   useEffect(() => {
+    // sync rating state when booking changes
+    setMockRating(booking?.rating || 0);
+    setRatingComment(booking?.review || booking?.ratingComment || '');
+    setRatingSubmitted(!!booking?.rating);
+
     setTimeout(() => {
       setMessages([
         {
@@ -239,6 +247,13 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     sidebarPanel: { background: chatTheme.bgTertiary, border: `1px solid ${chatTheme.border}`, borderRadius: '8px', padding: '12px' },
     sidebarPanelTitle: { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: chatTheme.textPrimary },
     sidebarPanelText: { margin: 0, fontSize: '12px', color: chatTheme.textSecondary, lineHeight: 1.5 },
+    ratingCard: { background: chatTheme.bgSecondary, border: `1px solid ${chatTheme.border}`, borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' },
+    starsRow: { display: 'flex', gap: '8px', alignItems: 'center' },
+    starBtn: { cursor: 'pointer', fontSize: '20px', color: '#cbd5e1', transition: 'transform 0.12s ease' },
+    starActive: { color: themeTokens.accent },
+    ratingTextarea: { width: '100%', minHeight: '60px', border: `1px solid ${chatTheme.border}`, borderRadius: '6px', padding: '8px', background: chatTheme.bgTertiary, color: chatTheme.textPrimary },
+    ratingSubmitBtn: { padding: '8px 12px', background: themeTokens.accent, color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, alignSelf: 'flex-start' },
+    ratingSavedText: { fontSize: '13px', color: themeTokens.successText, fontWeight: 700 },
     modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1400, padding: '16px' },
     modalCard: { width: '100%', maxWidth: '540px', background: chatTheme.bgSecondary, borderRadius: '12px', padding: '18px', boxShadow: '0 20px 45px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '10px', border: `1px solid ${chatTheme.border}` },
     modalTitle: { margin: 0, fontSize: '18px', fontWeight: 700, color: chatTheme.textPrimary },
@@ -260,6 +275,26 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   const getMessageTextStyle = (sender) => {
     if (sender === 'client') return { ...styles.chatMessageTextBase, ...styles.chatMessageTextClient };
     return { ...styles.chatMessageTextBase, ...styles.chatMessageTextWorker };
+  };
+
+  const handleStarClick = (value) => {
+    setMockRating(value);
+  };
+
+  const handleSubmitRating = () => {
+    if (mockRating < 1) return;
+    const payload = {
+      bookingId: booking.id,
+      rating: mockRating,
+      comment: ratingComment,
+      createdAt: new Date().toISOString(),
+    };
+
+    // For now: mock save and mark submitted. In future this should call an API prop like `onLeaveRating`.
+    if (typeof onLeaveRating === 'function') {
+      try { onLeaveRating(payload); } catch (e) { /* ignore */ }
+    }
+    setRatingSubmitted(true);
   };
 
   return (
@@ -475,6 +510,42 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
                       ? 'GCash After Service'
                       : 'Cash After Service'}
                 </p>
+              </div>
+            )}
+
+            {/* Rating (one-time completed transactions only) */}
+            {(!isRecurringService && booking?.status && (booking.status.toLowerCase().includes('complete') || booking.status.toLowerCase().includes('done') || booking.status.toLowerCase().includes('completed'))) && (
+              <div style={styles.ratingCard}>
+                {!ratingSubmitted ? (
+                  <>
+                    <p style={{ margin: 0, fontWeight: 800, color: chatTheme.textPrimary }}>Leave a Rating</p>
+                    <div style={styles.starsRow}>
+                      {[1,2,3,4,5].map((n) => (
+                        <span
+                          key={n}
+                          onClick={() => handleStarClick(n)}
+                          style={{ ...styles.starBtn, ...(mockRating >= n ? styles.starActive : {}) }}
+                          title={`${n} star${n>1 ? 's' : ''}`}
+                        >
+                          {mockRating >= n ? '★' : '☆'}
+                        </span>
+                      ))}
+                    </div>
+                    <textarea
+                      placeholder="Write an optional comment (helpful for future implementation)..."
+                      value={ratingComment}
+                      onChange={(e) => setRatingComment(e.target.value)}
+                      style={styles.ratingTextarea}
+                    />
+                    <button style={styles.ratingSubmitBtn} onClick={handleSubmitRating}>Submit Rating</button>
+                  </>
+                ) : (
+                  <div>
+                    <p style={styles.ratingSavedText}>Thank you — your rating has been recorded (mock).</p>
+                    <p style={{ margin: '6px 0 0', color: chatTheme.textSecondary }}>Rating: {mockRating} / 5</p>
+                    {ratingComment && <p style={{ margin: '6px 0 0', color: chatTheme.textSecondary }}>{ratingComment}</p>}
+                  </div>
+                )}
               </div>
             )}
 

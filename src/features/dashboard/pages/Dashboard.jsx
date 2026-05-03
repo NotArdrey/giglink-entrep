@@ -25,6 +25,7 @@ import BookingCalendarModal from '../../bookings/components/BookingCalendarModal
 import PaymentModal from '../../bookings/components/PaymentModal';
 import BookingNotification from '../../bookings/components/BookingNotification';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
+import ReviewsModal from '../../marketplace/components/ReviewsModal';
 
 // SERVICE CATEGORY CONSTANTS - Core + additional service categories
 const CORE_SERVICE_CHIPS = ['Tutor', 'Technician', 'Cleaner'];
@@ -172,6 +173,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
   // MODAL & BOOKING WORKFLOW STATE
   const [selectedWorker, setSelectedWorker] = useState(null); // Provider selected from card (used by WorkerDetailModal)
   const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false); // Controls WorkerDetailModal visibility
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState(false);
+  const [reviewsTarget, setReviewsTarget] = useState(null);
   const [isBookingCalendarOpen, setIsBookingCalendarOpen] = useState(false); // Controls BookingCalendarModal (date/time selection)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false); // Controls PaymentModal (payment method selection)
   const [pendingBooking, setPendingBooking] = useState(null); // Holds booking data being processed (workerId, selectedSlot, etc.)
@@ -318,6 +321,16 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
   const handleViewProfile = (provider) => {
     setSelectedWorker(provider);
     setIsWorkerModalOpen(true);
+  };
+
+  const handleViewReviews = (provider) => {
+    setReviewsTarget(provider);
+    setIsReviewsModalOpen(true);
+  };
+
+  const handleCloseReviews = () => {
+    setIsReviewsModalOpen(false);
+    setReviewsTarget(null);
   };
 
   // HANDLER 5: Close provider detail modal
@@ -609,6 +622,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(290px, 1fr))',
       columnGap: '1.6rem',
       rowGap: '4.2rem',
+      alignItems: 'stretch', // ensure grid items stretch to equal height
+      justifyItems: isMobile ? 'center' : 'stretch', // center single-column cards on mobile
     },
     
     // SKELETON LOADING CARD - Animated placeholder while data loads
@@ -751,7 +766,19 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
             : filteredProviders.length > 0
               ? // DATA STATE: Show actual service cards
                 filteredProviders.map((provider) => (
-                  <ServiceCard key={provider.id} provider={provider} onViewProfile={handleViewProfile} />
+                  <div
+                    key={provider.id}
+                    style={{
+                      width: '100%',
+                      maxWidth: isMobile ? '100%' : 360,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      padding: isMobile ? '0 8px' : 0,
+                    }}
+                  >
+                    <ServiceCard provider={provider} onViewProfile={handleViewProfile} onViewReviews={handleViewReviews} />
+                  </div>
                 ))
               : // EMPTY STATE: Show message when no results match filters
                 (
@@ -816,6 +843,18 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
           Shows: Toast notification with booking confirmation message
           Auto-dismisses: After 3 seconds or user clicks close
       */}
+      />
+      <ReviewsModal
+        isOpen={isReviewsModalOpen}
+        provider={reviewsTarget}
+        onClose={() => { setIsReviewsModalOpen(false); setReviewsTarget(null); }}
+        reviews={reviewsTarget ? [
+          { clientName: 'Client A', rating: 5, comment: 'Excellent service, on time and professional.', date: '2026-02-11' },
+          { clientName: 'Client B', rating: 4, comment: 'Good quality but arrived 10 minutes late.', date: '2026-01-22' },
+          { clientName: 'Client C', rating: 5, comment: 'Highly recommended — went above and beyond.', date: '2025-12-10' },
+          { clientName: 'Client D', rating: 3, comment: 'Work was okay but communication could be better.', date: '2025-11-03' },
+        ] : []}
+        appTheme={appTheme}
       />
     </div>
   );

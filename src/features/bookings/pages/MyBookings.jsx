@@ -727,6 +727,12 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     setRatingComment('');
   };
 
+  const handleLeaveRating = (payload) => {
+    if (!payload || !payload.bookingId) return;
+    setBookings((prev) => prev.map((b) => (b.id === payload.bookingId ? { ...b, rating: payload.rating, review: payload.comment || '', canRate: false } : b)));
+    pushHeaderNotification('Rating Submitted', `Thanks — your rating for booking #${payload.bookingId} was recorded (mock).`);
+  };
+
   const handleApproveQuote = (bookingId) => {
     setBookings((prevBookings) =>
       prevBookings.map((booking) =>
@@ -1136,6 +1142,7 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
           onRequestRefund={(reason) => handleRequestRefund(currentBooking.id, reason)}
           onConfirmRefundReceived={() => handleConfirmRefundReceived(currentBooking.id)}
           onStopServiceAccepted={() => handleStopServiceAccepted(currentBooking.id)}
+          onLeaveRating={handleLeaveRating}
         />
       )}
       {uiState === 'slots' && (
