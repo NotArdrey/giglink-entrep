@@ -9,6 +9,12 @@ create table if not exists public.profiles (
   full_name text not null,
   email text not null unique,
   role text not null default 'client' check (role in ('client', 'worker', 'admin')),
+  account_status text not null default 'active' check (account_status in ('active', 'disabled', 'suspended')),
+  disabled_reason text,
+  suspended_reason text,
+  suspended_until timestamptz,
+  disabled_at timestamptz,
+  suspended_at timestamptz,
   phone_number text,
   profile_photo text,
   bio text,
@@ -27,6 +33,36 @@ alter table public.profiles add column if not exists middle_name text;
 alter table public.profiles add column if not exists last_name text;
 alter table public.profiles add column if not exists role text;
 alter table public.profiles add column if not exists profile_photo text;
+alter table public.profiles add column if not exists account_status text;
+alter table public.profiles add column if not exists disabled_reason text;
+alter table public.profiles add column if not exists suspended_reason text;
+alter table public.profiles add column if not exists suspended_until timestamptz;
+alter table public.profiles add column if not exists disabled_at timestamptz;
+alter table public.profiles add column if not exists suspended_at timestamptz;
+
+update public.profiles
+set account_status = coalesce(nullif(account_status, ''), 'active')
+where account_status is null or account_status = '';
+
+alter table public.profiles
+  alter column account_status set default 'active';
+
+alter table public.profiles
+  alter column account_status set not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_account_status_check'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_account_status_check
+      check (account_status in ('active', 'disabled', 'suspended'));
+  end if;
+end $$;
 
 update public.profiles
 set
@@ -92,6 +128,35 @@ create table if not exists public.worker_profiles (
 alter table public.profiles enable row level security;
 alter table public.worker_profiles enable row level security;
 
+create or replace function public.is_current_user_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.user_id = auth.uid()
+      and p.role = 'admin'
+      and coalesce(p.account_status, 'active') = 'active'
+  );
+$$;
+
+drop policy if exists "profiles_select_admin" on public.profiles;
+create policy "profiles_select_admin"
+  on public.profiles
+  for select
+  using (auth.uid() = user_id or public.is_current_user_admin());
+
+drop policy if exists "profiles_update_admin" on public.profiles;
+create policy "profiles_update_admin"
+  on public.profiles
+  for update
+  using (auth.uid() = user_id or public.is_current_user_admin())
+  with check (auth.uid() = user_id or public.is_current_user_admin());
+
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own"
   on public.profiles
@@ -145,6 +210,12 @@ begin
     full_name,
     email,
     role,
+    account_status,
+    disabled_reason,
+    suspended_reason,
+    suspended_until,
+    disabled_at,
+    suspended_at,
     phone_number,
     profile_photo,
     bio,
@@ -172,6 +243,12 @@ begin
       nullif(lower(new.raw_user_meta_data ->> 'role'), ''),
       case when coalesce((new.raw_user_meta_data ->> 'is_worker')::boolean, false) then 'worker' else 'client' end
     ),
+    'active',
+    null,
+    null,
+    null,
+    null,
+    null,
     nullif(new.raw_user_meta_data ->> 'phone_number', ''),
     nullif(new.raw_user_meta_data ->> 'profile_photo', ''),
     nullif(new.raw_user_meta_data ->> 'bio', ''),
@@ -190,6 +267,12 @@ begin
     full_name = excluded.full_name,
     email = excluded.email,
     role = coalesce(public.profiles.role, excluded.role),
+    account_status = coalesce(public.profiles.account_status, excluded.account_status),
+    disabled_reason = coalesce(public.profiles.disabled_reason, excluded.disabled_reason),
+    suspended_reason = coalesce(public.profiles.suspended_reason, excluded.suspended_reason),
+    suspended_until = coalesce(public.profiles.suspended_until, excluded.suspended_until),
+    disabled_at = coalesce(public.profiles.disabled_at, excluded.disabled_at),
+    suspended_at = coalesce(public.profiles.suspended_at, excluded.suspended_at),
     phone_number = excluded.phone_number,
     profile_photo = excluded.profile_photo,
     bio = excluded.bio,

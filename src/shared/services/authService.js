@@ -283,6 +283,12 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
     isWorker: Boolean(profileRow?.is_worker || workerRow),
     role: resolvedRole,
     isAdmin: resolvedRole === 'admin',
+    accountStatus: profileRow?.account_status || 'active',
+    disabledReason: profileRow?.disabled_reason || '',
+    suspendedReason: profileRow?.suspended_reason || '',
+    suspendedUntil: profileRow?.suspended_until || null,
+    disabledAt: profileRow?.disabled_at || null,
+    suspendedAt: profileRow?.suspended_at || null,
     serviceType: workerRow?.service_type || '',
     customServiceType: workerRow?.custom_service_type || '',
     pricingModel: workerRow?.pricing_model || 'fixed',
@@ -413,6 +419,126 @@ export const updateUserProfileFields = async (user, fields = {}) => {
   if (authUpdateError) throw authUpdateError;
 
   return fetchUserProfileBundle(user.id);
+};
+
+const normalizeAdminAccountRow = (row = {}) => {
+  const accountStatus = getCleanString(row.account_status || 'active').toLowerCase() || 'active';
+  const suspendedUntil = row.suspended_until || null;
+  const suspendedUntilDate = suspendedUntil ? new Date(suspendedUntil) : null;
+  const isSuspensionExpired = suspendedUntilDate && !Number.isNaN(suspendedUntilDate.getTime()) && suspendedUntilDate.getTime() <= Date.now();
+
+  return {
+    id: row.user_id,
+    name: row.full_name || [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' ').trim() || 'Unnamed account',
+    email: row.email || '',
+    role: row.role || 'client',
+    status: accountStatus,
+    disabledReason: row.disabled_reason || '',
+    suspendedReason: row.suspended_reason || '',
+    suspendedUntil,
+    suspendedUntilExpired: Boolean(isSuspensionExpired),
+    disabledAt: row.disabled_at || null,
+    suspendedAt: row.suspended_at || null,
+    updatedAt: row.updated_at || null,
+    createdAt: row.created_at || null,
+  };
+};
+
+export const fetchAdminAccounts = async () => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, middle_name, last_name, full_name, email, role, account_status, disabled_reason, suspended_reason, suspended_until, disabled_at, suspended_at, updated_at, created_at')
+    .order('updated_at', { ascending: false });
+
+  if (error) throw toReadableDatabaseSetupError(error);
+
+  return (data || []).map(normalizeAdminAccountRow);
+};
+
+export const updateAdminAccountRole = async ({ userId, role }) => {
+  if (!userId) throw new Error('Missing account id.');
+
+  const normalizedRole = getNormalizedRole(role, 'client');
+  if (normalizedRole !== 'client' && normalizedRole !== 'admin') {
+    throw new Error('Only client and admin roles can be set from account management right now.');
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      role: normalizedRole,
+      updated_at: getTimestamp(),
+    })
+    .eq('user_id', userId);
+
+  if (error) throw toReadableDatabaseSetupError(error);
+
+  return true;
+};
+
+export const updateAdminAccountStatus = async ({ userId, status, reason = '', durationMinutes = null }) => {
+  if (!userId) throw new Error('Missing account id.');
+
+  const normalizedStatus = getCleanString(status).toLowerCase();
+  if (!['active', 'disabled', 'suspended'].includes(normalizedStatus)) {
+    throw new Error('Invalid account status.');
+  }
+
+  const payload = {
+    account_status: normalizedStatus,
+    disabled_reason: null,
+    suspended_reason: null,
+    suspended_until: null,
+    disabled_at: null,
+    suspended_at: null,
+    updated_at: getTimestamp(),
+  };
+
+  if (normalizedStatus === 'disabled') {
+    payload.disabled_reason = getNullableString(reason) || 'Disabled by admin';
+    payload.disabled_at = getTimestamp();
+  }
+
+  if (normalizedStatus === 'suspended') {
+    const duration = Number(durationMinutes);
+    if (!Number.isFinite(duration) || duration <= 0) {
+      throw new Error('Please enter a valid suspension duration in minutes.');
+    }
+
+    const suspendedUntil = new Date(Date.now() + duration * 60 * 1000).toISOString();
+    payload.suspended_reason = getNullableString(reason) || 'Suspended by admin';
+    payload.suspended_until = suspendedUntil;
+    payload.suspended_at = getTimestamp();
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(payload)
+    .eq('user_id', userId);
+
+  if (error) throw toReadableDatabaseSetupError(error);
+
+  return true;
+};
+
+export const isAccountBlockedForLogin = (profile = null) => {
+  const status = getCleanString(profile?.accountStatus || profile?.account_status || 'active').toLowerCase();
+  if (status === 'disabled') {
+    return 'Your account has been disabled by an administrator. Please contact support to restore access.';
+  }
+
+  if (status === 'suspended') {
+    const suspendedUntil = profile?.suspendedUntil || profile?.suspended_until || null;
+    if (suspendedUntil) {
+      const suspendedUntilDate = new Date(suspendedUntil);
+      if (!Number.isNaN(suspendedUntilDate.getTime()) && suspendedUntilDate.getTime() > Date.now()) {
+        return `Your account is suspended until ${suspendedUntilDate.toLocaleString()}. Please try again later.`;
+      }
+    }
+    return 'Your account is currently suspended. Please try again later or contact support.';
+  }
+
+  return '';
 };
 
 export const updateUserPassword = async ({ email, currentPassword, newPassword }) => {

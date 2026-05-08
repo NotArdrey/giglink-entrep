@@ -5,12 +5,14 @@ import {
   signUpWithEmail,
   signOutUser,
   syncAuthenticatedUserProfile,
+  fetchUserProfileBundle,
   syncWorkerSetup,
   uploadProfilePhoto,
   updateUserProfileFields,
   updateUserPassword,
   resendSignupVerificationEmail,
   sendPasswordResetEmail,
+  isAccountBlockedForLogin,
 } from '../../shared/services/authService';
 import { getThemeTokens } from '../../shared/styles/themeTokens';
 
@@ -125,6 +127,66 @@ export const useAppNavigation = () => {
   const [successNotification, setSuccessNotification] = useState({ isVisible: false, message: '' });
   const [errorNotification, setErrorNotification] = useState({ isVisible: false, message: '' });
 
+  useEffect(() => {
+    if (!authUser?.id) return undefined;
+
+    let isMounted = true;
+
+    const refreshCurrentUserProfile = async () => {
+      try {
+        const nextProfile = await fetchUserProfileBundle(authUser.id);
+        if (!isMounted || !nextProfile) return;
+
+        const accessError = isAccountBlockedForLogin(nextProfile);
+        if (accessError) {
+          await signOutUser().catch((signOutError) => {
+            console.error('Unable to sign out blocked user after realtime update:', signOutError);
+          });
+          setAuthUser(null);
+          setSellerProfile(null);
+          setUserLocation(null);
+          setIsLoggedIn(false);
+          showErrorNotification(accessError);
+          return;
+        }
+
+        setSellerProfile(nextProfile);
+        setUserLocation(nextProfile?.location || null);
+      } catch (error) {
+        console.error('Unable to refresh current user profile from realtime update:', error);
+      }
+    };
+
+    const channel = supabase
+      .channel(`profile-watch-${authUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${authUser.id}`,
+        },
+        refreshCurrentUserProfile
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'worker_profiles',
+          filter: `user_id=eq.${authUser.id}`,
+        },
+        refreshCurrentUserProfile
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [authUser?.id]);
+
   const hydrateAuthenticatedUser = async (user, source = {}) => {
     if (!user) return null;
 
@@ -141,6 +203,20 @@ export const useAppNavigation = () => {
         profile = buildAuthOnlyProfile(user, source);
         showErrorNotification('Logged in with limited profile mode. Database profile table is not reachable yet.');
       }
+    }
+
+    const accessError = isAccountBlockedForLogin(profile);
+    if (accessError) {
+      try {
+        await signOutUser();
+      } catch (signOutError) {
+        console.error('Unable to sign out blocked account:', signOutError);
+      }
+      setAuthUser(null);
+      setSellerProfile(null);
+      setUserLocation(null);
+      setIsLoggedIn(false);
+      throw new Error(accessError);
     }
 
     setAuthUser(user);
@@ -248,6 +324,24 @@ export const useAppNavigation = () => {
               throw profileError;
             }
             profile = buildAuthOnlyProfile(sessionUser);
+          }
+
+          const accessError = isAccountBlockedForLogin(profile);
+          if (accessError) {
+            try {
+              await signOutUser();
+            } catch (signOutError) {
+              console.error('Unable to sign out blocked session:', signOutError);
+            }
+            if (isMounted) {
+              setIsLoggedIn(false);
+              setAuthUser(null);
+              setSellerProfile(null);
+              setUserLocation(null);
+              showErrorNotification(accessError);
+              setIsLoadingTransition(false);
+            }
+            return;
           }
 
           setAuthUser(sessionUser);

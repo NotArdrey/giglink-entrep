@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AdminNavigation from '../components/AdminNavigation';
 import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
 import { ConfirmActionModal } from '../../../shared/components';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
+import { supabase } from '../../../shared/services/supabaseClient';
+import { fetchAdminAccounts, updateAdminAccountRole, updateAdminAccountStatus } from '../../../shared/services/authService';
 
 const initialAccounts = [
   { id: 1, name: 'Arian Cortez', email: 'arian@example.com', role: 'client', status: 'active', lastSeen: 'Today, 9:12 AM' },
@@ -35,6 +37,67 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [commentDeleteTarget, setCommentDeleteTarget] = useState(null);
+  const [isAccountsLoading, setIsAccountsLoading] = useState(true);
+  const [accountsError, setAccountsError] = useState('');
+  const [roleSavingId, setRoleSavingId] = useState(null);
+  const [accessActionTarget, setAccessActionTarget] = useState(null);
+  const [accessActionMode, setAccessActionMode] = useState('disable');
+  const [accessReason, setAccessReason] = useState('');
+  const [accessDurationValue, setAccessDurationValue] = useState('2');
+  const [accessDurationUnit, setAccessDurationUnit] = useState('minutes');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAccounts = async () => {
+      setIsAccountsLoading(true);
+      setAccountsError('');
+
+      try {
+        const dbAccounts = await fetchAdminAccounts();
+        if (!isMounted) return;
+        setAccounts(dbAccounts);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Unable to load admin accounts:', error);
+        setAccountsError(error?.message || 'Unable to load accounts from the database right now.');
+        setAccounts(initialAccounts.map((account) => ({
+          ...account,
+          accountStatus: account.status === 'disabled' ? 'disabled' : 'active',
+        })));
+      } finally {
+        if (isMounted) setIsAccountsLoading(false);
+      }
+    };
+
+    loadAccounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-accounts-watch')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        async () => {
+          try {
+            const dbAccounts = await fetchAdminAccounts();
+            setAccounts(dbAccounts);
+          } catch (error) {
+            console.error('Unable to refresh admin accounts from realtime update:', error);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const themeTokens = getThemeTokens(appTheme);
 
@@ -50,19 +113,118 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
     });
   }, [accounts, searchQuery, selectedRole]);
 
+  const normalizedAccounts = useMemo(() => filteredAccounts.map((account) => ({
+    ...account,
+    displayStatus: account.status || account.accountStatus || 'active',
+    lastSeen: account.lastSeen || (account.updatedAt ? new Date(account.updatedAt).toLocaleString() : 'Unknown'),
+  })), [filteredAccounts]);
+
   const stats = useMemo(() => {
-    const activeAccounts = accounts.filter((account) => account.status === 'active').length;
-    const disabledAccounts = accounts.filter((account) => account.status === 'disabled').length;
+    const activeAccounts = accounts.filter((account) => (account.status || account.accountStatus) === 'active').length;
+    const disabledAccounts = accounts.filter((account) => (account.status || account.accountStatus) === 'disabled').length;
+    const suspendedAccounts = accounts.filter((account) => (account.status || account.accountStatus) === 'suspended').length;
     const flaggedComments = comments.filter((comment) => comment.status === 'flagged').length;
-    return { activeAccounts, disabledAccounts, flaggedComments };
+    return { activeAccounts, disabledAccounts, suspendedAccounts, flaggedComments };
   }, [accounts, comments]);
 
-  const handleToggleAccount = (accountId) => {
-    setAccounts((prev) => prev.map((account) => (
-      account.id === accountId
-        ? { ...account, status: account.status === 'active' ? 'disabled' : 'active' }
-        : account
-    )));
+  const handleUpdateRole = async (account, nextRole) => {
+    if (!account?.id) return;
+    setRoleSavingId(account.id);
+    try {
+      await updateAdminAccountRole({ userId: account.id, role: nextRole });
+      setAccounts((prev) => prev.map((item) => (item.id === account.id ? { ...item, role: nextRole } : item)));
+    } catch (error) {
+      console.error('Unable to update role:', error);
+      setAccountsError(error?.message || 'Unable to update role right now.');
+    } finally {
+      setRoleSavingId(null);
+    }
+  };
+
+  const openAccessAction = (account, mode) => {
+    setAccessActionTarget(account);
+    setAccessActionMode(mode);
+    setAccessReason(mode === 'ban' ? `Suspended for policy violation.` : `Disabled by admin.`);
+    setAccessDurationValue('2');
+    setAccessDurationUnit('minutes');
+  };
+
+  const closeAccessAction = () => {
+    setAccessActionTarget(null);
+    setAccessActionMode('disable');
+    setAccessReason('');
+    setAccessDurationValue('2');
+    setAccessDurationUnit('minutes');
+  };
+
+  const handleConfirmAccessAction = async () => {
+    if (!accessActionTarget?.id) return;
+
+    const durationMap = {
+      minutes: 1,
+      hours: 60,
+      days: 1440,
+    };
+    const durationMinutes = Number(accessDurationValue) * (durationMap[accessDurationUnit] || 1);
+
+    try {
+      await updateAdminAccountStatus({
+        userId: accessActionTarget.id,
+        status: accessActionMode === 'ban' ? 'suspended' : 'disabled',
+        reason: accessReason,
+        durationMinutes: accessActionMode === 'ban' ? durationMinutes : null,
+      });
+
+      setAccounts((prev) => prev.map((item) => {
+        if (item.id !== accessActionTarget.id) return item;
+        if (accessActionMode === 'ban') {
+          const suspendedUntil = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
+          return {
+            ...item,
+            status: 'suspended',
+            suspendedReason: accessReason,
+            suspendedUntil,
+            suspendedAt: new Date().toISOString(),
+          };
+        }
+
+        return {
+          ...item,
+          status: 'disabled',
+          disabledReason: accessReason,
+          disabledAt: new Date().toISOString(),
+        };
+      }));
+
+      closeAccessAction();
+    } catch (error) {
+      console.error('Unable to update account access:', error);
+      setAccountsError(error?.message || 'Unable to update account access right now.');
+    }
+  };
+
+  const handleRestoreAccount = async (account) => {
+    if (!account?.id) return;
+
+    try {
+      await updateAdminAccountStatus({ userId: account.id, status: 'active', reason: '' });
+      setAccounts((prev) => prev.map((item) => (
+        item.id === account.id
+          ? {
+              ...item,
+              status: 'active',
+              disabledReason: '',
+              suspendedReason: '',
+              suspendedUntil: null,
+              disabledAt: null,
+              suspendedAt: null,
+            }
+          : item
+      )));
+    } catch (error) {
+      console.error('Unable to restore account:', error);
+      setAccountsError(error?.message || 'Unable to restore account right now.');
+    }
   };
 
   const handleDeleteComment = (commentId) => {
@@ -487,7 +649,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
               <div style={styles.panelHeader}>
                 <div style={styles.panelTitleWrap}>
                   <h2 style={styles.panelTitle}>Account Management</h2>
-                  <p style={styles.panelDesc}>View existing accounts and toggle access state locally for now. Later this can connect to the admin role and Supabase updates.</p>
+                  <p style={styles.panelDesc}>View all accounts from the database, update roles for client/admin users, and apply soft disables or timed suspensions.</p>
                 </div>
                 <div style={styles.filterBar}>
                   <input
@@ -499,13 +661,16 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
                   <select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} style={styles.select}>
                     <option value="all">All Roles</option>
                     <option value="client">Client</option>
-                    <option value="worker">Worker</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
               </div>
 
-              {filteredAccounts.length > 0 ? (
+              {accountsError && <div style={{ ...styles.emptyState, marginBottom: '12px' }}>{accountsError}</div>}
+
+              {isAccountsLoading && <div style={styles.emptyState}>Loading accounts from the database...</div>}
+
+              {!isAccountsLoading && filteredAccounts.length > 0 ? (
                 <div style={styles.tableWrap}>
                   <table style={styles.table}>
                     <thead>
@@ -514,12 +679,13 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
                         <th style={styles.th}>Email</th>
                         <th style={styles.th}>Role</th>
                         <th style={styles.th}>Status</th>
+                        <th style={styles.th}>Access Notes</th>
                         <th style={styles.th}>Last Seen</th>
                         <th style={styles.th}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredAccounts.map((account) => (
+                      {normalizedAccounts.map((account) => (
                         <tr key={account.id}>
                           <td style={styles.td}>{account.name}</td>
                           <td style={styles.td}>{account.email}</td>
@@ -541,11 +707,33 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
                             <span
                               style={{
                                 ...styles.badge,
-                                ...(account.status === 'active' ? styles.badgeActive : styles.badgeDisabled),
+                                ...(account.displayStatus === 'active'
+                                  ? styles.badgeActive
+                                  : account.displayStatus === 'suspended'
+                                    ? { backgroundColor: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa' }
+                                    : styles.badgeDisabled),
                               }}
                             >
-                              {account.status}
+                              {account.displayStatus}
                             </span>
+                          </td>
+                          <td style={styles.td}>
+                            <div style={{ display: 'grid', gap: '4px' }}>
+                              <span style={styles.activityMeta}>
+                                {account.displayStatus === 'suspended' && account.suspendedUntil
+                                  ? `Until ${new Date(account.suspendedUntil).toLocaleString()}`
+                                  : account.displayStatus === 'disabled'
+                                    ? 'Soft disabled by admin'
+                                    : 'No access restrictions'}
+                              </span>
+                              <span style={styles.activityMeta}>
+                                {account.displayStatus === 'suspended'
+                                  ? (account.suspendedReason || 'No suspension reason saved')
+                                  : account.displayStatus === 'disabled'
+                                    ? (account.disabledReason || 'No disable reason saved')
+                                    : 'Account active'}
+                              </span>
+                            </div>
                           </td>
                           <td style={styles.td}>{account.lastSeen}</td>
                           <td style={styles.td}>
@@ -553,10 +741,45 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
                               <button
                                 type="button"
                                 style={styles.rowButton}
-                                onClick={() => handleToggleAccount(account.id)}
+                                disabled={roleSavingId === account.id}
+                                onClick={() => handleUpdateRole(account, 'client')}
                               >
-                                {account.status === 'active' ? 'Disable' : 'Enable'}
+                                Set Client
                               </button>
+                              <button
+                                type="button"
+                                style={{ ...styles.rowButton, ...styles.badgeAdmin }}
+                                disabled={roleSavingId === account.id}
+                                onClick={() => handleUpdateRole(account, 'admin')}
+                              >
+                                Set Admin
+                              </button>
+                              {(account.displayStatus === 'active') ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    style={{ ...styles.rowButton, ...styles.rowButtonMuted }}
+                                    onClick={() => openAccessAction(account, 'disable')}
+                                  >
+                                    Disable
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={{ ...styles.rowButton, backgroundColor: '#b45309' }}
+                                    onClick={() => openAccessAction(account, 'ban')}
+                                  >
+                                    Ban
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  style={{ ...styles.rowButton, backgroundColor: '#15803d' }}
+                                  onClick={() => handleRestoreAccount(account)}
+                                >
+                                  Restore
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -675,6 +898,99 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
           </p>
         )}
       </div>
+
+      {accessActionTarget && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '16px' }}>
+          <div style={{ width: 'min(92vw, 560px)', backgroundColor: themeTokens.surface, border: `1px solid ${themeTokens.border}`, borderRadius: '16px', padding: '20px', boxShadow: '0 20px 50px rgba(15, 23, 42, 0.25)', display: 'grid', gap: '14px' }}>
+            <div style={styles.panelTitleWrap}>
+              <h2 style={styles.panelTitle}>{accessActionMode === 'ban' ? 'Ban Account' : 'Disable Account'}</h2>
+              <p style={styles.panelDesc}>
+                {accessActionMode === 'ban'
+                  ? `Suspend ${accessActionTarget.name} for a custom duration.`
+                  : `Soft-disable ${accessActionTarget.name} until an admin restores access.`}
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <label style={{ display: 'grid', gap: '6px', fontWeight: 700 }}>
+                Reason
+                <textarea
+                  value={accessReason}
+                  onChange={(event) => setAccessReason(event.target.value)}
+                  rows={4}
+                  style={{
+                    borderRadius: '12px',
+                    border: `1px solid ${themeTokens.border}`,
+                    backgroundColor: themeTokens.surfaceAlt,
+                    color: themeTokens.textPrimary,
+                    padding: '12px',
+                    resize: 'vertical',
+                  }}
+                  placeholder="Add the admin reason for this action"
+                />
+              </label>
+
+              {accessActionMode === 'ban' && (
+                <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 160px' }}>
+                  <label style={{ display: 'grid', gap: '6px', fontWeight: 700 }}>
+                    Duration
+                    <input
+                      type="number"
+                      min="1"
+                      value={accessDurationValue}
+                      onChange={(event) => setAccessDurationValue(event.target.value)}
+                      style={{
+                        minHeight: '42px',
+                        borderRadius: '12px',
+                        border: `1px solid ${themeTokens.border}`,
+                        backgroundColor: themeTokens.surfaceAlt,
+                        color: themeTokens.textPrimary,
+                        padding: '0 12px',
+                      }}
+                    />
+                  </label>
+
+                  <label style={{ display: 'grid', gap: '6px', fontWeight: 700 }}>
+                    Unit
+                    <select
+                      value={accessDurationUnit}
+                      onChange={(event) => setAccessDurationUnit(event.target.value)}
+                      style={{
+                        minHeight: '42px',
+                        borderRadius: '12px',
+                        border: `1px solid ${themeTokens.border}`,
+                        backgroundColor: themeTokens.surfaceAlt,
+                        color: themeTokens.textPrimary,
+                        padding: '0 12px',
+                      }}
+                    >
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" style={{ ...styles.rowButton, ...styles.rowButtonMuted }} onClick={closeAccessAction}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{
+                  ...styles.rowButton,
+                  backgroundColor: accessActionMode === 'ban' ? '#b45309' : '#dc2626',
+                }}
+                onClick={handleConfirmAccessAction}
+              >
+                {accessActionMode === 'ban' ? 'Ban Account' : 'Disable Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmActionModal
         isOpen={Boolean(commentDeleteTarget)}
