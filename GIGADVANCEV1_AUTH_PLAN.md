@@ -1,4 +1,4 @@
-# GigAdvance v1 Auth + Profile Plan
+# GigLink Auth + Profile Plan
 
 ## Supabase project details
 - **Project URL:** https://dczhfpcfqlygpbqjctwf.supabase.co
@@ -12,7 +12,7 @@
 ## Ready-to-paste implementation prompt
 Use this prompt when you want to start the authentication build:
 
-> Implement the GigAdvance v1 authentication system using Supabase and Python. Build registration and login first, with a default client role and optional worker role after seller setup. Create and connect the database tables needed for profiles and worker profiles, ensure the Profile page reads accurate user data, and make sure the UI changes from "Become a seller" to "My Work" after worker setup is completed. Keep the implementation feature-by-feature, and use the Supabase project details above for setup.
+> Implement the GigLink authentication system using Supabase and Python. Build registration and login first, with a default client role and optional worker role after seller setup. Create and connect the database tables needed for profiles and worker profiles, ensure the Profile page reads accurate user data, and make sure the UI changes from "Become a seller" to "My Work" after worker setup is completed. Keep the implementation feature-by-feature, and use the Supabase project details above for setup.
 
 ## Goal
 Build registration and login first, with a clean database design that supports:

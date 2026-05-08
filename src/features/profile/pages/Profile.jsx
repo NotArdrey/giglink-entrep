@@ -4,16 +4,31 @@ import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile }) {
+  const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
   const fallbackName = 'Juan Dela Cruz';
   const fallbackBio = 'Dedicated service provider focused on quality, punctuality, and client satisfaction.';
-  const fallbackPhoto = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop';
+  const fallbackPhoto = '';
+  const splitNameParts = (value = '') => {
+    const parts = String(value).trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
+    if (parts.length === 1) return { firstName: parts[0], middleName: '', lastName: '' };
+    if (parts.length === 2) return { firstName: parts[0], middleName: '', lastName: parts[1] };
+    return { firstName: parts[0], middleName: parts.slice(1, -1).join(' '), lastName: parts.at(-1) };
+  };
+  const buildDisplayName = ({ firstName = '', middleName = '', lastName = '' } = {}) =>
+    [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
+  const initialNameParts = splitNameParts(sellerProfile?.fullName || fallbackName);
 
-  const [displayName, setDisplayName] = useState(sellerProfile?.fullName || fallbackName);
+  const [firstName, setFirstName] = useState(sellerProfile?.firstName || initialNameParts.firstName);
+  const [middleName, setMiddleName] = useState(sellerProfile?.middleName || initialNameParts.middleName);
+  const [lastName, setLastName] = useState(sellerProfile?.lastName || initialNameParts.lastName);
   const [displayBio, setDisplayBio] = useState(sellerProfile?.bio || fallbackBio);
   const [profilePhoto, setProfilePhoto] = useState(sellerProfile?.profilePhoto || fallbackPhoto);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const [draftName, setDraftName] = useState(displayName);
+  const [draftFirstName, setDraftFirstName] = useState(firstName);
+  const [draftMiddleName, setDraftMiddleName] = useState(middleName);
+  const [draftLastName, setDraftLastName] = useState(lastName);
   const [draftBio, setDraftBio] = useState(displayBio);
   const [isPhotoSourceOpen, setIsPhotoSourceOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
@@ -21,6 +36,10 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
   const [isHeadingHovered, setIsHeadingHovered] = useState(false);
   const [isManageHovered, setIsManageHovered] = useState(false);
   const [isPortfolioHovered, setIsPortfolioHovered] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -31,23 +50,33 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
   const themeTokens = getThemeTokens(appTheme);
 
   useEffect(() => {
-    const nextName = sellerProfile?.fullName || fallbackName;
+    const nextNameParts = sellerProfile?.firstName || sellerProfile?.middleName || sellerProfile?.lastName
+      ? {
+        firstName: sellerProfile?.firstName || '',
+        middleName: sellerProfile?.middleName || '',
+        lastName: sellerProfile?.lastName || '',
+      }
+      : splitNameParts(sellerProfile?.fullName || fallbackName);
     const nextBio = sellerProfile?.bio || fallbackBio;
     const nextPhoto = sellerProfile?.profilePhoto || fallbackPhoto;
-    setDisplayName(nextName);
+    setFirstName(nextNameParts.firstName);
+    setMiddleName(nextNameParts.middleName);
+    setLastName(nextNameParts.lastName);
     setDisplayBio(nextBio);
     setProfilePhoto(nextPhoto);
-    setDraftName(nextName);
+    setDraftFirstName(nextNameParts.firstName);
+    setDraftMiddleName(nextNameParts.middleName);
+    setDraftLastName(nextNameParts.lastName);
     setDraftBio(nextBio);
-  }, [sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
+  }, [sellerProfile?.firstName, sellerProfile?.middleName, sellerProfile?.lastName, sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
 
   useEffect(() => {
     setIsProfileLoading(true);
     const timer = setTimeout(() => {
       setIsProfileLoading(false);
-    }, 700);
+    }, 350);
     return () => clearTimeout(timer);
-  }, [sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
+  }, [sellerProfile?.userId]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -59,37 +88,96 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const localizedAddress = userLocation
-    ? `${userLocation.barangay || 'Sabang'}, ${userLocation.city || 'Baliwag'}, ${userLocation.province || 'Bulacan'}`
-    : 'Sabang, Baliwag, Bulacan';
+  const resolvedProvince = userLocation?.province || sellerProfile?.province || '';
+  const resolvedCity = userLocation?.city || sellerProfile?.city || '';
+  const resolvedBarangay = userLocation?.barangay || sellerProfile?.barangay || '';
+  const fullAddress = userLocation?.address || sellerProfile?.address || '';
+  const locationParts = [resolvedBarangay, resolvedCity, resolvedProvince].filter(Boolean);
+  const localizedAddress = locationParts.length > 0 ? locationParts.join(', ') : 'Location not set';
 
   const isVerifiedWorker = Boolean(sellerProfile?.serviceType);
+  const displayName = buildDisplayName({ firstName, middleName, lastName }) || fallbackName;
+  const profileInitials = [firstName, lastName]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join('') || 'U';
 
-  const saveName = () => {
-    const nextName = draftName.trim() || fallbackName;
-    setDisplayName(nextName);
-    setIsEditingName(false);
-    onUpdateProfile && onUpdateProfile({ fullName: nextName });
+  const saveName = async () => {
+    const nextFirstName = draftFirstName.trim();
+    const nextMiddleName = draftMiddleName.trim();
+    const nextLastName = draftLastName.trim();
+    const nextName = buildDisplayName({ firstName: nextFirstName, middleName: nextMiddleName, lastName: nextLastName }) || fallbackName;
+    if (!onUpdateProfile) return;
+
+    try {
+      setSaveError('');
+      setIsSavingName(true);
+      await onUpdateProfile({
+        firstName: nextFirstName,
+        middleName: nextMiddleName,
+        lastName: nextLastName,
+        fullName: nextName,
+      });
+      setFirstName(nextFirstName || fallbackName.split(' ')[0]);
+      setMiddleName(nextMiddleName);
+      setLastName(nextLastName || fallbackName.split(' ').slice(1).join(' '));
+      setIsEditingName(false);
+    } catch (error) {
+      setSaveError(error?.message || 'Unable to save name right now. Please try again.');
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
-  const saveBio = () => {
+  const saveBio = async () => {
     const nextBio = draftBio.trim() || fallbackBio;
-    setDisplayBio(nextBio);
-    setIsEditingBio(false);
-    onUpdateProfile && onUpdateProfile({ bio: nextBio });
+    if (!onUpdateProfile) return;
+
+    try {
+      setSaveError('');
+      setIsSavingBio(true);
+      await onUpdateProfile({ bio: nextBio });
+      setDisplayBio(nextBio);
+      setIsEditingBio(false);
+    } catch (error) {
+      setSaveError(error?.message || 'Unable to save bio right now. Please try again.');
+    } finally {
+      setIsSavingBio(false);
+    }
   };
 
   const handleImageSelection = async (event) => {
     const selectedFile = event.target.files && event.target.files[0];
     if (!selectedFile) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const imageDataUrl = typeof reader.result === 'string' ? reader.result : fallbackPhoto;
-      setProfilePhoto(imageDataUrl);
-      onUpdateProfile && onUpdateProfile({ profilePhoto: imageDataUrl });
-    };
-    reader.readAsDataURL(selectedFile);
+    if (!String(selectedFile.type || '').toLowerCase().startsWith('image/')) {
+      setSaveError('Please choose a valid image file (JPG, PNG, WEBP, etc.).');
+      event.target.value = '';
+      return;
+    }
+
+    if (selectedFile.size > MAX_PROFILE_PHOTO_BYTES) {
+      setSaveError('Profile photo is too large. Maximum size is 2 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    if (onUpdateProfile) {
+      try {
+        setSaveError('');
+        setIsSavingPhoto(true);
+        const mergedProfile = await onUpdateProfile({ profilePhotoFile: selectedFile });
+        if (mergedProfile?.profilePhoto) {
+          setProfilePhoto(mergedProfile.profilePhoto);
+        }
+      } catch (error) {
+        setSaveError(error?.message || 'Unable to save profile photo right now. Please try again.');
+      } finally {
+        setIsSavingPhoto(false);
+      }
+    }
 
     setIsPhotoSourceOpen(false);
     event.target.value = '';
@@ -126,16 +214,27 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
     bioEditInput: { border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '8px', padding: '10px', resize: 'vertical', minHeight: '90px', background: themeTokens.inputBg, color: themeTokens.inputText },
     bioEditActions: { display: 'flex', gap: '8px' },
     paragraph: { margin: 0, color: themeTokens.textSecondary, lineHeight: 1.55 },
+    saveError: {
+      margin: '0 0 14px',
+      color: '#b91c1c',
+      background: '#fee2e2',
+      border: '1px solid #fecaca',
+      borderRadius: '8px',
+      padding: '10px 12px',
+      fontSize: '0.92rem',
+      fontWeight: 600,
+    },
     portfolioParagraph: { margin: 0, color: themeTokens.textPrimary, lineHeight: 1.55 },
     generatePortfolioBtn: { width: '100%', border: 'none', borderRadius: '8px', padding: '12px', background: isPortfolioHovered ? themeTokens.accent : themeTokens.accent, color: '#ffffff', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px', transition: 'all 0.3s ease', transform: isPortfolioHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isPortfolioHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
     manageAccountBtn: { width: '100%', border: 'none', borderRadius: '10px', padding: '14px', background: isManageHovered ? themeTokens.surfaceAlt : themeTokens.surfaceSoft, color: themeTokens.textPrimary, fontWeight: 700, fontSize: '15px', cursor: 'pointer' },
     photoSourceOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 220 },
-    photoSourceModal: { width: 'min(360px, 90vw)', background: '#ffffff', borderRadius: '12px', padding: '16px', boxShadow: '0 12px 24px rgba(15, 23, 42, 0.2)' },
-    modalTitle: { margin: '0 0 8px' },
-    modalText: { margin: '0 0 12px', color: '#4b5563' },
+    photoSourceModal: { width: 'min(460px, 94vw)', background: '#ffffff', borderRadius: '14px', padding: '20px', boxShadow: '0 16px 32px rgba(15, 23, 42, 0.22)' },
+    modalTitle: { margin: '0 0 8px', fontSize: '1.55rem', lineHeight: 1.2 },
+    modalText: { margin: '0 0 8px', color: '#4b5563', fontSize: '1rem' },
+    modalHint: { margin: '0 0 14px', color: '#334155', fontSize: '0.9rem' },
     photoSourceActions: { display: 'grid', gap: '8px' },
-    photoActionBtn: { border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 700, background: '#2563eb', color: '#ffffff' },
-    cancelBtn: { border: 'none', borderRadius: '8px', padding: '10px', cursor: 'pointer', fontWeight: 700, background: '#e5e7eb', color: '#1f2937' },
+    photoActionBtn: { border: 'none', borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: '#2563eb', color: '#ffffff' },
+    cancelBtn: { border: 'none', borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: '#e5e7eb', color: '#1f2937' },
   };
 
   return (
@@ -158,6 +257,8 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
 
       <main style={styles.main}>
         <div style={styles.card}>
+          {saveError && <p style={styles.saveError}>{saveError}</p>}
+
           <div style={styles.hero}>
             {isProfileLoading ? (
               <div style={styles.profilePhotoButton}>
@@ -168,8 +269,25 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
               </div>
             ) : (
               <button style={styles.profilePhotoButton} onClick={() => setIsPhotoSourceOpen(true)}>
-                <img src={profilePhoto} alt={displayName} style={styles.profilePhoto} />
-                <span style={styles.profilePhotoEdit}>Change Photo</span>
+                {profilePhoto ? (
+                  <img src={profilePhoto} alt={displayName} style={styles.profilePhoto} />
+                ) : (
+                  <div
+                    style={{
+                      ...styles.profilePhoto,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: themeTokens.surfaceSoft,
+                      color: themeTokens.textPrimary,
+                      fontWeight: 800,
+                      fontSize: isMobile ? '34px' : '42px',
+                    }}
+                  >
+                    {profileInitials}
+                  </div>
+                )}
+                <span style={styles.profilePhotoEdit}>{isSavingPhoto ? 'Saving Photo...' : (profilePhoto ? 'Change Photo' : 'Add Photo')}</span>
               </button>
             )}
 
@@ -177,15 +295,11 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
               <div style={{ ...styles.textPlaceholder, width: '220px' }} />
             ) : isEditingName ? (
               <div style={styles.inlineEditRow}>
-                <input
-                  style={styles.inlineEditInput}
-                  type="text"
-                  value={draftName}
-                  onChange={(event) => setDraftName(event.target.value)}
-                  maxLength={80}
-                />
-                <button style={styles.inlineEditSave} onClick={saveName}>Save</button>
-                <button style={styles.inlineEditCancel} onClick={() => { setIsEditingName(false); setDraftName(displayName); }}>
+                <input style={{ ...styles.inlineEditInput, minWidth: '160px' }} type="text" value={draftFirstName} onChange={(event) => setDraftFirstName(event.target.value)} placeholder="First name" />
+                <input style={{ ...styles.inlineEditInput, minWidth: '160px' }} type="text" value={draftMiddleName} onChange={(event) => setDraftMiddleName(event.target.value)} placeholder="Middle name (optional)" />
+                <input style={{ ...styles.inlineEditInput, minWidth: '160px' }} type="text" value={draftLastName} onChange={(event) => setDraftLastName(event.target.value)} placeholder="Last name" />
+                <button style={styles.inlineEditSave} onClick={saveName} disabled={isSavingName}>{isSavingName ? 'Saving...' : 'Save'}</button>
+                <button style={styles.inlineEditCancel} onClick={() => { setIsEditingName(false); setDraftFirstName(firstName); setDraftMiddleName(middleName); setDraftLastName(lastName); }}>
                   Cancel
                 </button>
               </div>
@@ -234,7 +348,7 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
                   maxLength={280}
                 ></textarea>
                 <div style={styles.bioEditActions}>
-                  <button style={styles.inlineEditSave} onClick={saveBio}>Save</button>
+                  <button style={styles.inlineEditSave} onClick={saveBio} disabled={isSavingBio}>{isSavingBio ? 'Saving...' : 'Save'}</button>
                   <button style={styles.inlineEditCancel} onClick={() => { setIsEditingBio(false); setDraftBio(displayBio); }}>
                     Cancel
                   </button>
@@ -246,8 +360,13 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
           </section>
 
           <section style={styles.profileSection}>
-            <h2 style={styles.h2}>Localized Address</h2>
-            {isProfileLoading ? <div style={{ ...styles.textPlaceholder, width: '70%' }} /> : <p style={styles.paragraph}>{localizedAddress}</p>}
+            <h2 style={styles.h2}>Address</h2>
+            {isProfileLoading ? <div style={{ ...styles.textPlaceholder, width: '70%' }} /> : (
+              <>
+                {fullAddress && <p style={styles.paragraph}><strong>Street Address:</strong> {fullAddress}</p>}
+                <p style={styles.paragraph}><strong>Location:</strong> {localizedAddress}</p>
+              </>
+            )}
           </section>
 
           {isVerifiedWorker && (
@@ -279,6 +398,7 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
               <div style={styles.photoSourceModal}>
                 <h3 style={styles.modalTitle}>Change Profile Photo</h3>
                 <p style={styles.modalText}>Select image source:</p>
+                <p style={styles.modalHint}>Supported on phone, tablet, and desktop. Max file size: 2 MB.</p>
                 <div style={styles.photoSourceActions}>
                   <button style={styles.photoActionBtn} onClick={() => cameraInputRef.current && cameraInputRef.current.click()}>Use Camera</button>
                   <button style={styles.photoActionBtn} onClick={() => deviceInputRef.current && deviceInputRef.current.click()}>From Device</button>

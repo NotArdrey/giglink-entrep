@@ -7,7 +7,9 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: '',
+    firstName: '',
+    middleName: '',
+    lastName: '',
     confirmPassword: '',
     province: '',
     city: '',
@@ -157,6 +159,11 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       return;
     }
 
+    if (!isLoginMode && (!formData.firstName.trim() || !formData.lastName.trim())) {
+      setSubmitError('First name and last name are required.');
+      return;
+    }
+
     if (!isLoginMode && (!formData.province || !formData.city || !formData.barangay || !formData.address)) {
       setSubmitError('Please fill in all location fields.');
       return;
@@ -174,7 +181,9 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       setFormData({
         email: '',
         password: '',
-        name: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
         confirmPassword: '',
         province: '',
         city: '',
@@ -367,10 +376,22 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
 
         <form onSubmit={handleSubmit} style={styles.form}>
           {!isLoginMode && (
-            <div style={styles.group}>
-              <label htmlFor="name" style={styles.label}>Full Name</label>
-              <input id="name" name="name" type="text" value={formData.name} onChange={handleInputChange} style={styles.input} placeholder="Enter your full name" required />
-            </div>
+            <>
+              <div style={styles.group}>
+                <label htmlFor="firstName" style={styles.label}>First Name</label>
+                <input id="firstName" name="firstName" type="text" value={formData.firstName} onChange={handleInputChange} style={styles.input} placeholder="Enter your first name" required />
+              </div>
+
+              <div style={styles.group}>
+                <label htmlFor="middleName" style={styles.label}>Middle Name (optional)</label>
+                <input id="middleName" name="middleName" type="text" value={formData.middleName} onChange={handleInputChange} style={styles.input} placeholder="Enter your middle name" />
+              </div>
+
+              <div style={styles.group}>
+                <label htmlFor="lastName" style={styles.label}>Last Name</label>
+                <input id="lastName" name="lastName" type="text" value={formData.lastName} onChange={handleInputChange} style={styles.input} placeholder="Enter your last name" required />
+              </div>
+            </>
           )}
 
           <div style={styles.group}>

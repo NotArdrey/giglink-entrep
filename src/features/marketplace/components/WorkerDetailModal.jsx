@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
+  const [galleryIndex, setGalleryIndex] = useState(0);
 
   useEffect(() => {
     if (!isOpen || !worker) return undefined;
@@ -19,6 +20,25 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
   }, [isOpen, worker]);
 
   if (!isOpen || !worker) return null;
+
+  // derive gallery images (use worker.gallery or fallback mock images)
+  const gallery = (worker.gallery && worker.gallery.length > 0)
+    ? worker.gallery
+    : (worker.uploadedPhotos && worker.uploadedPhotos.length > 0)
+      ? worker.uploadedPhotos
+      : (worker.photos && worker.photos.length > 0)
+        ? worker.photos
+        : [
+          'https://via.placeholder.com/900x600?text=Sample+Work+1',
+          'https://via.placeholder.com/900x600?text=Sample+Work+2',
+          'https://via.placeholder.com/900x600?text=Sample+Work+3',
+        ];
+
+  const hasGallery = Array.isArray(gallery) && gallery.length > 0;
+
+  const showPrev = () => setGalleryIndex((i) => (i - 1 + gallery.length) % gallery.length);
+  const showNext = () => setGalleryIndex((i) => (i + 1) % gallery.length);
+  const jumpTo = (i) => setGalleryIndex(i);
 
   const isInquiry = worker.actionType === 'inquire';
   
@@ -58,17 +78,17 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       zIndex: 220,
       padding: '1rem',
     },
-    content: {
+    content: (hasGallery) => ({
       backgroundColor: '#ffffff',
-      width: 'min(92vw, 760px)',
+      width: 'min(92vw, 920px)',
       borderRadius: '0.9rem',
       boxShadow: '0 18px 45px rgba(15, 23, 42, 0.26)',
       display: 'grid',
-      gridTemplateColumns: 'minmax(220px, 280px) 1fr',
+      gridTemplateColumns: hasGallery ? 'minmax(360px, 620px) 1fr' : 'minmax(220px, 280px) 1fr',
       gap: '1.2rem',
       padding: '1.5rem',
       position: 'relative',
-    },
+    }),
     closeButton: {
       position: 'absolute',
       top: '0.8rem',
@@ -82,12 +102,16 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       fontSize: '1.05rem',
       color: '#0f172a',
     },
-    imageContainer: {
+    imageContainer: (hasGallery) => ({
       borderRadius: '0.7rem',
       overflow: 'hidden',
-      minHeight: '280px',
+      minHeight: hasGallery ? '420px' : '280px',
       backgroundColor: '#f1f5f9',
-    },
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }),
     image: {
       width: '100%',
       height: '100%',
@@ -101,6 +125,11 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       justifyContent: 'center',
       backgroundColor: '#e2e8f0',
     },
+    galleryNavButton: { position: 'absolute', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.85)', border: 'none', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer' },
+    galleryPrev: { left: '12px' },
+    galleryNext: { right: '12px' },
+    thumbRow: { display: 'flex', gap: '0.45rem', marginTop: '0.6rem', flexWrap: 'wrap' },
+    thumb: { width: '64px', height: '64px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '2px solid transparent' },
     avatarPlaceholder: {
       width: '132px',
       height: '132px',
@@ -156,7 +185,7 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
 
   return (
     <div style={styles.overlay}>
-      <div style={styles.content}>
+      <div style={styles.content(hasGallery)}>
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -167,17 +196,33 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
         </button>
 
         {/* Worker Photo */}
-        <div style={styles.imageContainer}>
+        <div style={styles.imageContainer(hasGallery)}>
           {isLoadingDetails ? (
             <div style={styles.imageSkeletonWrap}>
               <div style={styles.avatarPlaceholder} />
             </div>
           ) : (
-            <img
-              src={worker.photo}
-              alt={worker.name}
-              style={styles.image}
-            />
+            <>
+              {hasGallery ? (
+                <>
+                  <button type="button" onClick={showPrev} style={{ ...styles.galleryNavButton, ...styles.galleryPrev }} aria-label="Previous image">‹</button>
+                  <img src={gallery[galleryIndex]} alt={`${worker.name}-gallery-${galleryIndex}`} style={styles.image} />
+                  <button type="button" onClick={showNext} style={{ ...styles.galleryNavButton, ...styles.galleryNext }} aria-label="Next image">›</button>
+                </>
+              ) : (
+                <img src={worker.photo} alt={worker.name} style={styles.image} />
+              )}
+              {hasGallery && (
+                <div style={{ position: 'absolute', left: 12, right: 12, bottom: 12 }}>
+                  <div style={styles.thumbRow}>
+                    {gallery.map((g, i) => (
+                      // eslint-disable-next-line react/no-array-index-key
+                      <img key={i} src={g} alt={`thumb-${i}`} style={{ ...styles.thumb, borderColor: i === galleryIndex ? '#2563eb' : 'transparent' }} onClick={() => jumpTo(i)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

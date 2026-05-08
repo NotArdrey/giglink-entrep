@@ -5,4 +5,6 @@ export { default as ProfileEditModal } from './components/ProfileEditModal';
 export { default as SellerScheduleModal } from './components/SellerScheduleModal';
 export { default as SimulatedChat } from './components/SimulatedChat';
 export { default as SlotEditModal } from './components/SlotEditModal';
+export { default as ConfirmActionModal } from './components/modals/ConfirmActionModal';
+export { default as QrPreviewModal } from './components/modals/QrPreviewModal';
 export * from './data/MockWorkers';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false, appTheme = 'light' }) {
@@ -23,7 +23,11 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     afterServicePaymentType: 'both',
     gcashNumber: '',
     qrFileName: '',
+    uploadedFileNames: [],
+    uploadedPreviews: [],
   });
+
+  const fileInputRef = useRef(null);
 
   const updateField = (field, value) => {
     setFormData((prev) => ({
@@ -100,6 +104,42 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     updateField('qrFileName', selectedFile.name);
   };
 
+  const handleFilesUpload = (event) => {
+    const files = event.target.files && Array.from(event.target.files);
+    if (!files || !files.length) return;
+    const names = [];
+    const previews = [];
+    let remaining = files.length;
+
+    files.forEach((file, i) => {
+      names.push(file.name);
+      if (file.type && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          previews[i] = e.target.result;
+          remaining -= 1;
+          if (remaining === 0) {
+            updateField('uploadedFileNames', names);
+            updateField('uploadedPreviews', previews);
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // non-image (e.g., pdf) - no preview
+        previews[i] = null;
+        remaining -= 1;
+        if (remaining === 0) {
+          updateField('uploadedFileNames', names);
+          updateField('uploadedPreviews', previews);
+        }
+      }
+    });
+  };
+
+  const handleUploadButtonClick = () => {
+    if (fileInputRef && fileInputRef.current) fileInputRef.current.click();
+  };
+
   const rateBasisPriceLabelMap = {
     'per-hour': 'Price Per Hour (₱)',
     'per-day': 'Price Per Day (₱)',
@@ -131,6 +171,12 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     checkboxRow: { display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.93rem', color: themeTokens.textPrimary },
     paymentExtraFields: { marginTop: '0.4rem', padding: '0.8rem', border: `1px dashed ${themeTokens.border}`, borderRadius: '8px', background: themeTokens.surfaceAlt, display: 'grid', gap: '0.45rem' },
     qrUploadHint: { margin: 0, fontSize: '0.83rem', color: themeTokens.textSecondary },
+    fileHint: { margin: 0, fontSize: '0.83rem', color: themeTokens.textSecondary },
+    photoGrid: { display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.4rem' },
+    photoThumb: { width: '72px', height: '72px', objectFit: 'cover', borderRadius: '8px', border: `1px solid ${themeTokens.border}` },
+    uploadBox: { display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem', border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '8px', background: themeTokens.inputBg },
+    uploadButton: { border: 'none', background: themeTokens.surfaceAlt, color: themeTokens.textPrimary, padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 },
+    uploadText: { color: themeTokens.textSecondary, fontSize: '0.92rem' },
     setupHint: { margin: '0.4rem 0 0', fontSize: '0.9rem', color: themeTokens.textSecondary },
     actions: { display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '0.7rem', marginTop: '1.1rem' },
     backButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: themeTokens.surfaceSoft, color: themeTokens.textPrimary, width: isMobile ? '100%' : 'auto' },
@@ -208,6 +254,38 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
 
             <label htmlFor="bio" style={styles.fieldLabel}>Bio</label>
             <textarea id="bio" value={formData.bio} onChange={(event) => updateField('bio', event.target.value)} placeholder="Tell clients about your experience and style" rows={4} style={styles.textarea}></textarea>
+
+            <div style={{ marginTop: '0.6rem' }}>
+              <h3 style={{ margin: '0 0 0.35rem', fontSize: isMobile ? '1rem' : '1.05rem', color: themeTokens.textPrimary }}>Add Photo / Credentials</h3>
+
+              <label htmlFor="uploads" style={styles.fieldLabel}>Upload Photos / Certificates</label>
+
+              <div style={styles.uploadBox}>
+                <button type="button" style={styles.uploadButton} onClick={handleUploadButtonClick}>Choose files</button>
+                <div style={styles.uploadText}>{formData.uploadedFileNames && formData.uploadedFileNames.length > 0 ? `${formData.uploadedFileNames.length} file(s) selected` : 'No files selected yet.'}</div>
+                <input ref={fileInputRef} id="uploads" type="file" accept="image/*,application/pdf" multiple onChange={handleFilesUpload} style={{ display: 'none' }} />
+              </div>
+
+              {formData.uploadedPreviews && formData.uploadedPreviews.length > 0 && (
+                <div style={styles.photoGrid}>
+                  {formData.uploadedPreviews.map((p, i) => (
+                    p ? (
+                      // eslint-disable-next-line react/no-array-index-key
+                      <img key={i} alt={`preview-${i}`} src={p} style={styles.photoThumb} />
+                    ) : null
+                  ))}
+                </div>
+              )}
+
+              {formData.uploadedFileNames && formData.uploadedFileNames.length > 0 && (
+                <div style={{ marginTop: '0.4rem' }}>
+                  {formData.uploadedFileNames.map((n, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <p key={i} style={styles.fileHint}>{n}</p>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         )}
 

@@ -6,9 +6,12 @@ import {
   signOutUser,
   syncAuthenticatedUserProfile,
   syncWorkerSetup,
+  uploadProfilePhoto,
+  updateUserProfileFields,
+  updateUserPassword,
   resendSignupVerificationEmail,
   sendPasswordResetEmail,
-} from '../../shared/services/gigadvanceAuth';
+} from '../../shared/services/authService';
 import { getThemeTokens } from '../../shared/styles/themeTokens';
 
 const getSystemTheme = () => {
@@ -43,6 +46,17 @@ const toErrorMessage = (error, fallbackMessage) => {
   return fallbackMessage;
 };
 
+const normalizeRole = (value) => {
+  const role = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return role === 'admin' || role === 'worker' || role === 'client' ? role : 'client';
+};
+
+const resolveHomeView = (profile) => {
+  const normalizedRole = normalizeRole(profile?.role);
+  const isAdmin = Boolean(profile?.isAdmin) || normalizedRole === 'admin';
+  return isAdmin ? 'admin-dashboard' : 'client-dashboard';
+};
+
 const buildAuthOnlyProfile = (user, source = {}) => {
   const metadata = user?.user_metadata || {};
   const email = user?.email || source?.email || '';
@@ -50,10 +64,27 @@ const buildAuthOnlyProfile = (user, source = {}) => {
   const city = source?.city || metadata?.city || '';
   const barangay = source?.barangay || metadata?.barangay || '';
   const address = source?.address || metadata?.address || '';
+  const firstName = source?.firstName || metadata?.first_name || '';
+  const middleName = source?.middleName || metadata?.middle_name || '';
+  const lastName = source?.lastName || metadata?.last_name || '';
+  const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ').trim()
+    || source?.name
+    || metadata?.full_name
+    || metadata?.name
+    || (email ? email.split('@')[0] : 'GigLink User');
+
+  const role = normalizeRole(
+    typeof source?.role === 'string'
+      ? source.role
+      : (typeof metadata?.role === 'string' ? metadata.role : 'client')
+  );
 
   return {
     userId: user?.id || null,
-    fullName: source?.name || metadata?.full_name || metadata?.name || (email ? email.split('@')[0] : 'GigLink User'),
+    firstName,
+    middleName,
+    lastName,
+    fullName,
     email,
     phoneNumber: source?.phoneNumber || metadata?.phone_number || '',
     profilePhoto: source?.profilePhoto || metadata?.profile_photo || '',
@@ -65,6 +96,8 @@ const buildAuthOnlyProfile = (user, source = {}) => {
     location: { province, city, barangay, address },
     isClient: true,
     isWorker: false,
+    role,
+    isAdmin: role === 'admin',
   };
 };
 
@@ -114,7 +147,7 @@ export const useAppNavigation = () => {
     setSellerProfile(profile);
     setUserLocation(profile?.location || null);
     setIsLoggedIn(true);
-    setCurrentView('client-dashboard');
+    setCurrentView(resolveHomeView(profile));
     return profile;
   };
 
@@ -221,7 +254,7 @@ export const useAppNavigation = () => {
           setSellerProfile(profile);
           setUserLocation(profile?.location || null);
           setIsLoggedIn(true);
-          setCurrentView('client-dashboard');
+          setCurrentView(resolveHomeView(profile));
           if (!isMounted) return;
         }
       } catch (error) {
@@ -290,7 +323,10 @@ export const useAppNavigation = () => {
       setIsLoadingTransition(true);
       await hydrateAuthenticatedUser(result.user, result.profile || {
         userId: result.user.id,
-        fullName: formData.name,
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        fullName: [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ').trim(),
         email: formData.email,
         location: {
           province: formData.province,
@@ -340,7 +376,19 @@ export const useAppNavigation = () => {
     const resolvedLocation = profileData?.location || userLocation || sellerProfile?.location || {};
     const profilePayload = {
       ...profileData,
-      fullName: profileData?.fullName || sellerProfile?.fullName || authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || '',
+      firstName: profileData?.firstName || sellerProfile?.firstName || authUser?.user_metadata?.first_name || '',
+      middleName: profileData?.middleName || sellerProfile?.middleName || authUser?.user_metadata?.middle_name || '',
+      lastName: profileData?.lastName || sellerProfile?.lastName || authUser?.user_metadata?.last_name || '',
+      fullName: profileData?.fullName
+        || sellerProfile?.fullName
+        || [
+          profileData?.firstName || sellerProfile?.firstName || authUser?.user_metadata?.first_name || '',
+          profileData?.middleName || sellerProfile?.middleName || authUser?.user_metadata?.middle_name || '',
+          profileData?.lastName || sellerProfile?.lastName || authUser?.user_metadata?.last_name || '',
+        ].filter(Boolean).join(' ').trim()
+        || authUser?.user_metadata?.full_name
+        || authUser?.user_metadata?.name
+        || '',
       email: profileData?.email || authUser?.email || sellerProfile?.email || '',
       province: profileData?.province || resolvedLocation.province || '',
       city: profileData?.city || resolvedLocation.city || '',
@@ -391,24 +439,32 @@ export const useAppNavigation = () => {
 
     if (!currentUser?.id) return;
 
-    const mergedProfile = await syncAuthenticatedUserProfile(currentUser, {
-      ...sellerProfile,
-      ...updatedProfileFields,
-      name: updatedProfileFields.fullName || sellerProfile?.fullName,
-    });
+    const profileFields = { ...(updatedProfileFields || {}) };
 
-    setSellerProfile((prev) => ({
-      ...(prev || {}),
-      ...(mergedProfile || {}),
-      ...updatedProfileFields,
-    }));
-    setUserLocation((prev) => ({
-      ...(prev || {}),
-      province: updatedProfileFields.province ?? prev?.province ?? sellerProfile?.province ?? '',
-      city: updatedProfileFields.city ?? prev?.city ?? sellerProfile?.city ?? '',
-      barangay: updatedProfileFields.barangay ?? prev?.barangay ?? sellerProfile?.barangay ?? '',
-      address: updatedProfileFields.address ?? prev?.address ?? sellerProfile?.address ?? '',
-    }));
+    if (profileFields.profilePhotoFile) {
+      const uploadedPhotoUrl = await uploadProfilePhoto({
+        userId: currentUser.id,
+        file: profileFields.profilePhotoFile,
+      });
+      profileFields.profilePhoto = uploadedPhotoUrl;
+      delete profileFields.profilePhotoFile;
+    }
+
+    const mergedProfile = await updateUserProfileFields(currentUser, profileFields);
+
+    setSellerProfile((prev) => mergedProfile || prev);
+    setUserLocation((prev) => mergedProfile?.location || prev);
+
+    return mergedProfile;
+  };
+
+  const handlePasswordUpdate = async ({ currentPassword, newPassword }) => {
+    const currentUserEmail = authUser?.email || sellerProfile?.email;
+    await updateUserPassword({
+      email: currentUserEmail,
+      currentPassword,
+      newPassword,
+    });
   };
 
   const handleBackToClientDashboard = () => {
@@ -515,6 +571,7 @@ export const useAppNavigation = () => {
     handleOnboardingComplete,
     handleCloseSellerOnboarding,
     handleProfileUpdate,
+    handlePasswordUpdate,
     handleBackToClientDashboard,
     handleOpenMyBookings,
     handleOpenMyWork,

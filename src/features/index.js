@@ -5,6 +5,10 @@ export {
 } from './landing';
 
 export {
+  AdminDashboard,
+} from './admin';
+
+export {
   Dashboard,
   HomeDashboard,
 } from './dashboard';

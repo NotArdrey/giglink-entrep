@@ -1,4 +1,5 @@
 import {
+  AdminDashboard,
   Dashboard,
   MyBookings,
   MyWork,
@@ -10,6 +11,15 @@ import {
 
 // Map each view to its component and required props
 export const viewMap = {
+  'admin-dashboard': {
+    component: AdminDashboard,
+    propsBuilder: (context) => ({
+      appTheme: context.appTheme,
+      currentView: context.currentView,
+      onLogout: context.handleLogout,
+      onOpenDashboard: context.handleBackToClientDashboard,
+    }),
+  },
   'client-dashboard': {
     component: Dashboard,
     propsBuilder: (context) => ({
@@ -88,6 +98,8 @@ export const viewMap = {
       userLocation: context.userLocation,
       onBackToProfile: context.handleOpenProfile,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onUpdateProfile: context.handleProfileUpdate,
+      onUpdatePassword: context.handlePasswordUpdate,
     }),
   },
   'settings': {

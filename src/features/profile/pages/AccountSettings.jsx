@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 
 
@@ -15,12 +15,27 @@ const BULACAN_CODE = '031400000';
  * - If mismatch: show red error message.
  * - If match: clear error and show success toast notification.
  */
-function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onBackToProfile }) {
-  const profileName = sellerProfile?.fullName || 'Juan Dela Cruz';
-  const initialCityRef = useRef(userLocation?.city || 'Baliwag');
-  const initialBarangayRef = useRef(userLocation?.barangay || 'Sabang');
-  const [email, setEmail] = useState('juandelacruz@email.com');
-  const [phone, setPhone] = useState('09171234567');
+function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword }) {
+  const splitNameParts = (value = '') => {
+    const parts = String(value).trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
+    if (parts.length === 1) return { firstName: parts[0], middleName: '', lastName: '' };
+    if (parts.length === 2) return { firstName: parts[0], middleName: '', lastName: parts[1] };
+    return { firstName: parts[0], middleName: parts.slice(1, -1).join(' '), lastName: parts.at(-1) };
+  };
+  const buildDisplayName = ({ firstName = '', middleName = '', lastName = '' } = {}) => [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
+  const initialNameParts = sellerProfile?.firstName || sellerProfile?.middleName || sellerProfile?.lastName
+    ? { firstName: sellerProfile?.firstName || '', middleName: sellerProfile?.middleName || '', lastName: sellerProfile?.lastName || '' }
+    : splitNameParts(sellerProfile?.fullName || 'Juan Dela Cruz');
+  const profileName = buildDisplayName(initialNameParts) || 'Juan Dela Cruz';
+  const initialCityRef = useRef(userLocation?.city || sellerProfile?.city || '');
+  const initialBarangayRef = useRef(userLocation?.barangay || sellerProfile?.barangay || '');
+  const [email, setEmail] = useState(sellerProfile?.email || 'juandelacruz@email.com');
+  const [phone, setPhone] = useState(sellerProfile?.phoneNumber || '09171234567');
+  const [address, setAddress] = useState(userLocation?.address || sellerProfile?.address || '');
+  const [firstName, setFirstName] = useState(initialNameParts.firstName);
+  const [middleName, setMiddleName] = useState(initialNameParts.middleName);
+  const [lastName, setLastName] = useState(initialNameParts.lastName);
 
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
@@ -34,6 +49,14 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
   const [passwordError, setPasswordError] = useState('');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const selectedCityName = useMemo(
+    () => cities.find((item) => item.code === selectedCityCode)?.name || userLocation?.city || sellerProfile?.city || '',
+    [cities, selectedCityCode, userLocation?.city, sellerProfile?.city]
+  );
+  const selectedBarangayName = useMemo(
+    () => barangays.find((item) => item.code === selectedBarangayCode)?.name || userLocation?.barangay || sellerProfile?.barangay || '',
+    [barangays, selectedBarangayCode, userLocation?.barangay, sellerProfile?.barangay]
+  );
   const [hoveredButton, setHoveredButton] = useState('');
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -48,6 +71,18 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const nextNameParts = sellerProfile?.firstName || sellerProfile?.middleName || sellerProfile?.lastName
+      ? { firstName: sellerProfile?.firstName || '', middleName: sellerProfile?.middleName || '', lastName: sellerProfile?.lastName || '' }
+      : splitNameParts(sellerProfile?.fullName || 'Juan Dela Cruz');
+    setFirstName(nextNameParts.firstName);
+    setMiddleName(nextNameParts.middleName);
+    setLastName(nextNameParts.lastName);
+    setEmail(sellerProfile?.email || 'juandelacruz@email.com');
+    setPhone(sellerProfile?.phoneNumber || '09171234567');
+    setAddress(userLocation?.address || sellerProfile?.address || '');
+  }, [sellerProfile?.firstName, sellerProfile?.middleName, sellerProfile?.lastName, sellerProfile?.fullName, sellerProfile?.email, sellerProfile?.phoneNumber, sellerProfile?.address, userLocation?.address]);
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -118,26 +153,62 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
       return;
     }
 
-    setPasswordError('');
-    setSuccessMessage('Password updated successfully.');
-    setShowSuccessToast(true);
-    setTimeout(() => setShowSuccessToast(false), 2400);
+    if (typeof onUpdatePassword !== 'function') {
+      setPasswordError('Password update is not available right now.');
+      return;
+    }
 
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmNewPassword('');
+    onUpdatePassword({ currentPassword, newPassword })
+      .then(() => {
+        setPasswordError('');
+        setSuccessMessage('Password updated successfully.');
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 2400);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmNewPassword('');
+      })
+      .catch((error) => {
+        setPasswordError(error?.message || 'Unable to update password.');
+      });
   };
 
   const handleSavePersonalInfo = () => {
-    if (!email.trim() || !phone.trim()) {
-      setLocationError('Email and phone are required before saving changes.');
+    if (!firstName.trim() || !lastName.trim()) {
+      setLocationError('First name and last name are required before saving changes.');
+      return;
+    }
+
+    if (!phone.trim() || !address.trim()) {
+      setLocationError('Phone and address are required before saving changes.');
+      return;
+    }
+
+    if (typeof onUpdateProfile !== 'function') {
+      setLocationError('Profile updates are not available right now.');
       return;
     }
 
     setLocationError('');
-    setSuccessMessage('Personal information saved successfully.');
-    setShowSuccessToast(true);
-    setTimeout(() => setShowSuccessToast(false), 2400);
+    onUpdateProfile({
+      firstName,
+      middleName,
+      lastName,
+      fullName: buildDisplayName({ firstName, middleName, lastName }),
+      phoneNumber: phone,
+      province: userLocation?.province || sellerProfile?.province || 'Bulacan',
+      city: selectedCityName,
+      barangay: selectedBarangayName,
+      address,
+    })
+      .then(() => {
+        setSuccessMessage('Personal information saved successfully.');
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 2400);
+      })
+      .catch((error) => {
+        setLocationError(error?.message || 'Unable to save personal information.');
+      });
   };
 
   const styles = {
@@ -145,9 +216,12 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
       minHeight: '100vh',
       backgroundColor: '#f8fafc',
       display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'center',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      justifyContent: 'flex-start',
       padding: isMobile ? '0.7rem' : '1rem',
+      width: '100%',
+      boxSizing: 'border-box',
     },
     card: {
       width: 'min(96vw, 760px)',
@@ -159,6 +233,7 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
       display: 'flex',
       flexDirection: 'column',
       gap: '1rem',
+      margin: '0 auto',
     },
     backButton: {
       border: '1px solid #cbd5e1',
@@ -246,11 +321,39 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
 
         <section style={styles.section}>
           <h2>Personal Info</h2>
-          <label htmlFor="email">Email</label>
+          <label htmlFor="firstName">First Name</label>
+          <input
+            id="firstName"
+            type="text"
+            value={firstName}
+            onChange={(event) => setFirstName(event.target.value)}
+            style={styles.input}
+          />
+
+          <label htmlFor="middleName">Middle Name (optional)</label>
+          <input
+            id="middleName"
+            type="text"
+            value={middleName}
+            onChange={(event) => setMiddleName(event.target.value)}
+            style={styles.input}
+          />
+
+          <label htmlFor="lastName">Last Name</label>
+          <input
+            id="lastName"
+            type="text"
+            value={lastName}
+            onChange={(event) => setLastName(event.target.value)}
+            style={styles.input}
+          />
+
+          <label htmlFor="email">Email (from login)</label>
           <input
             id="email"
             type="email"
             value={email}
+            readOnly
             onChange={(event) => setEmail(event.target.value)}
             style={styles.input}
           />
@@ -261,6 +364,15 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
             type="tel"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
+            style={styles.input}
+          />
+
+          <label htmlFor="address">Address</label>
+          <input
+            id="address"
+            type="text"
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
             style={styles.input}
           />
 

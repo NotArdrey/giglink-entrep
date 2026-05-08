@@ -1,10 +1,14 @@
--- GigAdvance v1 / GigLink Supabase schema
+-- GigLink Supabase schema
 -- Run this in the Supabase SQL editor or via the CLI after linking the project.
 
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
+  first_name text,
+  middle_name text,
+  last_name text,
   full_name text not null,
   email text not null unique,
+  role text not null default 'client' check (role in ('client', 'worker', 'admin')),
   phone_number text,
   profile_photo text,
   bio text,
@@ -17,6 +21,50 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists first_name text;
+alter table public.profiles add column if not exists middle_name text;
+alter table public.profiles add column if not exists last_name text;
+alter table public.profiles add column if not exists role text;
+alter table public.profiles add column if not exists profile_photo text;
+
+update public.profiles
+set
+  first_name = coalesce(first_name, nullif(split_part(full_name, ' ', 1), '')),
+  last_name = coalesce(last_name, nullif(regexp_replace(full_name, '^.*\s', ''), '')),
+  middle_name = coalesce(
+    middle_name,
+    nullif(
+      regexp_replace(
+        regexp_replace(full_name, '^\s*\S+\s*', ''),
+        '\s*\S+\s*$',
+        ''
+      ),
+      ''
+    )
+  ),
+  role = coalesce(role, case when is_worker then 'worker' else 'client' end)
+where full_name is not null;
+
+alter table public.profiles
+  alter column role set default 'client';
+
+alter table public.profiles
+  alter column role set not null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'profiles_role_check'
+      and conrelid = 'public.profiles'::regclass
+  ) then
+    alter table public.profiles
+      add constraint profiles_role_check
+      check (role in ('client', 'worker', 'admin'));
+  end if;
+end $$;
 
 create table if not exists public.worker_profiles (
   user_id uuid primary key references public.profiles (user_id) on delete cascade,
@@ -91,8 +139,12 @@ as $$
 begin
   insert into public.profiles (
     user_id,
+    first_name,
+    middle_name,
+    last_name,
     full_name,
     email,
+    role,
     phone_number,
     profile_photo,
     bio,
@@ -106,12 +158,20 @@ begin
     updated_at
   ) values (
     new.id,
+    nullif(new.raw_user_meta_data ->> 'first_name', ''),
+    nullif(new.raw_user_meta_data ->> 'middle_name', ''),
+    nullif(new.raw_user_meta_data ->> 'last_name', ''),
     coalesce(
       nullif(new.raw_user_meta_data ->> 'full_name', ''),
+      concat_ws(' ', nullif(new.raw_user_meta_data ->> 'first_name', ''), nullif(new.raw_user_meta_data ->> 'middle_name', ''), nullif(new.raw_user_meta_data ->> 'last_name', '')),
       nullif(new.raw_user_meta_data ->> 'name', ''),
       split_part(new.email, '@', 1)
     ),
     new.email,
+    coalesce(
+      nullif(lower(new.raw_user_meta_data ->> 'role'), ''),
+      case when coalesce((new.raw_user_meta_data ->> 'is_worker')::boolean, false) then 'worker' else 'client' end
+    ),
     nullif(new.raw_user_meta_data ->> 'phone_number', ''),
     nullif(new.raw_user_meta_data ->> 'profile_photo', ''),
     nullif(new.raw_user_meta_data ->> 'bio', ''),
@@ -124,8 +184,12 @@ begin
     now(),
     now()
   ) on conflict (user_id) do update set
+    first_name = excluded.first_name,
+    middle_name = excluded.middle_name,
+    last_name = excluded.last_name,
     full_name = excluded.full_name,
     email = excluded.email,
+    role = coalesce(public.profiles.role, excluded.role),
     phone_number = excluded.phone_number,
     profile_photo = excluded.profile_photo,
     bio = excluded.bio,

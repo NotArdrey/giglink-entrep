@@ -254,6 +254,17 @@ function DashboardNavigation({
   };
 
   const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const profileAvatarSrc = sellerProfile?.profilePhoto || '';
+  const firstInitial = String(sellerProfile?.firstName || '').trim().charAt(0).toUpperCase();
+  const lastInitial = String(sellerProfile?.lastName || '').trim().charAt(0).toUpperCase();
+  const fullNameInitials = String(sellerProfile?.fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment.charAt(0).toUpperCase())
+    .join('');
+  const profileInitials = (firstInitial + lastInitial || fullNameInitials || 'U').slice(0, 2);
 
   const toggleNotifications = () => {
     setIsProfileMenuOpen(false);
@@ -385,7 +396,32 @@ function DashboardNavigation({
           </div>
 
           <div style={styles.rightItemWrap} ref={profileRef}>
-            <button style={styles.avatar} onClick={toggleProfileMenu} aria-label="Profile" />
+            <button
+              style={{
+                ...styles.avatar,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: themeTokens.textPrimary,
+                background: themeTokens.surfaceAlt,
+                overflow: 'hidden',
+                padding: 0,
+              }}
+              onClick={toggleProfileMenu}
+              aria-label="Profile"
+            >
+              {profileAvatarSrc ? (
+                <img
+                  src={profileAvatarSrc}
+                  alt="Profile"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                profileInitials
+              )}
+            </button>
 
             {isProfileMenuOpen && (
               <div style={styles.profileMenu}>

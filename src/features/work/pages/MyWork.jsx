@@ -3,6 +3,8 @@ import DashboardNavigation from '../../../shared/components/DashboardNavigation'
 import SimulatedChat from '../components/SimulatedChat';
 import SlotEditModal from '../components/SlotEditModal';
 import ProfileEditModal from '../components/ProfileEditModal';
+import ConfirmActionModal from '../components/modals/ConfirmActionModal';
+import QrPreviewModal from '../components/modals/QrPreviewModal';
 import {
   MOCK_WORKERS,
   HOURLY_WORKER_SCHEDULE,
@@ -1961,144 +1963,115 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         )}
       </main>
 
-      {doneConfirmTarget && (
-        <div style={sx('done-confirm-overlay')}>
-          <div style={sx('done-confirm-modal')}>
-            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Confirm Service Completion</h3>
-            <p>
-              Mark <strong>{doneConfirmTarget.clientName}</strong> as completed?
-            </p>
-            <p style={sx('done-confirm-note')}>
-              This confirms that the worker has completed the service for this transaction.
-            </p>
-            <div style={sx('done-confirm-actions')}>
-              <button style={sx('done-cancel-btn')} onClick={() => setDoneConfirmTarget(null)}>
-                Cancel
-              </button>
-              <button
-                style={{ ...sx('done-confirm-btn'), ...(isHovered('confirm-done') ? hoverStyles.markDone : {}) }}
-                onMouseEnter={() => setHoverKey('confirm-done')}
-                onMouseLeave={() => setHoverKey('')}
-                onClick={handleConfirmDone}
-              >
-                Confirm Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionModal
+        isOpen={Boolean(doneConfirmTarget)}
+        title="Confirm Service Completion"
+        overlayStyle={sx('done-confirm-overlay')}
+        modalStyle={sx('done-confirm-modal')}
+        noteStyle={sx('done-confirm-note')}
+        actionsStyle={sx('done-confirm-actions')}
+        cancelButtonStyle={sx('done-cancel-btn')}
+        confirmButtonStyle={{ ...sx('done-confirm-btn'), ...(isHovered('confirm-done') ? hoverStyles.markDone : {}) }}
+        onCancel={() => setDoneConfirmTarget(null)}
+        onConfirm={handleConfirmDone}
+        onConfirmMouseEnter={() => setHoverKey('confirm-done')}
+        onConfirmMouseLeave={() => setHoverKey('')}
+        confirmLabel="Confirm Done"
+        note="This confirms that the worker has completed the service for this transaction."
+      >
+        <p>
+          Mark <strong>{doneConfirmTarget?.clientName}</strong> as completed?
+        </p>
+      </ConfirmActionModal>
 
-      {deleteConfirmTarget && (
-        <div style={sx('done-confirm-overlay')}>
-          <div style={sx('done-confirm-modal')}>
-            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Confirm Deletion</h3>
-            <p>
-              Delete <strong>{deleteConfirmTarget.label}</strong>?
-            </p>
-            <p style={sx('done-confirm-note')}>
-              This action cannot be undone.
-            </p>
-            <div style={sx('done-confirm-actions')}>
-              <button style={sx('done-cancel-btn')} onClick={() => setDeleteConfirmTarget(null)}>
-                Cancel
-              </button>
-              <button
-                style={{ ...sx('delete-confirm-btn'), ...(isHovered('confirm-delete') ? hoverStyles.deleteConfirm : {}) }}
-                onMouseEnter={() => setHoverKey('confirm-delete')}
-                onMouseLeave={() => setHoverKey('')}
-                onClick={handleConfirmDelete}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionModal
+        isOpen={Boolean(deleteConfirmTarget)}
+        title="Confirm Deletion"
+        overlayStyle={sx('done-confirm-overlay')}
+        modalStyle={sx('done-confirm-modal')}
+        noteStyle={sx('done-confirm-note')}
+        actionsStyle={sx('done-confirm-actions')}
+        cancelButtonStyle={sx('done-cancel-btn')}
+        confirmButtonStyle={{ ...sx('delete-confirm-btn'), ...(isHovered('confirm-delete') ? hoverStyles.deleteConfirm : {}) }}
+        onCancel={() => setDeleteConfirmTarget(null)}
+        onConfirm={handleConfirmDelete}
+        onConfirmMouseEnter={() => setHoverKey('confirm-delete')}
+        onConfirmMouseLeave={() => setHoverKey('')}
+        confirmLabel="Delete"
+        note="This action cannot be undone."
+      >
+        <p>
+          Delete <strong>{deleteConfirmTarget?.label}</strong>?
+        </p>
+      </ConfirmActionModal>
 
-      {isGcashPreviewOpen && (
-        <div style={sx('done-confirm-overlay')}>
-          <div style={sx('done-confirm-modal', 'gcash-preview-modal')}>
-            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>GCash Face-to-Face Payment</h3>
-            <p style={{ margin: 0, color: '#4b5563', fontSize: '15px', lineHeight: 1.45 }}>Show this QR to your client during meetup.</p>
+      <QrPreviewModal
+        isOpen={isGcashPreviewOpen}
+        title="GCash Face-to-Face Payment"
+        subtitle="Show this QR to your client during meetup."
+        imageSrc={gcashQrImageUrl}
+        imageAlt="GCash QR"
+        primaryLabel="GCash Number"
+        primaryValue={gcashNumber}
+        note="Ask your client to scan this QR or send payment to the number above."
+        onClose={handleCloseGcashPreview}
+        overlayStyle={sx('done-confirm-overlay')}
+        modalStyle={sx('done-confirm-modal', 'gcash-preview-modal')}
+        bodyStyle={sx('gcash-preview-body')}
+        imageStyle={sx('gcash-preview-qr')}
+        noteStyle={sx('done-confirm-note')}
+        actionsStyle={sx('done-confirm-actions')}
+        closeButtonStyle={sx('done-cancel-btn')}
+      />
 
-            <div style={sx('gcash-preview-body')}>
-              <img src={gcashQrImageUrl} alt="GCash QR" style={sx('gcash-preview-qr')} />
-              <div>
-                <p><strong>GCash Number:</strong> {gcashNumber}</p>
-                <p style={sx('done-confirm-note')}>
-                  Ask your client to scan this QR or send payment to the number above.
-                </p>
-              </div>
-            </div>
+      <QrPreviewModal
+        isOpen={isCashQrPreviewOpen}
+        title="Cash Confirmation QR"
+        subtitle="Let the client scan this QR after handing over cash to submit payment details for your approval."
+        imageSrc={cashConfirmQrImageUrl}
+        imageAlt="Cash Confirmation QR"
+        primaryLabel="Cash QR ID"
+        primaryValue={cashQrId}
+        note="Client submits amount using this QR, then you approve or deny inside Payment Confirmations."
+        onClose={handleCloseCashQrPreview}
+        overlayStyle={sx('done-confirm-overlay')}
+        modalStyle={sx('done-confirm-modal', 'gcash-preview-modal')}
+        bodyStyle={sx('gcash-preview-body')}
+        imageStyle={sx('gcash-preview-qr')}
+        noteStyle={sx('done-confirm-note')}
+        actionsStyle={sx('done-confirm-actions')}
+        closeButtonStyle={sx('done-cancel-btn')}
+      />
 
-            <div style={sx('done-confirm-actions')}>
-              <button style={sx('done-cancel-btn')} onClick={handleCloseGcashPreview}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isCashQrPreviewOpen && (
-        <div style={sx('done-confirm-overlay')}>
-          <div style={sx('done-confirm-modal', 'gcash-preview-modal')}>
-            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Cash Confirmation QR</h3>
-            <p style={{ margin: 0, color: '#4b5563', fontSize: '15px', lineHeight: 1.45 }}>
-              Let the client scan this QR after handing over cash to submit payment details for your approval.
-            </p>
-
-            <div style={sx('gcash-preview-body')}>
-              <img src={cashConfirmQrImageUrl} alt="Cash Confirmation QR" style={sx('gcash-preview-qr')} />
-              <div>
-                <p><strong>Cash QR ID:</strong> {cashQrId}</p>
-                <p style={sx('done-confirm-note')}>
-                  Client submits amount using this QR, then you approve or deny inside Payment Confirmations.
-                </p>
-              </div>
-            </div>
-
-            <div style={sx('done-confirm-actions')}>
-              <button style={sx('done-cancel-btn')} onClick={handleCloseCashQrPreview}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {cashDecisionTarget && (
-        <div style={sx('done-confirm-overlay')}>
-          <div style={sx('done-confirm-modal')}>
-            <h3 style={{ margin: '0 0 8px', color: '#111827', fontSize: '24px' }}>Confirm Cash Decision</h3>
-            <p style={{ margin: 0, color: '#374151', lineHeight: 1.5 }}>
-              Are you sure you want to <strong>{cashDecisionTarget.decision === 'approve' ? 'approve' : 'deny'}</strong> this cash confirmation?
-            </p>
-            <p style={sx('done-confirm-note')}>
-              Client: <strong>{cashDecisionTarget.clientName}</strong> | Service: <strong>{cashDecisionTarget.service}</strong>
-            </p>
-            <p style={{ margin: '8px 0 0', color: '#4b5563', fontSize: '13px' }}>
-              Submitted: ₱{cashDecisionTarget.submittedCashAmount} | Expected: ₱{cashDecisionTarget.expectedCashAmount}
-            </p>
-            {cashDecisionTarget.decision === 'deny' && (
-              <p style={{ margin: '8px 0 0', color: '#b91c1c', fontSize: '13px', fontWeight: 600 }}>
-                Denying this payment can affect transaction records. Please verify details before continuing.
-              </p>
-            )}
-            <div style={sx('done-confirm-actions')}>
-              <button style={sx('done-cancel-btn')} onClick={handleCloseCashDecisionModal}>
-                No
-              </button>
-              <button
-                style={cashDecisionTarget.decision === 'approve' ? sx('done-confirm-btn') : sx('delete-confirm-btn')}
-                onClick={handleConfirmCashDecision}
-              >
-                Yes, {cashDecisionTarget.decision === 'approve' ? 'Approve' : 'Deny'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmActionModal
+        isOpen={Boolean(cashDecisionTarget)}
+        title="Confirm Cash Decision"
+        overlayStyle={sx('done-confirm-overlay')}
+        modalStyle={sx('done-confirm-modal')}
+        noteStyle={sx('done-confirm-note')}
+        actionsStyle={sx('done-confirm-actions')}
+        cancelButtonStyle={sx('done-cancel-btn')}
+        confirmButtonStyle={cashDecisionTarget?.decision === 'approve' ? sx('done-confirm-btn') : sx('delete-confirm-btn')}
+        onCancel={handleCloseCashDecisionModal}
+        onConfirm={handleConfirmCashDecision}
+        cancelLabel="No"
+        confirmLabel={`Yes, ${cashDecisionTarget?.decision === 'approve' ? 'Approve' : 'Deny'}`}
+      >
+        <p style={{ margin: 0, color: '#374151', lineHeight: 1.5 }}>
+          Are you sure you want to <strong>{cashDecisionTarget?.decision === 'approve' ? 'approve' : 'deny'}</strong> this cash confirmation?
+        </p>
+        <p style={sx('done-confirm-note')}>
+          Client: <strong>{cashDecisionTarget?.clientName}</strong> | Service: <strong>{cashDecisionTarget?.service}</strong>
+        </p>
+        <p style={{ margin: '8px 0 0', color: '#4b5563', fontSize: '13px' }}>
+          Submitted: ₱{cashDecisionTarget?.submittedCashAmount} | Expected: ₱{cashDecisionTarget?.expectedCashAmount}
+        </p>
+        {cashDecisionTarget?.decision === 'deny' && (
+          <p style={{ margin: '8px 0 0', color: '#b91c1c', fontSize: '13px', fontWeight: 600 }}>
+            Denying this payment can affect transaction records. Please verify details before continuing.
+          </p>
+        )}
+      </ConfirmActionModal>
       
       {/* CHAT MODAL */}
       {selectedChatId && selectedInquiry && (
