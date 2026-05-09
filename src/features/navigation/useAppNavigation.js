@@ -485,6 +485,18 @@ export const useAppNavigation = () => {
       firstName: profileData?.firstName || sellerProfile?.firstName || authUser?.user_metadata?.first_name || '',
       middleName: profileData?.middleName || sellerProfile?.middleName || authUser?.user_metadata?.middle_name || '',
       lastName: profileData?.lastName || sellerProfile?.lastName || authUser?.user_metadata?.last_name || '',
+      serviceType: profileData?.serviceType || sellerProfile?.serviceType || '',
+      customServiceType: profileData?.customServiceType || sellerProfile?.customServiceType || '',
+      bio: profileData?.bio || sellerProfile?.bio || '',
+      pricingModel: profileData?.pricingModel || sellerProfile?.pricingModel || 'fixed',
+      fixedPrice: profileData?.fixedPrice || sellerProfile?.fixedPrice || '',
+      rateBasis: profileData?.rateBasis || sellerProfile?.rateBasis || 'per-project',
+      bookingMode: profileData?.bookingMode || sellerProfile?.bookingMode || 'with-slots',
+      paymentAdvance: profileData?.paymentAdvance ?? sellerProfile?.paymentAdvance ?? false,
+      paymentAfterService: profileData?.paymentAfterService ?? sellerProfile?.paymentAfterService ?? true,
+      afterServicePaymentType: profileData?.afterServicePaymentType || sellerProfile?.afterServicePaymentType || 'both',
+      gcashNumber: profileData?.gcashNumber || sellerProfile?.gcashNumber || '',
+      qrFileName: profileData?.qrFileName || sellerProfile?.qrFileName || '',
       fullName: profileData?.fullName
         || sellerProfile?.fullName
         || [
@@ -604,16 +616,15 @@ export const useAppNavigation = () => {
     setCurrentView('client-dashboard');
   };
 
+  const handleOpenAdminDashboard = () => {
+    setCurrentView('admin-dashboard');
+  };
+
   const handleOpenMyBookings = () => {
     setCurrentView('my-bookings');
   };
 
   const handleOpenMyWork = () => {
-    if (!sellerProfile?.isWorker) {
-      setIsSellerOnboardingOpen(true);
-      return;
-    }
-
     setCurrentView('my-work');
   };
 
@@ -707,6 +718,7 @@ export const useAppNavigation = () => {
     handleProfileUpdate,
     handlePasswordUpdate,
     handleBackToClientDashboard,
+    handleOpenAdminDashboard,
     handleOpenMyBookings,
     handleOpenMyWork,
     handleOpenProfile,

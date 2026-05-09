@@ -8,7 +8,7 @@ import { getThemeTokens } from '../../../shared/styles/themeTokens';
 const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
 const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
 
-const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard }) => {
+const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard, onOpenAdminDashboard }) => {
   // Initialize with first booking selected and go directly to chat
   const [selectedBookingId, setSelectedBookingId] = useState(1);
   const [uiState, setUiState] = useState('chat');
@@ -1127,6 +1127,8 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        isAdminView={false}
+        onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
       {uiState === 'chat' && (
         <ChatWindow

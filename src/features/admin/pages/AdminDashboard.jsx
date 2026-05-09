@@ -99,6 +99,22 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
     };
   }, []);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (activeSection !== 'accounts') return;
+
+      fetchAdminAccounts()
+        .then((dbAccounts) => {
+          setAccounts(dbAccounts);
+        })
+        .catch((error) => {
+          console.error('Unable to refresh admin accounts on interval:', error);
+        });
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [activeSection]);
+
   const themeTokens = getThemeTokens(appTheme);
 
   const filteredAccounts = useMemo(() => {

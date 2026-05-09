@@ -16,6 +16,8 @@ function DashboardNavigation({
   currentView,
   onOpenDashboard,
   appTheme = 'light',
+  onToggleAdminView,
+  isAdminView = false,
 }) {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -122,7 +124,7 @@ function DashboardNavigation({
     },
     smallIconBtnActive: {
       backgroundColor: themeTokens.badgeBg,
-      borderColor: themeTokens.accent,
+      border: `1px solid ${themeTokens.accent}`,
       boxShadow: `0 0 0 4px ${appTheme === 'dark' ? 'rgba(37, 99, 235, 0.22)' : 'rgba(37, 99, 235, 0.14)'}`,
       color: themeTokens.accent,
     },
@@ -215,7 +217,7 @@ function DashboardNavigation({
       marginBottom: '0.4rem',
       cursor: 'pointer',
     },
-    notificationUnread: { backgroundColor: themeTokens.badgeBg, borderColor: themeTokens.accent },
+    notificationUnread: { backgroundColor: themeTokens.badgeBg, border: `1px solid ${themeTokens.accent}` },
     profileMenu: {
       position: 'absolute',
       top: '52px',
@@ -427,6 +429,18 @@ function DashboardNavigation({
 
             {isProfileMenuOpen && (
               <div style={styles.profileMenu}>
+                {sellerProfile?.role === 'admin' && (
+                  <button
+                    type="button"
+                    style={styles.profileItem}
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (typeof onToggleAdminView === 'function') onToggleAdminView();
+                    }}
+                  >
+                    {isAdminView ? 'Switch to Client View' : 'Switch to Admin View'}
+                  </button>
+                )}
                 <button
                   type="button"
                   style={{ ...styles.profileItem, ...styles.profileDanger }}

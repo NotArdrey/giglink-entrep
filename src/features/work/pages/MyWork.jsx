@@ -5,7 +5,7 @@ import SlotEditModal from '../components/SlotEditModal';
 import ProfileEditModal from '../components/ProfileEditModal';
 import ConfirmActionModal from '../components/modals/ConfirmActionModal';
 import QrPreviewModal from '../components/modals/QrPreviewModal';
-import { fetchSellerProfile, fetchSellerServices, createSellerService, createOrUpdateSeller } from '../../../shared/services/authService';
+import { fetchSellerProfile, fetchSellerServices, fetchUserProfileBundle, createSellerService, createOrUpdateSeller, syncWorkerSetup } from '../../../shared/services/authService';
 import { useAppNavigation } from '../../navigation/useAppNavigation';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
 import ErrorNotification from '../../../shared/components/ErrorNotification';
@@ -119,9 +119,9 @@ const classStyles = {
   'no-slots': { fontSize: '14px', color: '#95a5a6', textAlign: 'center', padding: '20px 0', margin: 0 },
   'time-blocks': { display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' },
   'time-block': { padding: '16px', border: '1px solid #eceff1', borderRadius: '8px', background: '#f9f9f9', position: 'relative', transition: 'all 0.3s ease' },
-  'slot-available': { borderColor: '#bfdbfe', background: '#eff6ff' },
-  'slot-half': { borderColor: '#fef3c7', background: '#fffbeb' },
-  'slot-full': { borderColor: '#fecaca', background: '#fef2f2', opacity: 0.7 },
+  'slot-available': { border: '1px solid #bfdbfe', background: '#eff6ff' },
+  'slot-half': { border: '1px solid #fef3c7', background: '#fffbeb' },
+  'slot-full': { border: '1px solid #fecaca', background: '#fef2f2', opacity: 0.7 },
   'block-time': { fontSize: '15px', fontWeight: 700, color: '#2c3e50', marginBottom: '8px' },
   'block-status': { marginBottom: '8px' },
   'slots-counter': { display: 'block', fontSize: '12px', color: '#555', marginBottom: '4px' },
@@ -190,7 +190,7 @@ const hoverStyles = {
   backButton: { background: '#f9f9f9', borderColor: '#2563eb', color: '#2563eb' },
   logoutButton: { background: '#fee', borderColor: '#e74c3c' },
   profileName: { color: '#1d4ed8', textDecoration: 'underline' },
-  inquiryCard: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', borderColor: '#2563eb', transform: 'translateY(-2px)' },
+  inquiryCard: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', border: '1px solid #2563eb', transform: 'translateY(-2px)' },
   respondButton: { background: '#1d4ed8', transform: 'translateY(-1px)' },
   weekNav: { background: '#eef2ff', borderColor: '#818cf8' },
   gcashButton: { background: '#dbeafe', borderColor: '#93c5fd' },
@@ -202,6 +202,58 @@ const hoverStyles = {
   approveCash: { background: '#15803d' },
   denyCash: { background: '#b91c1c' },
   approveRefund: { background: '#4338ca' },
+};
+
+const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, fallbackProfile = null) => {
+  const sellerName = sellerRow?.display_name || sellerRow?.search_meta?.name || workerProfile?.fullName || fallbackProfile?.fullName || 'Service Provider';
+  const serviceType = workerProfile?.serviceType || workerProfile?.customServiceType || sellerRow?.headline || sellerRow?.search_meta?.service_type || fallbackProfile?.serviceType || 'Service Type';
+  const location = {
+    address: workerProfile?.address || sellerRow?.search_meta?.location?.address || fallbackProfile?.location?.address || '',
+    barangay: workerProfile?.barangay || sellerRow?.search_meta?.location?.barangay || fallbackProfile?.location?.barangay || '',
+    city: workerProfile?.city || sellerRow?.search_meta?.location?.city || fallbackProfile?.location?.city || '',
+    province: workerProfile?.province || sellerRow?.search_meta?.location?.province || fallbackProfile?.location?.province || '',
+  };
+  const bookingMode = workerProfile?.bookingMode || sellerRow?.search_meta?.booking_mode || fallbackProfile?.bookingMode || 'with-slots';
+  const fixedPrice = workerProfile?.fixedPrice ?? '';
+  const hourlyRate = workerProfile?.hourlyRate ?? '';
+  const dailyRate = workerProfile?.dailyRate ?? '';
+  const weeklyRate = workerProfile?.weeklyRate ?? '';
+  const monthlyRate = workerProfile?.monthlyRate ?? '';
+  const projectRate = workerProfile?.projectRate ?? '';
+  const pricingModel = workerProfile?.pricingModel || 'fixed';
+
+  return {
+    userId: sellerRow?.user_id || workerProfile?.userId || fallbackProfile?.userId || null,
+    fullName: sellerName,
+    serviceType,
+    customServiceType: workerProfile?.customServiceType || '',
+    location,
+    bookingMode,
+    pricingModel,
+    rateBasis: workerProfile?.rateBasis || '',
+    fixedPrice,
+    hourlyRate,
+    dailyRate,
+    weeklyRate,
+    monthlyRate,
+    projectRate,
+    paymentAdvance: workerProfile?.paymentAdvance ?? false,
+    paymentAfterService: workerProfile?.paymentAfterService ?? true,
+    afterServicePaymentType: workerProfile?.afterServicePaymentType || 'both',
+    gcashNumber: sellerRow?.gcash_number || workerProfile?.gcashNumber || '',
+    raw: {
+      ...(sellerRow || {}),
+      base_price: fixedPrice || hourlyRate || dailyRate || weeklyRate || monthlyRate || projectRate || sellerRow?.base_price || null,
+      price_type: workerProfile?.pricingModel || sellerRow?.price_type || 'fixed',
+      rate_basis: workerProfile?.rateBasis || sellerRow?.rate_basis || '',
+      metadata: {
+        ...(sellerRow?.metadata || {}),
+        rate_basis: workerProfile?.rateBasis || sellerRow?.search_meta?.rate_basis || '',
+        booking_mode: bookingMode,
+        pricing_model: workerProfile?.pricingModel || 'fixed',
+      },
+    },
+  };
 };
 
 /**
@@ -217,40 +269,11 @@ const hoverStyles = {
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
  */
-const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToDashboard, onAddNewWork }) => {
+const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
   // ============ STATE MANAGEMENT ============
   
-  const [workerServices, setWorkerServices] = useState(() => {
-    if (sellerProfile?.isWorker) {
-      return [{
-        fullName: sellerProfile.fullName || 'Service Provider',
-        serviceType: sellerProfile.serviceType || 'Service',
-        description: sellerProfile.bio || '',
-        pricingModel: sellerProfile.pricingModel || 'fixed',
-        fixedPrice: sellerProfile.fixedPrice || '',
-        hourlyRate: sellerProfile.hourlyRate || '',
-        dailyRate: sellerProfile.dailyRate || '',
-        weeklyRate: sellerProfile.weeklyRate || '',
-        monthlyRate: sellerProfile.monthlyRate || '',
-        rateBasis: sellerProfile.rateBasis || 'per-project',
-        paymentAdvance: sellerProfile.paymentAdvance ?? false,
-        paymentAfterService: sellerProfile.paymentAfterService ?? true,
-        afterServicePaymentType: sellerProfile.afterServicePaymentType || 'both',
-        gcashNumber: sellerProfile.gcashNumber || '',
-        bookingMode: sellerProfile.bookingMode || 'with-slots',
-        location: sellerProfile.location || { barangay: '', city: '', province: '' },
-        raw: null,
-      }];
-    }
-    return [];
-  });
+  const [workerServices, setWorkerServices] = useState([]);
   const [activeServiceIndex] = useState(0);
-  const currentProfile = workerServices[activeServiceIndex] || {
-    fullName: sellerProfile?.fullName || 'Service Provider',
-    serviceType: sellerProfile?.serviceType || 'Service',
-    location: sellerProfile?.location || { barangay: '', city: '', province: '' },
-    bookingMode: sellerProfile?.bookingMode || 'with-slots',
-  };
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [weeklySchedule, setWeeklySchedule] = useState(INITIAL_WEEKLY_SCHEDULE);
   const [calendarAvailability, setCalendarAvailability] = useState(INITIAL_CALENDAR_AVAILABILITY);
@@ -278,133 +301,138 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   // Database-backed seller data (inside component)
   const { authUser } = useAppNavigation();
   const [sellerData, setSellerData] = useState(null);
+  const [workerProfileBundle, setWorkerProfileBundle] = useState(null);
   const [sellerDbServices, setSellerDbServices] = useState([]);
   const [isLoadingSellerData, setIsLoadingSellerData] = useState(true);
   const [sellerDataError, setSellerDataError] = useState(null);
+  const sellerDataRef = useRef(null);
+  const sellerId = sellerData?.user_id || sellerData?.id || authUser?.id || null;
   const [successMessage, setSuccessMessage] = useState('');
+  const sellerUiProfile = mapSellerRowToUiProfile(sellerData, workerProfileBundle, sellerProfile);
+  const currentProfile = workerServices[activeServiceIndex] || sellerUiProfile || sellerProfile || {
+    fullName: sellerProfile?.fullName || 'Service Provider',
+    serviceType: sellerProfile?.serviceType || 'Service',
+    location: sellerProfile?.location || { barangay: '', city: '', province: '' },
+    bookingMode: sellerProfile?.bookingMode || 'with-slots',
+  };
   // Create-service UI state
   const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
   const [newService, setNewService] = useState({ title: '', shortDescription: '', basePrice: '', priceType: 'fixed', rateBasis: 'per-project', bookingMode: 'with-slots', currency: 'PHP', durationMinutes: '' });
-  const sellerId = sellerData?.id || sellerData?.user_id || null;
-  const sellerDataRef = useRef(sellerData);
-
   useEffect(() => {
-    sellerDataRef.current = sellerData;
-  }, [sellerData]);
-
-  useEffect(() => {
-    if (!authUser?.id) return;
+    if (!authUser?.id) return undefined;
 
     let mounted = true;
+
     const loadSellerData = async () => {
       try {
         setIsLoadingSellerData(true);
         setSellerDataError(null);
-        if (!authUser?.id) {
-          setIsLoadingSellerData(false);
-          return;
-        }
+
         const seller = await fetchSellerProfile(authUser.id);
         if (!mounted) return;
-        let resolvedSeller = seller;
-        if (!resolvedSeller) {
-          try {
-            resolvedSeller = await createOrUpdateSeller(authUser.id, {
-              fullName: sellerProfile?.fullName || '',
-              displayName: sellerProfile?.fullName || '',
-              serviceType: sellerProfile?.serviceType || sellerProfile?.customServiceType || '',
-              bio: sellerProfile?.bio || '',
-              city: sellerProfile?.city || sellerProfile?.location?.city || '',
-              province: sellerProfile?.province || sellerProfile?.location?.province || '',
-            });
-          } catch (sellerCreateErr) {
-            console.warn('Seller row auto-create failed:', sellerCreateErr);
-          }
+
+        const workerBundle = await fetchUserProfileBundle(authUser.id);
+        if (!mounted) return;
+
+        if (!seller) {
+          setSellerData(null);
+          setWorkerProfileBundle(workerBundle || null);
+          sellerDataRef.current = null;
+          setSellerDbServices([]);
+          setWorkerServices([]);
+          return;
         }
 
-        if (resolvedSeller) {
-          const resolvedSellerId = resolvedSeller.id || resolvedSeller.user_id || authUser.id;
-          setSellerData(resolvedSeller);
-          const services = await fetchSellerServices(resolvedSellerId);
+        const resolvedSellerId = seller.id || seller.user_id || authUser.id;
+        const resolvedSellerDisplayName = seller?.display_name || seller?.search_meta?.name || sellerProfile?.fullName || sellerProfile?.full_name || '';
+
+        setSellerData(seller);
+    setWorkerProfileBundle(workerBundle || null);
+    sellerDataRef.current = seller;
+
+    const mergedSellerProfile = mapSellerRowToUiProfile(seller, workerBundle, sellerProfile);
+    setWorkerProfileBundle(workerBundle || null);
+
+        const services = await fetchSellerServices(resolvedSellerId);
+        if (!mounted) return;
+        setSellerDbServices(services || []);
+
+        try {
+          const { data: slotsRows, error: slotsErr } = await supabase
+            .from('service_slots')
+            .select('*')
+            .eq('seller_id', resolvedSellerId)
+            .order('start_ts', { ascending: true });
+
           if (!mounted) return;
-          setSellerDbServices(services || []);
-              // Load existing service_slots for this seller and populate calendarAvailability
-              try {
-                const { data: slotsRows, error: slotsErr } = await supabase
-                  .from('service_slots')
-                  .select('*')
-                  .eq('seller_id', resolvedSellerId)
-                  .order('start_ts', { ascending: true });
+          if (!slotsErr && slotsRows) {
+            const dateMap = {};
+            const weekly = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [] };
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const pad = (n) => String(n).padStart(2, '0');
 
-                if (!mounted) return;
-                if (!slotsErr && slotsRows) {
-                  const dateMap = {};
-                  const weekly = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [] };
-                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                  const pad = (n) => String(n).padStart(2, '0');
+            (slotsRows || []).forEach((s) => {
+              const start = new Date(s.start_ts);
+              const end = new Date(s.end_ts);
+              const dateKey = (s.start_ts || '').slice(0, 10);
+              const dayName = dayNames[start.getDay()];
 
-                  (slotsRows || []).forEach((s) => {
-                    const start = new Date(s.start_ts);
-                    const end = new Date(s.end_ts);
-                    const dateKey = (s.start_ts || '').slice(0, 10);
-                    const dayName = dayNames[start.getDay()];
-
-                    if (!dateMap[dateKey]) {
-                      dateMap[dateKey] = { id: `date-${dateKey}`, date: dateKey, maxBookings: 0, booked: 0, note: '', raw: [] };
-                    }
-                    dateMap[dateKey].maxBookings += (s.capacity || 1);
-                    dateMap[dateKey].booked += s.status === 'booked' ? (s.capacity || 1) : 0;
-                    dateMap[dateKey].raw.push(s);
-
-                    if (weekly[dayName]) {
-                      weekly[dayName].push({
-                        id: s.id,
-                        startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
-                        endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
-                        capacity: s.capacity || 1,
-                        slotsLeft: s.status === 'available' ? (s.capacity || 1) : 0,
-                        bookings: [],
-                        raw: s,
-                      });
-                    }
-                  });
-
-                  const calendarRows = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
-                  if (calendarRows.length > 0) setCalendarAvailability(calendarRows);
-                  setWeeklySchedule((prev) => ({ ...prev, ...weekly }));
-                }
-              } catch (e) {
-                console.warn('Failed to load seller slots', e);
+              if (!dateMap[dateKey]) {
+                dateMap[dateKey] = { id: `date-${dateKey}`, date: dateKey, maxBookings: 0, booked: 0, note: '', raw: [] };
               }
-          // If DB services exist, map them into the UI service shape and replace workerServices
-          if (services && services.length > 0) {
-            const mapped = services.map((s) => ({
-              fullName: resolvedSeller?.display_name || s.title || 'Service',
-              serviceType: s.title || s.metadata?.service_type || 'Service',
-              description: s.short_description || s.description || '',
-              pricingModel: getPricingModelFromService(s),
-              fixedPrice: s.base_price || s.price || s.basePrice || '',
-              // Determine canonical rate basis and expose matching rate fields for UI
-              rateBasis: (s.metadata && (s.metadata.rate_basis || s.metadata.rateBasis)) || s.rate_basis || s.price_type || '',
-              hourlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-hour' ? (s.base_price || '') : '',
-              dailyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-day' ? (s.base_price || '') : '',
-              weeklyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-week' ? (s.base_price || '') : '',
-              monthlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-month' ? (s.base_price || '') : '',
-              projectRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-project' ? (s.base_price || '') : '',
-              paymentAdvance: resolvedSeller?.payment_advance ?? false,
-              paymentAfterService: resolvedSeller?.payment_after_service ?? true,
-              afterServicePaymentType: resolvedSeller?.after_service_payment_type || 'both',
-              gcashNumber: resolvedSeller?.gcash_number || '',
-              bookingMode: s.metadata?.booking_mode || resolvedSeller?.booking_mode || 'with-slots',
-              location: {
-                barangay: resolvedSeller?.search_meta?.location?.barangay || resolvedSeller?.location?.barangay || '',
-                city: resolvedSeller?.search_meta?.location?.city || resolvedSeller?.location?.city || '',
-                province: resolvedSeller?.search_meta?.location?.province || resolvedSeller?.location?.province || '',
-              },
-              raw: s,
-            }));
-            setWorkerServices(mapped);
+              dateMap[dateKey].maxBookings += (s.capacity || 1);
+              dateMap[dateKey].booked += s.status === 'booked' ? (s.capacity || 1) : 0;
+              dateMap[dateKey].raw.push(s);
+
+              if (weekly[dayName]) {
+                weekly[dayName].push({
+                  id: s.id,
+                  startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+                  endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+                  capacity: s.capacity || 1,
+                  slotsLeft: s.status === 'available' ? (s.capacity || 1) : 0,
+                  bookings: [],
+                  raw: s,
+                });
+              }
+            });
+
+            const calendarRows = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
+            if (calendarRows.length > 0) setCalendarAvailability(calendarRows);
+            setWeeklySchedule((prev) => ({ ...prev, ...weekly }));
           }
+        } catch (e) {
+          console.warn('Failed to load seller slots', e);
+        }
+
+        if (services && services.length > 0) {
+          const mapped = services.map((s) => ({
+            fullName: mergedSellerProfile?.fullName || resolvedSellerDisplayName || s.title || 'Service',
+            serviceType: s.title || s.metadata?.service_type || 'Service',
+            description: s.short_description || s.description || '',
+            pricingModel: getPricingModelFromService(s),
+            fixedPrice: s.base_price || s.price || s.basePrice || '',
+            rateBasis: (s.metadata && (s.metadata.rate_basis || s.metadata.rateBasis)) || s.rate_basis || s.price_type || '',
+            hourlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-hour' ? (s.base_price || '') : '',
+            dailyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-day' ? (s.base_price || '') : '',
+            weeklyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-week' ? (s.base_price || '') : '',
+            monthlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-month' ? (s.base_price || '') : '',
+            projectRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-project' ? (s.base_price || '') : '',
+            paymentAdvance: seller?.payment_advance ?? false,
+            paymentAfterService: seller?.payment_after_service ?? true,
+            afterServicePaymentType: seller?.after_service_payment_type || 'both',
+            gcashNumber: seller?.gcash_number || '',
+            bookingMode: s.metadata?.booking_mode || seller?.booking_mode || 'with-slots',
+            location: {
+              barangay: seller?.search_meta?.location?.barangay || seller?.location?.barangay || '',
+              city: seller?.search_meta?.location?.city || seller?.location?.city || '',
+              province: seller?.search_meta?.location?.province || seller?.location?.province || '',
+            },
+            raw: s,
+          }));
+          setWorkerServices(mapped);
+        } else {
+          setWorkerServices([]);
         }
       } catch (err) {
         if (!mounted) return;
@@ -443,8 +471,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             setWorkerServices((prev) => {
               const recRateBasis = normalizeRateBasis(rec.metadata?.rate_basis || rec.rate_basis || rec.price_type);
               const sellerSnapshot = sellerDataRef.current || {};
+              const sellerDisplayName = sellerSnapshot?.display_name || sellerSnapshot?.search_meta?.name || sellerProfile?.fullName || sellerProfile?.full_name || '';
               const mapped = {
-                fullName: sellerSnapshot?.display_name || rec.title || 'Service',
+                fullName: sellerDisplayName || rec.title || 'Service',
                 serviceType: rec.title || rec.metadata?.service_type || 'Service',
                 description: rec.short_description || rec.description || '',
                 pricingModel: getPricingModelFromService(rec),
@@ -488,7 +517,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         { event: '*', schema: 'public', table: 'sellers', filter: `user_id=eq.${sellerId}` },
         (payload) => {
           const rec = payload.new || payload.record || null;
-          if (rec) setSellerData(rec);
+          if (rec) {
+            setSellerData(rec);
+            sellerDataRef.current = rec;
+          }
         }
       )
       .subscribe();
@@ -548,6 +580,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   const handleCreateServiceSubmit = async () => {
     if (!sellerId) {
       setSellerDataError('Seller record missing. Complete onboarding first.');
+          setWorkerProfileBundle(null);
       return;
     }
 
@@ -568,8 +601,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
       const created = await createSellerService(sellerId, payload);
       setSellerDbServices((prev) => [created, ...(prev || [])]);
+      const sellerDisplayName = sellerData?.display_name || sellerData?.search_meta?.name || sellerProfile?.fullName || sellerProfile?.full_name || '';
       const mapped = {
-        fullName: sellerData.display_name || created.title || 'Service',
+        fullName: sellerDisplayName || created.title || 'Service',
         serviceType: created.title || created.metadata?.service_type || 'Service',
         description: created.short_description || created.description || '',
         pricingModel: getPricingModelFromService(created),
@@ -639,7 +673,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     ? 'calendar-only'
     : 'with-slots';
 
+  const hasSellerRecord = Boolean(sellerData?.user_id || sellerData?.display_name || sellerProfile?.isWorker || sellerProfile?.role === 'worker' || sellerProfile?.role === 'admin');
   const hasService = (workerServices || []).length > 0;
+  const showSetupBanner = !isLoadingSellerData && !hasSellerRecord;
   
   // ============ DUMMY DATA ARRAYS (Simulates Database) ============
   
@@ -1257,16 +1293,32 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     setProfileEditModalOpen(true);
   };
 
-  const handleSaveProfileEdit = (updatedData) => {
-    setWorkerServices((prev) => {
-      const next = [...prev];
-      next[activeServiceIndex] = {
-        ...next[activeServiceIndex],
-        ...updatedData,
-      };
-      return next;
-    });
-    setProfileEditModalOpen(false);
+  const handleSaveProfileEdit = async (updatedData) => {
+    // Persist changes to worker/profile tables and sellers via syncWorkerSetup
+    try {
+      const merged = await syncWorkerSetup(authUser?.id, updatedData);
+      // Update local sellerProfile and workerServices to reflect persisted changes
+      if (merged) {
+        setWorkerProfileBundle(merged);
+      }
+
+      setWorkerServices((prev) => {
+        const next = [...(prev || [])];
+        next[activeServiceIndex] = {
+          ...next[activeServiceIndex],
+          ...updatedData,
+        };
+        return next;
+      });
+
+      setSuccessMessage('Profile updated');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to save profile edit:', err);
+      setSellerDataError(err?.message || 'Failed to update profile');
+    } finally {
+      setProfileEditModalOpen(false);
+    }
   };
 
   const handleOpenGcashPreview = () => {
@@ -1623,6 +1675,8 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        isAdminView={false}
+        onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
       
       <main style={sx('my-work-main')}>
@@ -1657,7 +1711,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
           </p>
         )}
 
-        {!isLoadingSellerData && !hasService && (
+        {showSetupBanner && (
           <div style={sx('empty-state-banner')}>
             <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
             <p style={{ fontSize: '16px', color: '#92400e', margin: '0 0 20px 0' }}>Complete your service profile to start receiving inquiries from clients.</p>
@@ -1681,7 +1735,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
           </div>
         )}
         
-        {!isLoadingSellerData && hasService && (
+        {!isLoadingSellerData && hasSellerRecord && (
           <>
             <div style={sx('profile-summary-card')}>
               <div style={sx('profile-info')}>
@@ -1703,7 +1757,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                     {currentPriceLabel}
                   </p>
                   <p style={sx('location')}>
-                    📍 {currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
+                    📍 {currentProfile?.location?.address || currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
                   </p>
                   <p style={sx('service-mode-tag')}>
                     Scheduling: {scheduleMode === 'calendar-only' ? 'Calendar Only' : 'With Slots'}

@@ -15,7 +15,7 @@ const BULACAN_CODE = '031400000';
  * - If mismatch: show red error message.
  * - If match: clear error and show success toast notification.
  */
-function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword }) {
+function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
   const splitNameParts = (value = '') => {
     const parts = String(value).trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
@@ -312,6 +312,8 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        isAdminView={false}
+        onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
 
       <div style={styles.card}>

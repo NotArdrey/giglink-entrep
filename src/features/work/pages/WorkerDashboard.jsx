@@ -5,7 +5,7 @@ import SellerScheduleModal from '../components/SellerScheduleModal';
 import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
 
 
-function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToClient }) {
+function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToClient, onOpenAdminDashboard }) {
   const workerName = sellerProfile?.fullName || 'New Seller';
   const serviceType =
     sellerProfile?.serviceType === 'Others'
@@ -119,7 +119,7 @@ function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearc
       cursor: 'pointer',
       fontWeight: 600,
     },
-    logoutButton: { backgroundColor: '#b91c1c', borderColor: '#b91c1c', color: '#ffffff' },
+    logoutButton: { backgroundColor: '#b91c1c', border: '1px solid #b91c1c', color: '#ffffff' },
     main: { maxWidth: '1050px', margin: '0 auto', padding: isMobile ? '0.8rem' : '1rem' },
     card: {
       backgroundColor: '#ffffff',
@@ -162,7 +162,9 @@ function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearc
         onOpenProfile={onOpenProfile}
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
-        onOpenDashboard={onOpenDashboard}
+          onOpenDashboard={onOpenDashboard}
+          isAdminView={false}
+          onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
 
       <main style={styles.main} id="worker-home">

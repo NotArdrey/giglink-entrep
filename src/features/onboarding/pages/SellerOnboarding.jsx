@@ -167,7 +167,7 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     textarea: { border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '8px', minHeight: '104px', padding: '0.58rem 0.65rem', fontFamily: 'inherit', resize: 'vertical', background: themeTokens.inputBg, color: themeTokens.inputText },
     toggleGroup: { display: 'flex', flexWrap: 'wrap', gap: '0.55rem' },
     toggleButton: { border: `1px solid ${themeTokens.inputBorder}`, background: themeTokens.surfaceAlt, color: themeTokens.textPrimary, borderRadius: '8px', padding: '0.58rem 0.9rem', cursor: 'pointer', fontWeight: 600 },
-    toggleButtonActive: { borderColor: themeTokens.accent, background: themeTokens.accent, color: '#ffffff' },
+    toggleButtonActive: { border: `1px solid ${themeTokens.accent}`, background: themeTokens.accent, color: '#ffffff' },
     checkboxRow: { display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.93rem', color: themeTokens.textPrimary },
     paymentExtraFields: { marginTop: '0.4rem', padding: '0.8rem', border: `1px dashed ${themeTokens.border}`, borderRadius: '8px', background: themeTokens.surfaceAlt, display: 'grid', gap: '0.45rem' },
     qrUploadHint: { margin: 0, fontSize: '0.83rem', color: themeTokens.textSecondary },
