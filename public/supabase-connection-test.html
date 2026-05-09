@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GigLink - Supabase Connection Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+      margin-top: 0;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f9fafb;
+      border-left: 4px solid #2563eb;
+      border-radius: 4px;
+    }
+    .test-section h3 {
+      margin-top: 0;
+      color: #1e40af;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #1e40af;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .status {
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    .status.warning {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+    code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+    .credentials {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      margin: 10px 0;
+    }
+    .loading {
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      background: #2563eb;
+      border-radius: 50%;
+      margin-right: 5px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 GigLink Supabase Connection Test</h1>
+    
+    <div class="test-section">
+      <h3>📋 Credentials</h3>
+      <div class="credentials">
+URL: https://dczhfpcfqlygpbqjctwf.supabase.co<br>
+KEY: sb_publishable_YFgfiGPizdbN-jtd9suIJw__NVqsltC
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h3>🌐 Test 1: Basic Fetch to Supabase</h3>
+      <p>This tests if your network can reach the Supabase server.</p>
+      <button onclick="testBasicFetch()">Run Test 1</button>
+      <div id="test1-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🔑 Test 2: API Authentication</h3>
+      <p>This tests if your API key is valid and authorized.</p>
+      <button onclick="testAPIAuth()">Run Test 2</button>
+      <div id="test2-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📦 Test 3: Full JSON Response</h3>
+      <p>This attempts to fetch data from the profiles table.</p>
+      <button onclick="testFullRequest()">Run Test 3</button>
+      <div id="test3-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>✅ Test 4: End-to-End Test</h3>
+      <p>This combines all above tests in sequence.</p>
+      <button onclick="runAllTests()">Run All Tests</button>
+      <div id="test4-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>💡 How to Use These Results</h3>
+      <ul>
+        <li><strong>All tests pass?</strong> Supabase is working. Issue is in React app. Check environment variables in .env.local</li>
+        <li><strong>Test 1 fails?</strong> Network connectivity issue. Check firewall/VPN/DNS</li>
+        <li><strong>Test 2 fails?</strong> API key issue. Copy exact key from Supabase settings</li>
+        <li><strong>Test 3 fails?</strong> Schema/RLS issue. Run SQL schema in Supabase SQL Editor</li>
+        <li><strong>Test 4 has partial failures?</strong> See individual test results above</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://dczhfpcfqlygpbqjctwf.supabase.co';
+    const API_KEY = 'sb_publishable_YFgfiGPizdbN-jtd9suIJw__NVqsltC';
+
+    function updateStatus(elementId, message, type = 'info') {
+      const el = document.getElementById(elementId);
+      el.className = `status ${type}`;
+      el.textContent = message;
+    }
+
+    function prependStatus(elementId, message, type = 'info') {
+      const el = document.getElementById(elementId);
+      const current = el.textContent;
+      el.className = `status ${type}`;
+      el.textContent = message + (current ? '\n\n' + current : '');
+    }
+
+    async function testBasicFetch() {
+      const id = 'test1-status';
+      updateStatus(id, '<div class="loading"></div> Testing network connectivity...', 'info');
+      
+      try {
+        const response = await fetch(API_URL, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        
+        updateStatus(id, `✅ SUCCESS\n\nServer is reachable\nHTTP Status: ${response.status} ${response.statusText}`, 'success');
+      } catch (error) {
+        updateStatus(id, `❌ FAILED\n\nNetwork error: ${error.message}\n\nPossible causes:\n• No internet connection\n• Firewall blocking requests\n• DNS resolution failed\n• Supabase domain is unreachable`, 'error');
+      }
+    }
+
+    async function testAPIAuth() {
+      const id = 'test2-status';
+      updateStatus(id, '<div class="loading"></div> Testing API authentication...', 'info');
+      
+      try {
+        const response = await fetch(`${API_URL}/rest/v1/`, {
+          method: 'GET',
+          headers: {
+            'apikey': API_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok || response.status === 401 || response.status === 403) {
+          const statusMsg = response.status === 200 ? '✅ Valid' : response.status === 401 ? '❌ Unauthorized' : '❌ Forbidden';
+          updateStatus(id, `${statusMsg} - HTTP Status: ${response.status}`, response.ok ? 'success' : response.status === 200 ? 'success' : 'error');
+        } else {
+          updateStatus(id, `❌ Unexpected status: ${response.status}`, 'error');
+        }
+      } catch (error) {
+        updateStatus(id, `❌ FAILED\n\nNetwork error: ${error.message}`, 'error');
+      }
+    }
+
+    async function testFullRequest() {
+      const id = 'test3-status';
+      updateStatus(id, '<div class="loading"></div> Fetching from profiles table...', 'info');
+      
+      try {
+        const response = await fetch(
+          `${API_URL}/rest/v1/profiles?limit=1`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': API_KEY,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          updateStatus(id, `✅ SUCCESS\n\nHTTP Status: ${response.status}\nRows received: ${Array.isArray(data) ? data.length : 0}\n\nResponse:\n${JSON.stringify(data, null, 2)}`, 'success');
+        } else if (response.status === 401) {
+          updateStatus(id, `❌ AUTHENTICATION FAILED\n\nHTTP Status: 401\n\nError: ${data.message || JSON.stringify(data)}\n\nAction: Verify API key in Supabase Settings → API`, 'error');
+        } else if (response.status === 403) {
+          updateStatus(id, `❌ PERMISSION DENIED\n\nHTTP Status: 403\n\nError: ${data.message || JSON.stringify(data)}\n\nAction: Check RLS policies are enabled\nAlso verify you are authenticated and have proper permissions`, 'error');
+        } else {
+          updateStatus(id, `❌ ERROR\n\nHTTP Status: ${response.status}\nError: ${data.message || JSON.stringify(data)}`, 'error');
+        }
+      } catch (error) {
+        updateStatus(id, `❌ FAILED\n\nError: ${error.message}\n\nThis suggests a network or CORS issue`, 'error');
+      }
+    }
+
+    async function runAllTests() {
+      const id = 'test4-status';
+      updateStatus(id, '<div class="loading"></div> Running all tests...', 'info');
+      
+      let results = '=== COMPREHENSIVE TEST RESULTS ===\n\n';
+      
+      // Test 1
+      results += '1️⃣  NETWORK CONNECTIVITY TEST\n';
+      try {
+        const response = await fetch(API_URL, { method: 'GET' });
+        results += `   ✅ PASS - Server reachable (${response.status})\n`;
+      } catch (error) {
+        results += `   ❌ FAIL - Network error: ${error.message}\n`;
+      }
+      
+      results += '\n';
+      
+      // Test 2
+      results += '2️⃣  API AUTHENTICATION TEST\n';
+      try {
+        const response = await fetch(`${API_URL}/rest/v1/`, {
+          headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
+        });
+        results += `   ✅ PASS - API reachable (${response.status})\n`;
+      } catch (error) {
+        results += `   ❌ FAIL - ${error.message}\n`;
+      }
+      
+      results += '\n';
+      
+      // Test 3
+      results += '3️⃣  PROFILES TABLE ACCESS TEST\n';
+      try {
+        const response = await fetch(`${API_URL}/rest/v1/profiles?limit=1`, {
+          headers: { apikey: API_KEY, 'Content-Type': 'application/json' },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          results += `   ✅ PASS - Can read profiles table\n`;
+          results += `   Data rows: ${data.length}\n`;
+        } else if (response.status === 403) {
+          results += `   ⚠️  RLS EXPECTED - HTTP 403 (This is normal if RLS is enabled)\n`;
+        } else {
+          results += `   ❌ FAIL - HTTP ${response.status}\n`;
+        }
+      } catch (error) {
+        results += `   ❌ FAIL - ${error.message}\n`;
+      }
+      
+      results += '\n=== ENVIRONMENT ===\n';
+      results += `Browser: ${navigator.userAgent.split('Chrome')[0].trim()}\n`;
+      results += `Time: ${new Date().toISOString()}\n`;
+      
+      updateStatus(id, results, 'info');
+    }
+
+    // Run basic test on page load
+    window.addEventListener('load', () => {
+      console.log('🔧 Supabase Connection Test Page Loaded');
+      console.log('URL:', API_URL);
+      console.log('Key:', API_KEY.slice(0, 20) + '...');
+    });
+  </script>
+</body>
+</html>

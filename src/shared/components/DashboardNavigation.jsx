@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getThemeTokens } from '../styles/themeTokens';
+import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 
 function DashboardNavigation({
   searchQuery,
@@ -19,6 +20,7 @@ function DashboardNavigation({
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 'n1', title: 'Booking Update', message: 'Your latest booking has a new message.', isRead: false },
     { id: 'n2', title: 'Reminder', message: 'You have an upcoming schedule today.', isRead: false },
@@ -430,7 +432,7 @@ function DashboardNavigation({
                   style={{ ...styles.profileItem, ...styles.profileDanger }}
                   onClick={() => {
                     setIsProfileMenuOpen(false);
-                    onLogout && onLogout();
+                    setIsLogoutModalOpen(true);
                   }}
                 >
                   Logout
@@ -451,6 +453,15 @@ function DashboardNavigation({
           />
         </div>
       )}
+
+      <LogoutConfirmModal 
+        isOpen={isLogoutModalOpen} 
+        onCancel={() => setIsLogoutModalOpen(false)} 
+        onConfirm={() => {
+          setIsLogoutModalOpen(false);
+          if (onLogout) onLogout();
+        }} 
+      />
     </div>
   );
 }

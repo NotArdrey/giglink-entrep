@@ -83,11 +83,50 @@ const getNormalizedRole = (value, fallback = 'client') => {
   return fallback;
 };
 
+const ALLOWED_SERVICE_PRICE_TYPES = ['fixed', 'hourly', 'custom', 'package'];
+
+const normalizeServicePriceType = (value) => {
+  const raw = getCleanString(value).toLowerCase();
+  if (ALLOWED_SERVICE_PRICE_TYPES.includes(raw)) return raw;
+  // UI "inquiry" is represented as SQL-safe "custom" + metadata.pricing_model='inquiry'.
+  if (raw === 'inquiry') return 'custom';
+  return 'fixed';
+};
+
+const getServicePricingModel = (serviceData = {}) => {
+  const raw = getCleanString(serviceData.priceType || serviceData.pricingModel || '').toLowerCase();
+  return raw === 'inquiry' ? 'inquiry' : 'fixed';
+};
+
 const toReadableDatabaseSetupError = (error) => {
   const message = String(error?.message || '');
-  if (/Could not find the table 'public\.profiles' in the schema cache/i.test(message)) {
-    return new Error('Database setup incomplete: table public.profiles is not available to the API yet. Run supabase/schema.sql in the same project and ensure schema "public" is exposed in API settings.');
+  
+  // Network/connectivity issues
+  if (/Failed to fetch|network|unable to reach|refused to connect/i.test(message)) {
+    return new Error(
+      'Network error: Unable to connect to Supabase. Verify your internet connection and that the Supabase project is online. '
+      + 'Check environment variables: REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY must be set in .env.local'
+    );
   }
+  
+  // Table not found errors
+  if (/Could not find the table|relation.*does not exist|table.*not found/i.test(message)) {
+    return new Error(
+      'Database setup incomplete: One or more required tables are missing. '
+      + 'Run the complete SQL schema from supabase/COMPLETE_SCHEMA_CONSOLIDATED.sql in the Supabase SQL Editor. '
+      + 'Tables needed: profiles, worker_profiles, sellers, services, service_slots, bookings, conversations, messages, reviews'
+    );
+  }
+  
+  // Permission/RLS errors
+  if (/permission denied|row level security|RLS policy/i.test(message)) {
+    return new Error(
+      'Permission denied: Row-level security (RLS) policies are blocking this operation. '
+      + 'Ensure you are logged in and that the RLS policies are correctly configured in the Supabase SQL Editor. '
+      + 'All tables should have RLS enabled with policies that check auth.uid().'
+    );
+  }
+  
   return error;
 };
 
@@ -721,8 +760,197 @@ export const syncAuthenticatedUserProfile = async (user, source = {}) => {
   return profile;
 };
 
+// ============================================================================
+// SELLER MANAGEMENT FUNCTIONS
+// ============================================================================
+
+const buildSellerPayload = (userId, source = {}) => ({
+  user_id: userId,
+  display_name: getNullableString(source.fullName || source.displayName),
+  headline: getNullableString(source.headline),
+  tagline: getNullableString(source.tagline),
+  about: getNullableString(source.bio || source.about),
+  is_verified: Boolean(source.isVerified),
+  verification_status: getCleanString(source.verificationStatus) || 'pending',
+  response_time_minutes: getNullableNumber(source.responseTimeMinutes) || 1440,
+  languages: Array.isArray(source.languages) ? source.languages : [],
+  default_currency: getCleanString(source.defaultCurrency) || 'PHP',
+  business_hours: source.businessHours || null,
+  search_meta: {
+    name: getNullableString(source.fullName),
+    service_type: getNullableString(source.serviceType || source.customServiceType),
+    bio: getNullableString(source.bio),
+    location: {
+      city: getNullableString(source.city),
+      province: getNullableString(source.province),
+    },
+  },
+  updated_at: getTimestamp(),
+});
+
+const buildDefaultSellerFromWorkerProfile = (userId, workerProfile = {}, profileData = {}) => {
+  const displayName = profileData?.fullName || profileData?.full_name || workerProfile?.fullName || '';
+  const headline = [
+    workerProfile?.serviceType,
+    workerProfile?.customServiceType,
+  ].filter(Boolean).join(' - ') || 'Service Provider';
+
+  const about = workerProfile?.bio || '';
+  const location = profileData?.location || {};
+
+  return {
+    user_id: userId,
+    display_name: getNullableString(displayName),
+    headline: getNullableString(headline),
+    tagline: null,
+    about: getNullableString(about),
+    is_verified: false,
+    verification_status: 'pending',
+    response_time_minutes: 1440,
+    languages: ['en'],
+    default_currency: 'PHP',
+    business_hours: null,
+    search_meta: {
+      name: getNullableString(displayName),
+      service_type: getNullableString(workerProfile?.serviceType || workerProfile?.customServiceType),
+      bio: getNullableString(about),
+      location: {
+        city: getNullableString(location.city),
+        province: getNullableString(location.province),
+      },
+    },
+    updated_at: getTimestamp(),
+  };
+};
+
+export const createOrUpdateSeller = async (userId, source = {}) => {
+  if (!userId) throw new Error('Missing user ID for seller account.');
+
+  const payload = buildSellerPayload(userId, source);
+  const { data: sellerData, error: upsertError } = await supabase
+    .from('sellers')
+    .upsert(payload, { onConflict: 'user_id' })
+    .select('*')
+    .maybeSingle();
+
+  if (upsertError) throw toReadableDatabaseSetupError(upsertError);
+
+  return sellerData;
+};
+
+export const fetchSellerProfile = async (userId) => {
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from('sellers')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw toReadableDatabaseSetupError(error);
+  }
+
+  return data || null;
+};
+
+export const fetchSellerServices = async (sellerId) => {
+  if (!sellerId) return [];
+
+  const { data, error } = await supabase
+    .from('services')
+    .select('*')
+    .eq('seller_id', sellerId)
+    .eq('active', true)
+    .order('created_at', { ascending: false });
+
+  if (error && error.code !== 'PGRST116') {
+    throw toReadableDatabaseSetupError(error);
+  }
+
+  return data || [];
+};
+
+export const fetchAllActiveServices = async (limit = 50) => {
+  const { data, error } = await supabase
+    .from('services')
+    // include related seller row so UI can render provider details
+    .select('*, sellers(*)')
+    .eq('active', true)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error && error.code !== 'PGRST116') {
+    throw toReadableDatabaseSetupError(error);
+  }
+
+  return data || [];
+};
+
+export const fetchServiceWithSeller = async (serviceId) => {
+  if (!serviceId) return null;
+
+  const { data, error } = await supabase
+    .from('services')
+    .select('*, sellers(*)')
+    .eq('id', serviceId)
+    .maybeSingle();
+
+  if (error && error.code !== 'PGRST116') {
+    throw toReadableDatabaseSetupError(error);
+  }
+
+  return data || null;
+};
+
+export const createSellerService = async (sellerId, serviceData = {}) => {
+  if (!sellerId) throw new Error('Missing seller ID.');
+
+  const sqlPriceType = normalizeServicePriceType(serviceData.priceType);
+  const pricingModel = getServicePricingModel(serviceData);
+  const mergedMetadata = {
+    ...(serviceData.metadata || {}),
+    pricing_model: pricingModel,
+  };
+
+  const payload = {
+    seller_id: sellerId,
+    title: getNullableString(serviceData.title) || 'Untitled Service',
+    slug: getNullableString(serviceData.slug) || `service-${Date.now()}`,
+    description: getNullableString(serviceData.description),
+    short_description: getNullableString(serviceData.shortDescription),
+    price_type: sqlPriceType,
+    base_price: getNullableNumber(serviceData.basePrice),
+    currency: getCleanString(serviceData.currency) || 'PHP',
+    duration_minutes: getNullableNumber(serviceData.durationMinutes),
+    active: true,
+    metadata: mergedMetadata,
+  };
+
+  const { data, error } = await supabase
+    .from('services')
+    .insert([payload])
+    .select('*')
+    .single();
+
+  if (error) throw toReadableDatabaseSetupError(error);
+
+  return data;
+};
+
 export const syncWorkerSetup = async (userId, source = {}) => {
+  // Step 1: Update worker profile
   const profile = await upsertWorkerProfile(userId, source);
+
+  // Step 2: Create or update seller record from worker setup data
+  try {
+    const sellerData = buildDefaultSellerFromWorkerProfile(userId, source, profile);
+    await createOrUpdateSeller(userId, sellerData);
+  } catch (sellerError) {
+    console.error('Failed to create seller record during worker setup:', sellerError);
+    // Continue anyway - the worker profile was created successfully
+  }
+
   return profile;
 };
 

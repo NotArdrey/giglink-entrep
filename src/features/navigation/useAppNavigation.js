@@ -157,6 +157,22 @@ export const useAppNavigation = () => {
       }
     };
 
+    // Clean up any existing profile-watch channels (prevents "add callbacks after subscribe" errors)
+    try {
+      const existing = (supabase.getChannels && supabase.getChannels()) || [];
+      existing.forEach((ch) => {
+        try {
+          if (ch.topic && String(ch.topic).includes(`profile-watch-${authUser.id}`)) {
+            supabase.removeChannel(ch);
+          }
+        } catch (e) {
+          // ignore
+        }
+      });
+    } catch (e) {
+      // ignore if getChannels not available
+    }
+
     const channel = supabase
       .channel(`profile-watch-${authUser.id}`)
       .on(
@@ -195,13 +211,10 @@ export const useAppNavigation = () => {
       try {
         profile = await syncAuthenticatedUserProfile(user, source);
       } catch (error) {
-        if (!isProfilesTableApiError(error)) {
-          throw error;
-        }
-
-        // Keep login usable even if profile table API is temporarily unavailable.
+        // Keep login usable even if profile sync fails for this account.
+        console.error('Profile sync failed during login, falling back to auth-only profile:', error);
         profile = buildAuthOnlyProfile(user, source);
-        showErrorNotification('Logged in with limited profile mode. Database profile table is not reachable yet.');
+        showErrorNotification('Logged in with limited profile mode. Some profile data could not be synced right now.');
       }
     }
 
@@ -320,10 +333,9 @@ export const useAppNavigation = () => {
           try {
             profile = await syncAuthenticatedUserProfile(sessionUser);
           } catch (profileError) {
-            if (!isProfilesTableApiError(profileError)) {
-              throw profileError;
-            }
+            console.error('Unable to sync profile from session restore, using auth-only profile:', profileError);
             profile = buildAuthOnlyProfile(sessionUser);
+            showErrorNotification('Session restored in limited profile mode. Some profile data could not be loaded.');
           }
 
           const accessError = isAccountBlockedForLogin(profile);
@@ -502,20 +514,47 @@ export const useAppNavigation = () => {
       }
       setCurrentView('my-work');
     } catch (error) {
-      console.error('Failed to complete seller onboarding:', error);
-      const fallbackProfile = {
-        ...(sellerProfile || {}),
-        ...profilePayload,
-        userId,
-        isWorker: true,
-        location: resolvedLocation || null,
-      };
-      setSellerProfile(fallbackProfile);
-      setUserLocation(fallbackProfile.location);
-      setIsSellerOnboardingOpen(false);
-      setCurrentView(destination === 'home' ? 'client-dashboard' : 'my-work');
+      console.error('Failed to complete seller onboarding (first attempt):', error);
+
+      // Retry once with a minimal payload to avoid issues from optional fields.
+      try {
+        const retryPayload = {
+          fullName: profilePayload.fullName,
+          serviceType: profilePayload.serviceType,
+          customServiceType: profilePayload.customServiceType,
+          bio: profilePayload.bio,
+          pricingModel: profilePayload.pricingModel,
+          fixedPrice: profilePayload.fixedPrice,
+          bookingMode: profilePayload.bookingMode,
+          rateBasis: profilePayload.rateBasis,
+          paymentAdvance: profilePayload.paymentAdvance,
+          paymentAfterService: profilePayload.paymentAfterService,
+          afterServicePaymentType: profilePayload.afterServicePaymentType,
+          gcashNumber: profilePayload.gcashNumber,
+          qrFileName: profilePayload.qrFileName,
+          province: profilePayload.province,
+          city: profilePayload.city,
+          barangay: profilePayload.barangay,
+          address: profilePayload.address,
+          location: profilePayload.location,
+        };
+
+        const mergedProfile = await syncWorkerSetup(userId, retryPayload);
+        setSellerProfile(mergedProfile);
+        setUserLocation(mergedProfile?.location || null);
+        setIsSellerOnboardingOpen(false);
+        setCurrentView(destination === 'home' ? 'client-dashboard' : 'my-work');
+        showSuccessNotification('Seller onboarding synced on retry.');
+        return;
+      } catch (retryError) {
+        console.error('Failed to complete seller onboarding (retry):', retryError);
+      }
+
+      // Keep user in onboarding with a real backend error instead of fake local mode.
+      setIsSellerOnboardingOpen(true);
       showErrorNotification(
-        `${toErrorMessage(error, 'Unable to sync seller onboarding right now.')} Continuing in local mode for now.`
+        `${toErrorMessage(error, 'Unable to sync seller onboarding.')}`
+        + ' Please ensure Supabase seller tables and RLS policies are applied (profiles, worker_profiles, sellers, services).'
       );
     }
   };
@@ -644,6 +683,7 @@ export const useAppNavigation = () => {
     // State
     isLoggedIn,
     isLoadingTransition,
+    authUser,
     currentView,
     previousView,
     sellerProfile,

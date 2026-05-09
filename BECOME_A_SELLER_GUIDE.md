@@ -261,3 +261,59 @@ When we replace the mock data, these screens should pull from the seller schema 
 This guide exists so the mock-data structure stays documented before the live seller system replaces it.
 
 When the backend is ready, we can remove the mock data gradually, screen by screen, without losing the intended UI behavior.
+
+## Mapping checklist (what to show in the demo)
+
+- Service metadata keys the UI reads:
+  - `metadata.rate_basis` — canonical values: `per-hour`, `per-day`, `per-week`, `per-month`, `per-project`.
+  - `metadata.booking_mode` — values: `with-slots` (default) or `calendar-only` (calendar-only opens date selection without prebuilt time blocks).
+  - `base_price` — used as the canonical price for the chosen `rate_basis`.
+
+- Booking availability source:
+  - `service_slots` table is the authoritative source for demo/live slot data. Each row must include `service_id`, `seller_id`, `start_ts`, `end_ts`, `capacity`, and `status` (`available`/`booked`/`cancelled`).
+
+- UI mappings we rely on during the demo:
+  - `Dashboard` maps `services` → `provider` objects and exposes `rateBasis`, `hourlyRate`, `dailyRate`, `weeklyRate`, `monthlyRate`, `projectRate`, `bookingMode`, and `actionType` (inquire/book).
+  - `BookingCalendarModal` consumes a `schedule` object; for best presentation seed `service_slots` for specific dates so the calendar shows date-specific slots.
+
+## Demo seeding (quick SQL examples)
+
+Use these examples in Supabase SQL editor to create a demo service and a few date-specific slots (replace `<SELLER_UUID>` with your seller user_id and adjust `service_id` if your services already exist):
+
+-- 1) Create a service (if you don't have one already)
+INSERT INTO public.services (seller_id, title, slug, short_description, price_type, base_price, metadata)
+VALUES (
+  '<SELLER_UUID>',
+  'Demo Tutoring — Presentation',
+  'demo-tutoring-preso',
+  'Demo service to showcase calendar-driven booking.',
+  'fixed',
+  800.00,
+  '{"rate_basis":"per-week","booking_mode":"with-slots","service_type":"Tutor"}'::jsonb
+)
+RETURNING id;
+
+-- Note the returned `id` (e.g. 123). Use that as `service_id` below.
+
+-- 2) Insert date-specific slots for the demo service (replace service_id and seller_id)
+INSERT INTO public.service_slots (service_id, seller_id, start_ts, end_ts, capacity, status)
+VALUES
+  (123, '<SELLER_UUID>', '2026-05-12T09:00:00+08', '2026-05-12T11:00:00+08', 3, 'available'),
+  (123, '<SELLER_UUID>', '2026-05-12T14:00:00+08', '2026-05-12T16:00:00+08', 2, 'available'),
+  (123, '<SELLER_UUID>', '2026-05-13T09:00:00+08', '2026-05-13T11:00:00+08', 3, 'available');
+
+-- 3) Verify: SELECT * FROM public.service_slots WHERE service_id = 123 ORDER BY start_ts;
+
+## Calendar behavior — current vs recommended
+
+- Current: Dashboard aggregates `service_slots` into weekly/day-block shapes (by weekday) when building the schedule object for `BookingCalendarModal`. This makes it easy to show recurring patterns, but the calendar can look aggregated rather than date-explicit.
+- Recommended for your demo: seed date-specific `service_slots` (see SQL above). The Dashboard already fetches `service_slots` and will surface availability; for the clearest presentation, show the BookingCalendarModal with seeded dates so attendees see exact dates and times.
+- Optional improvement (after demo): update `BookingCalendarModal` to treat `service_slots` as exact-date blocks (keyed by ISO date strings) so the modal shows blocks per date rather than aggregating by weekday.
+
+## What to prepare before the presentation
+
+- Create 2–4 demo services using the Create Service UI in `My Work` or by inserting into `public.services` with `metadata.rate_basis` set to `per-week` / `per-month` for at least one service.
+- Seed several `service_slots` rows for those service ids (use the SQL example) across the demo date range you will show.
+- Open the Dashboard, click a service card, and open `Book` to confirm the seeded date-specific slots appear.
+
+If you want, I can seed a small set of slots for your first DB-backed service now (tell me the `seller_id` or the service `id`) and also convert the calendar modal to show slots keyed by exact date strings instead of weekday aggregation.

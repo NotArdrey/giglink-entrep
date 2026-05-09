@@ -74,8 +74,21 @@ function getDateMeta(schedule, dateValue) {
     };
   }
 
+  // Prefer exact-date slots when available (keys like '2026-05-12')
+  const exactBlocks = schedule.dayBlocks && schedule.dayBlocks[dateValue];
+  if (exactBlocks) {
+    const slotCountExact = exactBlocks.reduce((sum, block) => sum + Math.max(0, block.slotsLeft || 0), 0);
+    return {
+      canBookDate: slotCountExact > 0 || schedule.manualScheduling,
+      slotCount: slotCountExact || (schedule.manualScheduling ? 1 : 0),
+      isOperatingDay: true,
+      dayBlocks: exactBlocks,
+      manualScheduling: schedule.manualScheduling,
+    };
+  }
+
   const dayKey = getDayKeyFromDate(dateValue);
-  const isOperatingDay = dayKey ? schedule.operatingDays.includes(dayKey) : false;
+  const isOperatingDay = dayKey ? (schedule.operatingDays || []).includes(dayKey) : false;
   const dayBlocks = !dayKey || !isOperatingDay ? [] : (schedule.dayBlocks[dayKey] || []);
 
   if (!isOperatingDay) {

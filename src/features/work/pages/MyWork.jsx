@@ -1,174 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import SimulatedChat from '../components/SimulatedChat';
 import SlotEditModal from '../components/SlotEditModal';
 import ProfileEditModal from '../components/ProfileEditModal';
 import ConfirmActionModal from '../components/modals/ConfirmActionModal';
 import QrPreviewModal from '../components/modals/QrPreviewModal';
-import {
-  MOCK_WORKERS,
-  HOURLY_WORKER_SCHEDULE,
-  DAILY_WORKER_CALENDAR,
-  PROJECT_WORKER_CALENDAR,
-  DAILY_SLOTS_SCHEDULE,
-  PROJECT_SLOTS_SCHEDULE,
-  HOURLY_CALENDAR,
-} from '../data/MockWorkers';
-import { getThemeTokens } from '../../../shared/styles/themeTokens';
-
-
-const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
-const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
-
-const getMonday = (baseDate = new Date()) => {
-  const date = new Date(baseDate);
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff);
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
-const addDays = (baseDate, days) => {
-  const date = new Date(baseDate);
-  date.setDate(date.getDate() + days);
-  return date;
-};
-
+import { fetchSellerProfile, fetchSellerServices, createSellerService, createOrUpdateSeller } from '../../../shared/services/authService';
+import { useAppNavigation } from '../../navigation/useAppNavigation';
+import SuccessNotification from '../../../shared/components/SuccessNotification';
+import ErrorNotification from '../../../shared/components/ErrorNotification';
+import { supabase } from '../../../shared/services/supabaseClient';
 const formatDateLabel = (date) =>
   date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 const formatDateLong = (date) =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-const INITIAL_WEEKLY_SCHEDULE = {
-  Mon: [
-    {
-      id: 'mon-1',
-      startTime: '09:00',
-      endTime: '11:00',
-      capacity: 3,
-      slotsLeft: 1,
-      bookings: [
-        { clientName: 'Alice Wong', service: 'Tutoring' },
-        { clientName: 'Bob Lee', service: 'Tutoring' },
-      ],
-    },
-    {
-      id: 'mon-2',
-      startTime: '14:00',
-      endTime: '16:00',
-      capacity: 2,
-      slotsLeft: 2,
-      bookings: [],
-    },
-  ],
-  Tue: [
-    {
-      id: 'tue-1',
-      startTime: '10:00',
-      endTime: '12:00',
-      capacity: 3,
-      slotsLeft: 0,
-      bookings: [
-        { clientName: 'Carol Kim', service: 'Tutoring' },
-        { clientName: 'Diana Ng', service: 'Tutoring' },
-        { clientName: 'Eva dela Cruz', service: 'Tutoring' },
-      ],
-    },
-  ],
-  Wed: [
-    {
-      id: 'wed-1',
-      startTime: '09:00',
-      endTime: '11:00',
-      capacity: 3,
-      slotsLeft: 2,
-      bookings: [
-        { clientName: 'Frank Santos', service: 'Tutoring' },
-      ],
-    },
-    {
-      id: 'wed-2',
-      startTime: '15:00',
-      endTime: '17:00',
-      capacity: 2,
-      slotsLeft: 1,
-      bookings: [
-        { clientName: 'Grace Reyes', service: 'Tutoring' },
-      ],
-    },
-  ],
-  Thu: [
-    {
-      id: 'thu-1',
-      startTime: '13:00',
-      endTime: '15:00',
-      capacity: 3,
-      slotsLeft: 3,
-      bookings: [],
-    },
-  ],
-  Fri: [
-    {
-      id: 'fri-1',
-      startTime: '09:00',
-      endTime: '11:00',
-      capacity: 2,
-      slotsLeft: 0,
-      bookings: [
-        { clientName: 'Henry Lopez', service: 'Tutoring' },
-        { clientName: 'Iris Tan', service: 'Tutoring' },
-      ],
-    },
-    {
-      id: 'fri-2',
-      startTime: '14:00',
-      endTime: '16:00',
-      capacity: 3,
-      slotsLeft: 1,
-      bookings: [
-        { clientName: 'Jack Santos', service: 'Tutoring' },
-        { clientName: 'Kate Flores', service: 'Tutoring' },
-      ],
-    },
-  ],
+const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
+const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
+const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
+
+const addDays = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
 };
 
-const INITIAL_CALENDAR_AVAILABILITY = [
-  { id: 'cal-1', date: '2026-03-24', maxBookings: 3, booked: 2, note: 'Morning to afternoon' },
-  { id: 'cal-2', date: '2026-03-26', maxBookings: 2, booked: 1, note: 'Flexible schedule' },
-  { id: 'cal-3', date: '2026-03-28', maxBookings: 4, booked: 0, note: 'Weekend slots open' },
-];
+const getMonday = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
-const INITIAL_TRANSACTIONS = [
-  { id: 'txn-1', clientName: 'Alice Wong', service: 'Tutoring', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: true, isDone: false, weekOffset: 0 },
-  { id: 'txn-2', clientName: 'Bob Lee', service: 'Tutoring', scheduleRef: 'mon-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 800, submittedCashAmount: 780, cashConfirmationStatus: 'pending-worker-review', cashConfirmationQrId: 'CASHQR-TXN2-20260322', transactionId: '' },
-  { id: 'txn-3', clientName: 'Carol Kim', service: 'Tutoring', scheduleRef: 'tue-1', paymentMode: 'Advance', isPaid: true, isDone: true, weekOffset: 0 },
-  { id: 'txn-4', clientName: 'Diana Ng', service: 'Tutoring', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 0 },
-  { id: 'txn-5', clientName: 'Grace Reyes', service: 'Tutoring', scheduleRef: 'wed-2', paymentMode: 'Advance', isPaid: true, isDone: false, weekOffset: 0 },
-  { id: 'txn-6', clientName: 'Mika Ramos', service: 'Consultation', scheduleRef: 'cal-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 0 },
-  { id: 'txn-7', clientName: 'Noel Santos', service: 'Consultation', scheduleRef: 'cal-2', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: true, isDone: true, weekOffset: 0, expectedCashAmount: 1200, submittedCashAmount: 1200, cashConfirmationStatus: 'approved', cashConfirmationQrId: 'CASHQR-TXN7-20260320', transactionId: 'CASH-TRX-20260320-TXN7-7381' },
-  { id: 'txn-8', clientName: 'Paolo Diaz', service: 'Tutoring', scheduleRef: 'fri-2', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1 },
-  { id: 'txn-9', clientName: 'Rina Sy', service: 'Consultation', scheduleRef: 'cal-3', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: -1 },
-  { id: 'txn-10', clientName: 'Leo Ramirez', service: 'Math Tutoring', scheduleRef: 'wed-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 950, submittedCashAmount: 950, cashConfirmationStatus: 'pending-worker-review', cashConfirmationQrId: 'CASHQR-TXN10-20260323', transactionId: '' },
-  { id: 'txn-11', clientName: 'Sarah Martinez', service: 'Graphic Design', scheduleRef: 'thu-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, expectedCashAmount: 1500, submittedCashAmount: 1400, cashConfirmationStatus: 'denied', cashConfirmationQrId: 'CASHQR-TXN11-20260321', transactionId: '' },
-  { id: 'txn-12', clientName: 'Trina Lopez', service: 'House Cleaning', scheduleRef: 'fri-1', paymentMode: 'After Service', paymentChannel: 'cash', isPaid: false, isDone: false, weekOffset: 0, bookingStatus: 'cancelled', cancelReason: 'Client requested cancellation before meetup.', cancelPolicy: 'Cash-only cancellation flow' },
-  { id: 'txn-13', clientName: 'Vince Ortega', service: 'Tutoring', scheduleRef: 'wed-2', paymentMode: 'Advance', paymentChannel: 'gcash', isPaid: true, isDone: false, weekOffset: 0, transactionId: 'GCASH-TRX-20260322-TXN13-7711', refundStatus: 'requested', refundAmount: 1800, refundReason: 'Worker unavailable on booked slot.', refundReference: 'REFUND-REQ-TXN13-20260325' },
-  { id: 'txn-14', clientName: 'Lianne Cruz', service: 'Consultation', scheduleRef: 'cal-1', paymentMode: 'After Service', paymentChannel: 'gcash', isPaid: true, isDone: true, weekOffset: 0, transactionId: 'GCASH-TRX-20260318-TXN14-6822', refundStatus: 'approved', refundAmount: 950, refundReason: 'Duplicate GCash payment detected.', refundReference: 'REFUND-APR-TXN14-20260323' },
-  // Monthly recurring (Advance): once first payment is checked, all cycle entries are paid and locked.
-  { id: 'sub-advance-1', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 0, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 1, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  { id: 'sub-advance-2', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 1, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 2, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  { id: 'sub-advance-3', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 2, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 3, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  { id: 'sub-advance-4', clientName: 'Bob Lee', service: 'Monthly Tutor Plan', scheduleRef: 'mon-1', paymentMode: 'Advance', isPaid: false, isDone: false, weekOffset: 3, recurringCycle: 'monthly', subscriptionId: 'monthly-bob-2026-03', cycleOrder: 4, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  // Monthly recurring (After Service): when last cycle entry is marked done and paid, previous weeks become paid.
-  { id: 'sub-after-1', clientName: 'Diana Ng', service: 'Monthly Tutor Plan', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 0, recurringCycle: 'monthly', subscriptionId: 'monthly-diana-2026-03', cycleOrder: 1, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  { id: 'sub-after-2', clientName: 'Diana Ng', service: 'Monthly Tutor Plan', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 1, recurringCycle: 'monthly', subscriptionId: 'monthly-diana-2026-03', cycleOrder: 2, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  { id: 'sub-after-3', clientName: 'Diana Ng', service: 'Monthly Tutor Plan', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 2, recurringCycle: 'monthly', subscriptionId: 'monthly-diana-2026-03', cycleOrder: 3, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-  { id: 'sub-after-4', clientName: 'Diana Ng', service: 'Monthly Tutor Plan', scheduleRef: 'tue-1', paymentMode: 'After Service', isPaid: false, isDone: false, weekOffset: 3, recurringCycle: 'monthly', subscriptionId: 'monthly-diana-2026-03', cycleOrder: 4, paymentLocked: false, cycleStart: '2026-03-21', cycleEnd: '2026-04-21' },
-];
+const normalizeRateBasis = (value) => {
+  const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  if (raw === 'per-hour' || raw === 'hourly') return 'per-hour';
+  if (raw === 'per-day' || raw === 'daily') return 'per-day';
+  if (raw === 'per-week' || raw === 'weekly') return 'per-week';
+  if (raw === 'per-month' || raw === 'monthly') return 'per-month';
+  if (raw === 'per-project' || raw === 'project' || raw === 'package' || raw === 'fixed' || raw === 'custom') return 'per-project';
+  return '';
+};
+
+const getPricingModelFromService = (svc) => {
+  const model = String(
+    svc?.metadata?.pricing_model || svc?.metadata?.pricingModel || svc?.pricing_model || ''
+  )
+    .trim()
+    .toLowerCase();
+  return model === 'inquiry' ? 'inquiry' : 'fixed';
+};
+
+const INITIAL_WEEKLY_SCHEDULE = {
+  Mon: [], Tue: [], Wed: [], Thu: [], Fri: [],
+};
+
+const INITIAL_CALENDAR_AVAILABILITY = [];
+
+const INITIAL_TRANSACTIONS = [];
 
 const classStyles = {
   'my-work-page': { minHeight: '100vh', background: '#f9f9f9', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflowX: 'hidden' },
@@ -312,22 +205,14 @@ const hoverStyles = {
 };
 
 /**
- * MyWork Component
- * 
- * SELLER'S MANAGEMENT HUB
- * 
- * Displays active inquiries, schedule, and work management for sellers.
- * 
- * DUMMY DATA ARRAYS:
- * - This component uses hardcoded arrays to simulate a database for demo purposes.
  * - In production, these would be fetched from an API based on sellerProfile.id
  * - Conditional rendering checks the "hasService" flag to show Empty vs. Active states
- * 
+ *
  * STATE MACHINE:
  * - If hasService === false: Show "Welcome! Setup your profile" banner
  * - If hasService === true: Show Active Inquiries + Schedule sections
  * - isSelectedChat: Controls which inquiry's chat is displayed (null = no chat open)
- * 
+ *
  * DEMO DATA STRUCTURE:
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
@@ -335,65 +220,37 @@ const hoverStyles = {
 const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToDashboard, onAddNewWork }) => {
   // ============ STATE MANAGEMENT ============
   
-  // Mock services for demonstration
-  const mockServices = [
-    {
-      fullName: 'Joshua Paul Santos',
-      serviceType: 'Valorant Coaching',
-      description: 'Professional Valorant coaching and rank support services',
-      pricingModel: 'hourly',
-      hourlyRate: 250,
-      paymentAdvance: true,
-      paymentAfterService: true,
-      afterServicePaymentType: 'both',
-      gcashNumber: '09054891105',
-      bookingMode: 'with-slots',
-      location: {
-        barangay: 'Sabang',
-        city: 'Baliwag',
-        province: 'Bulacan'
-      }
-    },
-    {
-      fullName: 'Joshua Paul Santos',
-      serviceType: 'Math Tutoring',
-      description: 'High school and college math tutoring',
-      pricingModel: 'hourly',
-      hourlyRate: 300,
-      paymentAdvance: true,
-      paymentAfterService: true,
-      afterServicePaymentType: 'both',
-      gcashNumber: '09054891105',
-      bookingMode: 'with-slots',
-      location: {
-        barangay: 'Sabang',
-        city: 'Baliwag',
-        province: 'Bulacan'
-      }
-    },
-    {
-      fullName: 'Joshua Paul Santos',
-      serviceType: 'Laptop Repair',
-      description: 'Computer and laptop repair services',
-      pricingModel: 'fixed',
-      fixedPrice: 500,
-      paymentAdvance: false,
-      paymentAfterService: true,
-      afterServicePaymentType: 'both',
-      gcashNumber: '09054891105',
-      bookingMode: 'calendar-only',
-      location: {
-        barangay: 'Sabang',
-        city: 'Baliwag',
-        province: 'Bulacan'
-      }
+  const [workerServices, setWorkerServices] = useState(() => {
+    if (sellerProfile?.isWorker) {
+      return [{
+        fullName: sellerProfile.fullName || 'Service Provider',
+        serviceType: sellerProfile.serviceType || 'Service',
+        description: sellerProfile.bio || '',
+        pricingModel: sellerProfile.pricingModel || 'fixed',
+        fixedPrice: sellerProfile.fixedPrice || '',
+        hourlyRate: sellerProfile.hourlyRate || '',
+        dailyRate: sellerProfile.dailyRate || '',
+        weeklyRate: sellerProfile.weeklyRate || '',
+        monthlyRate: sellerProfile.monthlyRate || '',
+        rateBasis: sellerProfile.rateBasis || 'per-project',
+        paymentAdvance: sellerProfile.paymentAdvance ?? false,
+        paymentAfterService: sellerProfile.paymentAfterService ?? true,
+        afterServicePaymentType: sellerProfile.afterServicePaymentType || 'both',
+        gcashNumber: sellerProfile.gcashNumber || '',
+        bookingMode: sellerProfile.bookingMode || 'with-slots',
+        location: sellerProfile.location || { barangay: '', city: '', province: '' },
+        raw: null,
+      }];
     }
-  ];
-
-  const [workerServices, setWorkerServices] = useState([sellerProfile || mockServices[0], mockServices[1], mockServices[2]]);
-  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false);
-  const [activeServiceIndex, setActiveServiceIndex] = useState(0);
-  const currentProfile = workerServices[activeServiceIndex] || mockServices[0];
+    return [];
+  });
+  const [activeServiceIndex] = useState(0);
+  const currentProfile = workerServices[activeServiceIndex] || {
+    fullName: sellerProfile?.fullName || 'Service Provider',
+    serviceType: sellerProfile?.serviceType || 'Service',
+    location: sellerProfile?.location || { barangay: '', city: '', province: '' },
+    bookingMode: sellerProfile?.bookingMode || 'with-slots',
+  };
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [weeklySchedule, setWeeklySchedule] = useState(INITIAL_WEEKLY_SCHEDULE);
   const [calendarAvailability, setCalendarAvailability] = useState(INITIAL_CALENDAR_AVAILABILITY);
@@ -410,7 +267,6 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   const [isCashQrPreviewOpen, setIsCashQrPreviewOpen] = useState(false);
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
   const [cashDecisionTarget, setCashDecisionTarget] = useState(null);
-  const [selectedWorkerIndex] = useState(0);
   const [hoverKey, setHoverKey] = useState('');
   const [cashPaymentView, setCashPaymentView] = useState('pending'); // 'pending' or 'history'
   const [workSectionFilter, setWorkSectionFilter] = useState('all'); // all | inquiries | cash-approvals | refunds | cancelled
@@ -418,6 +274,231 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
+
+  // Database-backed seller data (inside component)
+  const { authUser } = useAppNavigation();
+  const [sellerData, setSellerData] = useState(null);
+  const [sellerDbServices, setSellerDbServices] = useState([]);
+  const [isLoadingSellerData, setIsLoadingSellerData] = useState(true);
+  const [sellerDataError, setSellerDataError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  // Create-service UI state
+  const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
+  const [newService, setNewService] = useState({ title: '', shortDescription: '', basePrice: '', priceType: 'fixed', rateBasis: 'per-project', bookingMode: 'with-slots', currency: 'PHP', durationMinutes: '' });
+  const sellerId = sellerData?.id || sellerData?.user_id || null;
+  const sellerDataRef = useRef(sellerData);
+
+  useEffect(() => {
+    sellerDataRef.current = sellerData;
+  }, [sellerData]);
+
+  useEffect(() => {
+    if (!authUser?.id) return;
+
+    let mounted = true;
+    const loadSellerData = async () => {
+      try {
+        setIsLoadingSellerData(true);
+        setSellerDataError(null);
+        if (!authUser?.id) {
+          setIsLoadingSellerData(false);
+          return;
+        }
+        const seller = await fetchSellerProfile(authUser.id);
+        if (!mounted) return;
+        let resolvedSeller = seller;
+        if (!resolvedSeller) {
+          try {
+            resolvedSeller = await createOrUpdateSeller(authUser.id, {
+              fullName: sellerProfile?.fullName || '',
+              displayName: sellerProfile?.fullName || '',
+              serviceType: sellerProfile?.serviceType || sellerProfile?.customServiceType || '',
+              bio: sellerProfile?.bio || '',
+              city: sellerProfile?.city || sellerProfile?.location?.city || '',
+              province: sellerProfile?.province || sellerProfile?.location?.province || '',
+            });
+          } catch (sellerCreateErr) {
+            console.warn('Seller row auto-create failed:', sellerCreateErr);
+          }
+        }
+
+        if (resolvedSeller) {
+          const resolvedSellerId = resolvedSeller.id || resolvedSeller.user_id || authUser.id;
+          setSellerData(resolvedSeller);
+          const services = await fetchSellerServices(resolvedSellerId);
+          if (!mounted) return;
+          setSellerDbServices(services || []);
+              // Load existing service_slots for this seller and populate calendarAvailability
+              try {
+                const { data: slotsRows, error: slotsErr } = await supabase
+                  .from('service_slots')
+                  .select('*')
+                  .eq('seller_id', resolvedSellerId)
+                  .order('start_ts', { ascending: true });
+
+                if (!mounted) return;
+                if (!slotsErr && slotsRows) {
+                  const dateMap = {};
+                  const weekly = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [] };
+                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                  const pad = (n) => String(n).padStart(2, '0');
+
+                  (slotsRows || []).forEach((s) => {
+                    const start = new Date(s.start_ts);
+                    const end = new Date(s.end_ts);
+                    const dateKey = (s.start_ts || '').slice(0, 10);
+                    const dayName = dayNames[start.getDay()];
+
+                    if (!dateMap[dateKey]) {
+                      dateMap[dateKey] = { id: `date-${dateKey}`, date: dateKey, maxBookings: 0, booked: 0, note: '', raw: [] };
+                    }
+                    dateMap[dateKey].maxBookings += (s.capacity || 1);
+                    dateMap[dateKey].booked += s.status === 'booked' ? (s.capacity || 1) : 0;
+                    dateMap[dateKey].raw.push(s);
+
+                    if (weekly[dayName]) {
+                      weekly[dayName].push({
+                        id: s.id,
+                        startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
+                        endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
+                        capacity: s.capacity || 1,
+                        slotsLeft: s.status === 'available' ? (s.capacity || 1) : 0,
+                        bookings: [],
+                        raw: s,
+                      });
+                    }
+                  });
+
+                  const calendarRows = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
+                  if (calendarRows.length > 0) setCalendarAvailability(calendarRows);
+                  setWeeklySchedule((prev) => ({ ...prev, ...weekly }));
+                }
+              } catch (e) {
+                console.warn('Failed to load seller slots', e);
+              }
+          // If DB services exist, map them into the UI service shape and replace workerServices
+          if (services && services.length > 0) {
+            const mapped = services.map((s) => ({
+              fullName: resolvedSeller?.display_name || s.title || 'Service',
+              serviceType: s.title || s.metadata?.service_type || 'Service',
+              description: s.short_description || s.description || '',
+              pricingModel: getPricingModelFromService(s),
+              fixedPrice: s.base_price || s.price || s.basePrice || '',
+              // Determine canonical rate basis and expose matching rate fields for UI
+              rateBasis: (s.metadata && (s.metadata.rate_basis || s.metadata.rateBasis)) || s.rate_basis || s.price_type || '',
+              hourlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-hour' ? (s.base_price || '') : '',
+              dailyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-day' ? (s.base_price || '') : '',
+              weeklyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-week' ? (s.base_price || '') : '',
+              monthlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-month' ? (s.base_price || '') : '',
+              projectRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-project' ? (s.base_price || '') : '',
+              paymentAdvance: resolvedSeller?.payment_advance ?? false,
+              paymentAfterService: resolvedSeller?.payment_after_service ?? true,
+              afterServicePaymentType: resolvedSeller?.after_service_payment_type || 'both',
+              gcashNumber: resolvedSeller?.gcash_number || '',
+              bookingMode: s.metadata?.booking_mode || resolvedSeller?.booking_mode || 'with-slots',
+              location: {
+                barangay: resolvedSeller?.search_meta?.location?.barangay || resolvedSeller?.location?.barangay || '',
+                city: resolvedSeller?.search_meta?.location?.city || resolvedSeller?.location?.city || '',
+                province: resolvedSeller?.search_meta?.location?.province || resolvedSeller?.location?.province || '',
+              },
+              raw: s,
+            }));
+            setWorkerServices(mapped);
+          }
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Failed to load seller data:', err);
+        setSellerDataError(err?.message || 'Failed to load seller profile');
+      } finally {
+        if (mounted) setIsLoadingSellerData(false);
+      }
+    };
+
+    loadSellerData();
+    return () => { mounted = false; };
+  }, [authUser?.id, sellerProfile?.fullName, sellerProfile?.serviceType, sellerProfile?.customServiceType, sellerProfile?.bio, sellerProfile?.city, sellerProfile?.province, sellerProfile?.location?.city, sellerProfile?.location?.province]);
+
+  // Subscribe to seller & services realtime updates (lightweight, filtered)
+  useEffect(() => {
+    if (!sellerId) return undefined;
+
+    let isMounted = true;
+    const svcChannel = supabase
+      .channel(`seller-services-${sellerId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'services', filter: `seller_id=eq.${sellerId}` },
+        (payload) => {
+          if (!isMounted) return;
+          const ev = payload.eventType || payload.event || payload.type || '';
+          const rec = payload.new || payload.record || null;
+          const old = payload.old || null;
+
+          if ((ev === 'INSERT' || ev === 'UPDATE') && rec) {
+            setSellerDbServices((prev) => {
+              const others = (prev || []).filter((x) => x.id !== rec.id);
+              return [rec, ...others];
+            });
+            setWorkerServices((prev) => {
+              const recRateBasis = normalizeRateBasis(rec.metadata?.rate_basis || rec.rate_basis || rec.price_type);
+              const sellerSnapshot = sellerDataRef.current || {};
+              const mapped = {
+                fullName: sellerSnapshot?.display_name || rec.title || 'Service',
+                serviceType: rec.title || rec.metadata?.service_type || 'Service',
+                description: rec.short_description || rec.description || '',
+                pricingModel: getPricingModelFromService(rec),
+                fixedPrice: rec.base_price || '',
+                rateBasis: recRateBasis || 'per-project',
+                hourlyRate: recRateBasis === 'per-hour' ? (rec.base_price || '') : '',
+                dailyRate: recRateBasis === 'per-day' ? (rec.base_price || '') : '',
+                weeklyRate: recRateBasis === 'per-week' ? (rec.base_price || '') : '',
+                monthlyRate: recRateBasis === 'per-month' ? (rec.base_price || '') : '',
+                projectRate: recRateBasis === 'per-project' ? (rec.base_price || '') : '',
+                paymentAdvance: sellerSnapshot?.payment_advance ?? false,
+                paymentAfterService: sellerSnapshot?.payment_after_service ?? true,
+                afterServicePaymentType: sellerSnapshot?.after_service_payment_type || 'both',
+                gcashNumber: sellerSnapshot?.gcash_number || '',
+                bookingMode: rec.metadata?.booking_mode || sellerSnapshot?.booking_mode || 'with-slots',
+                location: {
+                  barangay: sellerSnapshot?.search_meta?.location?.barangay || sellerSnapshot?.location?.barangay || '',
+                  city: sellerSnapshot?.search_meta?.location?.city || sellerSnapshot?.location?.city || '',
+                  province: sellerSnapshot?.search_meta?.location?.province || sellerSnapshot?.location?.province || '',
+                },
+                raw: rec,
+              };
+              const others = (prev || []).filter((x) => x.raw?.id !== rec.id);
+              return [mapped, ...others];
+            });
+          }
+
+          if (ev === 'DELETE') {
+            const idToRemove = old?.id || payload.record?.id;
+            setSellerDbServices((prev) => (prev || []).filter((x) => x.id !== idToRemove));
+            setWorkerServices((prev) => (prev || []).filter((x) => x.raw?.id !== idToRemove));
+          }
+        }
+      )
+      .subscribe();
+
+    const sellerChannel = supabase
+      .channel(`seller-row-${sellerId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sellers', filter: `user_id=eq.${sellerId}` },
+        (payload) => {
+          const rec = payload.new || payload.record || null;
+          if (rec) setSellerData(rec);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      try { supabase.removeChannel(svcChannel); } catch (e) { /* ignore */ }
+      try { supabase.removeChannel(sellerChannel); } catch (e) { /* ignore */ }
+    };
+  }, [sellerId]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -460,6 +541,69 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     };
   }, []);
 
+  // Create-service modal handlers
+  const closeCreateService = () => setIsCreateServiceOpen(false);
+  const handleCreateServiceChange = (field, value) => setNewService((p) => ({ ...p, [field]: value }));
+
+  const handleCreateServiceSubmit = async () => {
+    if (!sellerId) {
+      setSellerDataError('Seller record missing. Complete onboarding first.');
+      return;
+    }
+
+    try {
+      const payload = {
+        title: newService.title,
+        shortDescription: newService.shortDescription,
+        basePrice: Number(newService.basePrice) || null,
+        priceType: newService.priceType,
+        currency: newService.currency || 'PHP',
+        durationMinutes: newService.durationMinutes ? Number(newService.durationMinutes) : null,
+        metadata: {
+          createdVia: 'ui',
+          rate_basis: newService.rateBasis || 'per-project',
+          booking_mode: newService.bookingMode || 'with-slots',
+        },
+      };
+
+      const created = await createSellerService(sellerId, payload);
+      setSellerDbServices((prev) => [created, ...(prev || [])]);
+      const mapped = {
+        fullName: sellerData.display_name || created.title || 'Service',
+        serviceType: created.title || created.metadata?.service_type || 'Service',
+        description: created.short_description || created.description || '',
+        pricingModel: getPricingModelFromService(created),
+        fixedPrice: created.base_price || '',
+        rateBasis: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) || 'per-project',
+        hourlyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-hour' ? (created.base_price || '') : '',
+        dailyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-day' ? (created.base_price || '') : '',
+        weeklyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-week' ? (created.base_price || '') : '',
+        monthlyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-month' ? (created.base_price || '') : '',
+        projectRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-project' ? (created.base_price || '') : '',
+        paymentAdvance: sellerData?.payment_advance ?? false,
+        paymentAfterService: sellerData?.payment_after_service ?? true,
+        afterServicePaymentType: sellerData?.after_service_payment_type || 'both',
+        gcashNumber: sellerData?.gcash_number || '',
+        bookingMode: created.metadata?.booking_mode || sellerData?.booking_mode || 'with-slots',
+        location: {
+          barangay: sellerData?.search_meta?.location?.barangay || sellerData?.location?.barangay || '',
+          city: sellerData?.search_meta?.location?.city || sellerData?.location?.city || '',
+          province: sellerData?.search_meta?.location?.province || sellerData?.location?.province || '',
+        },
+        raw: created,
+      };
+
+      setWorkerServices((prev) => [mapped, ...(prev || [])]);
+      setNewService({ title: '', shortDescription: '', basePrice: '', priceType: 'fixed', rateBasis: 'per-project', bookingMode: 'with-slots', currency: 'PHP', durationMinutes: '' });
+      setSuccessMessage('Service created successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      closeCreateService();
+    } catch (err) {
+      console.error('Create service failed:', err);
+      setSellerDataError(err?.message || 'Failed to create service');
+    }
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
 
@@ -491,70 +635,11 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     };
   }, []);
   
-  // Helper function to get the appropriate schedule based on worker index
-  const getWorkerScheduleData = (workerIndex) => {
-    switch (workerIndex) {
-      case 0: // Joshua - hourly with slots
-        return {
-          profile: MOCK_WORKERS[0],
-          schedule: HOURLY_WORKER_SCHEDULE,
-          calendar: null,
-          bookingMode: 'with-slots',
-        };
-      case 1: // Maria - hourly with calendar
-        return {
-          profile: MOCK_WORKERS[1],
-          schedule: null,
-          calendar: HOURLY_CALENDAR,
-          bookingMode: 'calendar-only',
-        };
-      case 2: // Carlos - daily with calendar
-        return {
-          profile: MOCK_WORKERS[2],
-          schedule: null,
-          calendar: DAILY_WORKER_CALENDAR,
-          bookingMode: 'calendar-only',
-        };
-      case 3: // Angela - project with calendar
-        return {
-          profile: MOCK_WORKERS[3],
-          schedule: null,
-          calendar: PROJECT_WORKER_CALENDAR,
-          bookingMode: 'calendar-only',
-        };
-      case 4: // Roberto - daily with slots
-        return {
-          profile: MOCK_WORKERS[4],
-          schedule: DAILY_SLOTS_SCHEDULE,
-          calendar: null,
-          bookingMode: 'with-slots',
-        };
-      case 5: // Sofia - project with slots
-        return {
-          profile: MOCK_WORKERS[5],
-          schedule: PROJECT_SLOTS_SCHEDULE,
-          calendar: null,
-          bookingMode: 'with-slots',
-        };
-      default:
-        return {
-          profile: MOCK_WORKERS[0],
-          schedule: HOURLY_WORKER_SCHEDULE,
-          calendar: null,
-          bookingMode: 'with-slots',
-        };
-    }
-  };
+  const scheduleMode = (currentProfile?.bookingMode || sellerData?.booking_mode || 'with-slots').toLowerCase() === 'calendar-only'
+    ? 'calendar-only'
+    : 'with-slots';
 
-  // Get current worker data
-  const currentWorkerData = getWorkerScheduleData(selectedWorkerIndex);
-  const workerBookingMode = currentWorkerData.bookingMode;
-  
-  const scheduleMode = workerBookingMode || 'with-slots';
-  
-  // For demo, set hasService to true to show active data immediately
-  // In production, this would be: const hasService = !!sellerProfile?.serviceType;
-  const hasService = true;
+  const hasService = (workerServices || []).length > 0;
   
   // ============ DUMMY DATA ARRAYS (Simulates Database) ============
   
@@ -611,6 +696,14 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   const currentWeekMonday = addDays(getMonday(new Date()), weekOffset * 7);
   const currentWeekSunday = addDays(currentWeekMonday, 6);
   const weekRangeLabel = `${formatDateLabel(currentWeekMonday)} - ${formatDateLabel(currentWeekSunday)}`;
+  const formatDateForDay = (dayKey) => {
+    const index = DAY_INDEX[dayKey] ?? 0;
+    const date = addDays(currentWeekMonday, index);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   const weekDateByDay = dayKeys.reduce((acc, day) => {
     acc[day] = addDays(currentWeekMonday, DAY_INDEX[day]);
     return acc;
@@ -721,50 +814,188 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   };
 
   const handleSaveSlotEdit = (updatedData) => {
+    const currentService = currentProfile?.raw || null;
+
     if (scheduleMode === 'calendar-only') {
+      // Persist to DB when possible
       if (slotModalType === 'add') {
-        setCalendarAvailability((prev) => [
-          ...prev,
-          {
-            id: `cal-${Date.now()}`,
-            date: updatedData.date,
-            maxBookings: updatedData.maxBookings,
-            booked: 0,
-            note: updatedData.note || '',
-          },
-        ]);
+        if (currentService && sellerId) {
+          // insert into service_slots
+          (async () => {
+            try {
+              const startTs = `${updatedData.date}T00:00:00+08`;
+              const endTs = `${updatedData.date}T23:59:59+08`;
+              const payload = {
+                service_id: currentService.id,
+                seller_id: sellerId,
+                start_ts: startTs,
+                end_ts: endTs,
+                capacity: updatedData.maxBookings || 1,
+                status: 'available',
+              };
+              const { data: inserted, error: insertErr } = await supabase.from('service_slots').insert([payload]).select().single();
+              if (insertErr) throw insertErr;
+              setCalendarAvailability((prev) => [
+                ...prev,
+                {
+                  id: inserted.id,
+                  date: (inserted.start_ts || '').slice(0, 10),
+                  maxBookings: inserted.capacity || 1,
+                  booked: inserted.status === 'booked' ? (inserted.capacity || 0) : 0,
+                  note: inserted.note || '',
+                  raw: inserted,
+                },
+              ]);
+            } catch (e) {
+              console.error('Failed to create service_slot', e);
+              // fallback to local-only
+              setCalendarAvailability((prev) => [
+                ...prev,
+                {
+                  id: `cal-${Date.now()}`,
+                  date: updatedData.date,
+                  maxBookings: updatedData.maxBookings,
+                  booked: 0,
+                  note: updatedData.note || '',
+                },
+              ]);
+            }
+          })();
+        } else {
+          setCalendarAvailability((prev) => [
+            ...prev,
+            {
+              id: `cal-${Date.now()}`,
+              date: updatedData.date,
+              maxBookings: updatedData.maxBookings,
+              booked: 0,
+              note: updatedData.note || '',
+            },
+          ]);
+        }
       } else {
-        setCalendarAvailability((prev) =>
-          prev.map((item) =>
+        // edit existing
+        if (editSlotId && typeof editSlotId === 'number') {
+          (async () => {
+            try {
+              const startTs = `${updatedData.date}T00:00:00+08`;
+              const endTs = `${updatedData.date}T23:59:59+08`;
+              const { data: updatedRow, error: updErr } = await supabase
+                .from('service_slots')
+                .update({ start_ts: startTs, end_ts: endTs, capacity: updatedData.maxBookings })
+                .eq('id', editSlotId)
+                .select()
+                .single();
+              if (updErr) throw updErr;
+              setCalendarAvailability((prev) => prev.map((item) =>
+                item.id === editSlotId
+                  ? { ...item, date: (updatedRow.start_ts || '').slice(0, 10), maxBookings: updatedRow.capacity || 1, booked: updatedRow.status === 'booked' ? (updatedRow.capacity || 0) : 0, note: updatedRow.note || '' }
+                  : item
+              ));
+            } catch (e) {
+              console.error('Failed to update service_slot', e);
+              setCalendarAvailability((prev) =>
+                prev.map((item) =>
+                  item.id === editSlotId
+                    ? {
+                        ...item,
+                        date: updatedData.date,
+                        maxBookings: updatedData.maxBookings,
+                        booked: Math.min(item.booked, updatedData.maxBookings),
+                        note: updatedData.note,
+                      }
+                    : item
+                )
+              );
+            }
+          })();
+        } else {
+          setCalendarAvailability((prev) =>
+            prev.map((item) =>
+              item.id === editSlotId
+                ? {
+                    ...item,
+                    date: updatedData.date,
+                    maxBookings: updatedData.maxBookings,
+                    booked: Math.min(item.booked, updatedData.maxBookings),
+                    note: updatedData.note,
+                  }
+                : item
+            )
+          );
+        }
+      }
+    } else {
+      if (editSlotId && typeof editSlotId === 'number') {
+        (async () => {
+          try {
+            const sourceBlock = (weeklySchedule[editSlotDayKey] || []).find((item) => item.id === editSlotId);
+            const sourceDate = sourceBlock?.raw?.start_ts ? String(sourceBlock.raw.start_ts).slice(0, 10) : null;
+            const slotDate = sourceDate || formatDateForDay(editSlotDayKey);
+            const startTs = `${slotDate}T${updatedData.startTime}:00+08`;
+            const endTs = `${slotDate}T${updatedData.endTime}:00+08`;
+
+            const { data: updatedRow, error: updErr } = await supabase
+              .from('service_slots')
+              .update({ start_ts: startTs, end_ts: endTs, capacity: updatedData.capacity })
+              .eq('id', editSlotId)
+              .select()
+              .single();
+            if (updErr) throw updErr;
+
+            setWeeklySchedule((prev) => ({
+              ...prev,
+              [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
+                item.id === editSlotId
+                  ? {
+                      ...item,
+                      startTime: updatedData.startTime,
+                      endTime: updatedData.endTime,
+                      capacity: updatedRow.capacity || updatedData.capacity,
+                      slotsLeft: updatedRow.status === 'available'
+                        ? (updatedRow.capacity || updatedData.capacity)
+                        : Math.max(0, (updatedRow.capacity || updatedData.capacity) - (item.bookings || []).length),
+                      raw: updatedRow,
+                    }
+                  : item
+              ),
+            }));
+          } catch (e) {
+            console.error('Failed to update with-slots service_slot', e);
+            setWeeklySchedule((prev) => ({
+              ...prev,
+              [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
+                item.id === editSlotId
+                  ? {
+                      ...item,
+                      startTime: updatedData.startTime,
+                      endTime: updatedData.endTime,
+                      capacity: updatedData.capacity,
+                      slotsLeft: Math.max(0, updatedData.capacity - item.bookings.length),
+                    }
+                  : item
+              ),
+            }));
+          }
+        })();
+      } else {
+        setWeeklySchedule((prev) => ({
+          ...prev,
+          [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
             item.id === editSlotId
               ? {
                   ...item,
-                  date: updatedData.date,
-                  maxBookings: updatedData.maxBookings,
-                  booked: Math.min(item.booked, updatedData.maxBookings),
-                  note: updatedData.note,
+                  startTime: updatedData.startTime,
+                  endTime: updatedData.endTime,
+                  capacity: updatedData.capacity,
+                  slotsLeft: Math.max(0, updatedData.capacity - item.bookings.length),
                 }
               : item
-          )
-        );
+          ),
+        }));
       }
-    } else {
-      setWeeklySchedule((prev) => ({
-        ...prev,
-        [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
-          item.id === editSlotId
-            ? {
-                ...item,
-                startTime: updatedData.startTime,
-                endTime: updatedData.endTime,
-                capacity: updatedData.capacity,
-                slotsLeft: Math.max(0, updatedData.capacity - item.bookings.length),
-              }
-            : item
-        ),
-      }));
     }
-      closeSlotModal();
+    closeSlotModal();
   };
   
   /**
@@ -800,16 +1031,53 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     if (!deleteConfirmTarget) return;
 
     if (deleteConfirmTarget.mode === 'calendar-only') {
-      setCalendarAvailability((prev) =>
-        prev.filter((item) => item.id !== deleteConfirmTarget.slotId)
-      );
+      const idToDelete = deleteConfirmTarget.slotId;
+      if (typeof idToDelete === 'number') {
+        (async () => {
+          try {
+            const { error } = await supabase.from('service_slots').delete().eq('id', idToDelete);
+            if (error) throw error;
+            setCalendarAvailability((prev) => prev.filter((item) => item.id !== idToDelete));
+          } catch (e) {
+            console.error('Failed to delete service_slot', e);
+            // fallback: remove locally
+            setCalendarAvailability((prev) => prev.filter((item) => item.id !== idToDelete));
+          }
+        })();
+      } else {
+        setCalendarAvailability((prev) => prev.filter((item) => item.id !== idToDelete));
+      }
     } else {
-      setWeeklySchedule((prev) => ({
-        ...prev,
-        [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
-          (item) => item.id !== deleteConfirmTarget.slotId
-        ),
-      }));
+      const idToDelete = deleteConfirmTarget.slotId;
+      if (typeof idToDelete === 'number') {
+        (async () => {
+          try {
+            const { error } = await supabase.from('service_slots').delete().eq('id', idToDelete);
+            if (error) throw error;
+            setWeeklySchedule((prev) => ({
+              ...prev,
+              [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
+                (item) => item.id !== idToDelete
+              ),
+            }));
+          } catch (e) {
+            console.error('Failed to delete with-slots service_slot', e);
+            setWeeklySchedule((prev) => ({
+              ...prev,
+              [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
+                (item) => item.id !== idToDelete
+              ),
+            }));
+          }
+        })();
+      } else {
+        setWeeklySchedule((prev) => ({
+          ...prev,
+          [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
+            (item) => item.id !== idToDelete
+          ),
+        }));
+      }
     }
 
     setDeleteConfirmTarget(null);
@@ -844,6 +1112,50 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
       slotsLeft: Number(capacity),
       bookings: [],
     };
+
+    const currentService = currentProfile?.raw || null;
+    if (currentService && sellerId) {
+      (async () => {
+        try {
+          const slotDate = formatDateForDay(dayKey);
+          const startTs = `${slotDate}T${startTime}:00+08`;
+          const endTs = `${slotDate}T${endTime}:00+08`;
+          const payload = {
+            service_id: currentService.id,
+            seller_id: sellerId,
+            start_ts: startTs,
+            end_ts: endTs,
+            capacity: Number(capacity),
+            status: 'available',
+          };
+          const { data: inserted, error: insertErr } = await supabase.from('service_slots').insert([payload]).select().single();
+          if (insertErr) throw insertErr;
+
+          setWeeklySchedule((prev) => ({
+            ...prev,
+            [dayKey]: [
+              ...(prev[dayKey] || []),
+              {
+                id: inserted.id,
+                startTime,
+                endTime,
+                capacity: inserted.capacity || Number(capacity),
+                slotsLeft: inserted.status === 'available' ? (inserted.capacity || Number(capacity)) : 0,
+                bookings: [],
+                raw: inserted,
+              },
+            ],
+          }));
+        } catch (e) {
+          console.error('Failed to add with-slots service_slot', e);
+          setWeeklySchedule((prev) => ({
+            ...prev,
+            [dayKey]: [...(prev[dayKey] || []), newBlock],
+          }));
+        }
+      })();
+      return;
+    }
 
     setWeeklySchedule((prev) => ({
       ...prev,
@@ -1198,6 +1510,37 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   const isHovered = (key) => hoverKey === key;
 
   const gcashNumber = currentProfile?.gcashNumber || '09054891105';
+  const currentRateBasis = normalizeRateBasis(
+    currentProfile?.raw?.metadata?.rate_basis ||
+    currentProfile?.raw?.rate_basis ||
+    currentProfile?.raw?.price_type ||
+    currentProfile?.rateBasis ||
+    currentProfile?.pricingModel
+  ) || 'per-project';
+  const currentPriceValue = (() => {
+    if (currentProfile?.raw?.base_price != null) return currentProfile.raw.base_price;
+    if (currentRateBasis === 'per-hour') return currentProfile?.hourlyRate ?? currentProfile?.fixedPrice;
+    if (currentRateBasis === 'per-day') return currentProfile?.dailyRate ?? currentProfile?.fixedPrice;
+    if (currentRateBasis === 'per-week') return currentProfile?.weeklyRate ?? currentProfile?.fixedPrice;
+    if (currentRateBasis === 'per-month') return currentProfile?.monthlyRate ?? currentProfile?.fixedPrice;
+    return currentProfile?.fixedPrice ?? null;
+  })();
+  const currentPriceLabel =
+    currentProfile?.pricingModel === 'inquiry'
+      ? 'Price on inquiry'
+      : currentPriceValue
+        ? `P${currentPriceValue}/${
+          currentRateBasis === 'per-day'
+            ? 'day'
+            : currentRateBasis === 'per-hour'
+              ? 'hr'
+              : currentRateBasis === 'per-week'
+                ? 'wk'
+                : currentRateBasis === 'per-month'
+                  ? 'mo'
+                  : 'project'
+        }`
+        : 'Custom pricing';
   const cashQrId = currentProfile?.cashQrId || `CASHQR-${(currentProfile?.fullName || 'WORKER').replace(/\s+/g, '-').toUpperCase()}`;
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
   const cashConfirmQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`CASH-CONFIRM-${currentProfile?.fullName || 'Worker'}-${gcashNumber}`)}`;
@@ -1283,8 +1626,38 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
       />
       
       <main style={sx('my-work-main')}>
-        
-        {!hasService && (
+
+        {/* Inline notifications */}
+        {successMessage && (
+          <SuccessNotification
+            message={successMessage}
+            isVisible={Boolean(successMessage)}
+            onClose={() => setSuccessMessage('')}
+          />
+        )}
+        {sellerDataError && (
+          <ErrorNotification
+            message={sellerDataError}
+            isVisible={Boolean(sellerDataError)}
+            onClose={() => setSellerDataError(null)}
+          />
+        )}
+
+        {/* Loading state while fetching seller data */}
+        {isLoadingSellerData && (
+          <div style={{ textAlign: 'center', padding: '48px 0', color: '#6b7280' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+            <p style={{ fontSize: '16px', fontWeight: 500 }}>Loading your seller profile…</p>
+          </div>
+        )}
+
+        {!isLoadingSellerData && (
+          <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#64748b' }}>
+            Synced services: {(sellerDbServices || []).length}
+          </p>
+        )}
+
+        {!isLoadingSellerData && !hasService && (
           <div style={sx('empty-state-banner')}>
             <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
             <p style={{ fontSize: '16px', color: '#92400e', margin: '0 0 20px 0' }}>Complete your service profile to start receiving inquiries from clients.</p>
@@ -1308,7 +1681,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
           </div>
         )}
         
-        {hasService && (
+        {!isLoadingSellerData && hasService && (
           <>
             <div style={sx('profile-summary-card')}>
               <div style={sx('profile-info')}>
@@ -1326,6 +1699,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                     {currentProfile?.fullName || 'Service Provider'}
                   </button>
                   <p style={sx('service-type')}>{currentProfile?.serviceType || 'Service Type'}</p>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+                    {currentPriceLabel}
+                  </p>
                   <p style={sx('location')}>
                     📍 {currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
                   </p>
@@ -1356,11 +1732,11 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   <span style={sx('stat-label')}>Active Inquiries</span>
                 </div>
                 <div style={sx('stat')}>
-                  <span style={sx('stat-number')}>4.8</span>
+                  <span style={sx('stat-number')}>0</span>
                   <span style={sx('stat-label')}>Avg Rating</span>
                 </div>
                 <div style={sx('stat')}>
-                  <span style={sx('stat-number')}>{weekTransactions.filter((txn) => txn.isDone).length}</span>
+                  <span style={sx('stat-number')}>0</span>
                   <span style={sx('stat-label')}>Completed</span>
                 </div>
               </div>
@@ -2098,6 +2474,50 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         onSave={handleSaveSlotEdit}
         onClose={closeSlotModal}
       />
+
+      {/* CREATE SERVICE MODAL */}
+      {isCreateServiceOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
+          <div style={{ width: 'min(760px, 92vw)', background: 'white', borderRadius: 12, padding: 18 }}>
+            <h3 style={{ margin: 0, marginBottom: 8 }}>Add New Service</h3>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <input placeholder="Title" value={newService.title} onChange={(e) => handleCreateServiceChange('title', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }} />
+              <input placeholder="Short description" value={newService.shortDescription} onChange={(e) => handleCreateServiceChange('shortDescription', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input placeholder="Price" type="number" value={newService.basePrice} onChange={(e) => handleCreateServiceChange('basePrice', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd', flex: 1 }} />
+                <select value={newService.priceType} onChange={(e) => handleCreateServiceChange('priceType', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}>
+                  <option value="fixed">Fixed</option>
+                  <option value="hourly">Hourly</option>
+                  <option value="package">Package</option>
+                  <option value="custom">Custom</option>
+                  <option value="inquiry">Inquiry</option>
+                </select>
+                <select value={newService.rateBasis} onChange={(e) => handleCreateServiceChange('rateBasis', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}>
+                  <option value="per-hour">Per hour</option>
+                  <option value="per-day">Per day</option>
+                  <option value="per-week">Per week</option>
+                  <option value="per-month">Per month</option>
+                  <option value="per-project">Per project</option>
+                </select>
+                <select value={newService.bookingMode} onChange={(e) => handleCreateServiceChange('bookingMode', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}>
+                  <option value="with-slots">Book with slots</option>
+                  <option value="calendar-only">Book by day (calendar)</option>
+                </select>
+                <input placeholder="Duration (min)" type="number" value={newService.durationMinutes} onChange={(e) => handleCreateServiceChange('durationMinutes', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd', width: 140 }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button type="button" onClick={closeCreateService} style={{ padding: '8px 12px', borderRadius: 8, background: '#eee', border: 'none' }}>Cancel</button>
+              <button type="button" onClick={handleCreateServiceSubmit} style={{ padding: '8px 12px', borderRadius: 8, background: '#1d4ed8', color: '#fff', border: 'none' }}>Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Add Service button (visible when seller exists) */}
+      {sellerData && (
+        <button onClick={() => setIsCreateServiceOpen(true)} aria-label="Add service" style={{ position: 'fixed', right: 20, bottom: 28, zIndex: 2500, background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 999, width: 56, height: 56, fontSize: 20 }}>+</button>
+      )}
 
       {/* PROFILE EDIT MODAL */}
       <ProfileEditModal

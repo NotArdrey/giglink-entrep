@@ -212,6 +212,8 @@ const badgeColors = {
   'per-hour': 'var(--giglink-accent)',
   'per-day': '#10b981',
   'per-project': '#f59e0b',
+  'per-week': '#8b5cf6',
+  'per-month': '#ef4444',
 };
 
 // ============================================================================
@@ -246,6 +248,10 @@ function ServiceCard({ provider, onViewProfile, onViewReviews }) {
       ? `P${provider.hourlyRate}/hr`
       : provider.rateBasis === 'per-day'
         ? `P${provider.dailyRate}/day`
+        : provider.rateBasis === 'per-week'
+          ? `P${provider.weeklyRate}/wk`
+          : provider.rateBasis === 'per-month'
+            ? `P${provider.monthlyRate}/mo`
         : provider.rateBasis === 'per-project'
           ? `P${provider.projectRate}/project`
           : provider.pricingType === 'inquiry'

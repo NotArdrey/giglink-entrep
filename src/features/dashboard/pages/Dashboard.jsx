@@ -11,8 +11,13 @@ import { useState, useEffect } from 'react';
 //   - Booking workflow orchestration
 // Design Principle: Service-First (What user needs?) → Price/Availability → Provider Identity
 // This addresses professor feedback: "Users should see if you have what they want on first glance"
-// ============================================================================
 
+import { fetchAllActiveServices, fetchServiceWithSeller } from '../../../shared/services/authService';
+import { supabase } from '../../../shared/services/supabaseClient';
+import SuccessNotification from '../../../shared/components/SuccessNotification';
+import ErrorNotification from '../../../shared/components/ErrorNotification';
+
+// ============================================================================
 // Import shared navigation component
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 
@@ -45,6 +50,97 @@ const getDisplayServiceType = (provider) => {
   }
 
   return normalizedType || 'General Service';
+};
+
+const normalizeRateBasis = (value) => {
+  const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  if (raw === 'per-hour' || raw === 'hourly') return 'per-hour';
+  if (raw === 'per-day' || raw === 'daily') return 'per-day';
+  if (raw === 'per-week' || raw === 'weekly') return 'per-week';
+  if (raw === 'per-month' || raw === 'monthly') return 'per-month';
+  if (raw === 'per-project' || raw === 'project' || raw === 'package' || raw === 'fixed') return 'per-project';
+  return '';
+};
+
+const getRateBasisFromService = (svc) => {
+  const fromDirect = normalizeRateBasis(svc?.rate_basis);
+  if (fromDirect) return fromDirect;
+
+  const fromMeta = normalizeRateBasis(
+    svc?.metadata?.rate_basis || svc?.metadata?.rateBasis || svc?.metadata?.billing_unit
+  );
+  if (fromMeta) return fromMeta;
+
+  const fromPriceType = normalizeRateBasis(svc?.price_type || svc?.priceType);
+  if (fromPriceType) return fromPriceType;
+
+  return svc?.duration_minutes ? 'per-project' : 'per-hour';
+};
+
+const getBookingModeFromService = (svc, seller) => {
+  const mode = String(
+    svc?.metadata?.booking_mode || seller?.booking_mode || seller?.search_meta?.booking_mode || 'with-slots'
+  )
+    .trim()
+    .toLowerCase();
+
+  return mode === 'calendar-only' ? 'calendar-only' : 'with-slots';
+};
+
+const getPricingModelFromService = (svc) => {
+  const model = String(
+    svc?.metadata?.pricing_model || svc?.metadata?.pricingModel || svc?.pricing_model || ''
+  )
+    .trim()
+    .toLowerCase();
+
+  return model === 'inquiry' ? 'inquiry' : 'fixed';
+};
+
+const createScheduleForProvider = (provider) => {
+  const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const isManual = provider.actionType === 'inquire';
+  const bookingMode = provider.bookingMode || 'with-slots';
+  const dayBlocks = {};
+
+  defaultDays.forEach((day, dayIndex) => {
+    if (isManual) {
+      dayBlocks[day] = [];
+      return;
+    }
+
+    if (bookingMode === 'calendar-only') {
+      dayBlocks[day] = [
+        {
+          id: `slot-${provider.id}-calendar-${day}`,
+          startTime: '09:00',
+          endTime: '17:00',
+          capacity: 1,
+          slotsLeft: dayIndex % 5 === 4 ? 0 : 1,
+        },
+      ];
+      return;
+    }
+
+    const slotTemplates = [
+      { id: `slot-${provider.id}-1`, startTime: '09:00', endTime: '11:00', capacity: 5, slotsLeft: 3 },
+      { id: `slot-${provider.id}-2`, startTime: '11:30', endTime: '13:30', capacity: 4, slotsLeft: 1 },
+      { id: `slot-${provider.id}-3`, startTime: '14:00', endTime: '16:00', capacity: 6, slotsLeft: 4 },
+      { id: `slot-${provider.id}-4`, startTime: '16:30', endTime: '18:30', capacity: 3, slotsLeft: 0 },
+    ];
+
+    dayBlocks[day] = slotTemplates.map((slot, slotIndex) => ({
+      ...slot,
+      id: `${slot.id}-${day}`,
+      slotsLeft: Math.max(0, Math.min(slot.capacity, slot.slotsLeft + ((dayIndex + slotIndex) % 2 === 0 ? 1 : 0))),
+    }));
+  });
+
+  return {
+    manualScheduling: isManual,
+    operatingDays: defaultDays,
+    dayBlocks,
+  };
 };
 
 
@@ -188,80 +284,261 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   ); // Mobile breakpoint: 768px (tablets and below)
 
+  // Real database-backed services
+  const [realServices, setRealServices] = useState([]);
+  const [isLoadingRealServices, setIsLoadingRealServices] = useState(true);
+  const [realServicesError, setRealServicesError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadRealServices = async () => {
+      try {
+        setIsLoadingRealServices(true);
+        setRealServicesError(null);
+        const services = await fetchAllActiveServices(50);
+        if (!mounted) return;
+        setRealServices(services || []);
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Failed to load real services:', err);
+        setRealServicesError(err?.message || 'Failed to load services');
+      } finally {
+        if (mounted) setIsLoadingRealServices(false);
+      }
+    };
+
+    loadRealServices();
+    return () => { mounted = false; };
+  }, []);
+
+  // Lightweight realtime subscription for active services to keep home updated
+  useEffect(() => {
+    let isMounted = true;
+    const channel = supabase
+      .channel('active-services')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'services', filter: `active=eq.true` },
+        (payload) => {
+          if (!isMounted) return;
+          const rec = payload.new || payload.record || null;
+          const old = payload.old || null;
+          const ev = payload.eventType || payload.event || payload.type || '';
+
+          setRealServices((prev) => {
+            const list = prev ? [...prev] : [];
+            if ((ev === 'INSERT' || ev === 'UPDATE') && rec) {
+              const idx = list.findIndex((s) => s.id === rec.id);
+              if (idx >= 0) list[idx] = rec;
+              else list.unshift(rec);
+              return list;
+            }
+
+            if (ev === 'DELETE') {
+              return list.filter((s) => s.id !== (old?.id || payload.record?.id));
+            }
+
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { isMounted = false; try { supabase.removeChannel(channel); } catch (e) {} };
+  }, []);
+
+  const realServicesMapped = (realServices || []).map((svc) => {
+    const seller = svc?.sellers || svc?.seller || {};
+    const sellerMeta = seller?.search_meta || {};
+    const rateBasis = getRateBasisFromService(svc);
+    const basePrice = svc.base_price || null;
+    const pricingType = getPricingModelFromService(svc);
+    const actionType = pricingType === 'inquiry' ? 'inquire' : 'book';
+    const bookingMode = getBookingModeFromService(svc, seller);
+
+    return {
+      id: svc.id,
+      name: seller?.display_name || sellerMeta?.name || svc.title || 'Service Provider',
+      // Prefer service title so custom names like "TutorTest" appear correctly.
+      serviceType: svc.title || sellerMeta?.service_type || (svc.metadata && svc.metadata.service_type) || 'Service',
+      description: svc.short_description || svc.description || '',
+      rating: svc.rating || 0,
+      reviews: svc.reviews_count || 0,
+      photo: seller?.profile_photo || seller?.avatar_url || '',
+      experience: seller?.years_experience || 0,
+      location: sellerMeta?.location?.city || sellerMeta?.location?.province || '',
+      hourlyRate: rateBasis === 'per-hour' ? basePrice : null,
+      dailyRate: rateBasis === 'per-day' ? basePrice : null,
+      weeklyRate: rateBasis === 'per-week' ? basePrice : null,
+      monthlyRate: rateBasis === 'per-month' ? basePrice : null,
+      projectRate: rateBasis === 'per-project' ? basePrice : null,
+      pricingType,
+      actionType,
+      bookingMode,
+      rateBasis,
+      rawService: svc,
+    };
+  });
+
+  const dataProviders = realServicesMapped;
+
   // ============================================================================
   // SCHEDULES BY PROVIDER - Availability Calendar State
   // ============================================================================
-  // Complex nested structure: Provider → Days → Time Slots → Available Capacity
-  // This represents the booking availability calendar for each service provider
-  // Structure:
-  //   schedulesByProvider[providerId] = {
-  //     manualScheduling: boolean (true if inquiry-based, false if calendar booking)
-  //     operatingDays: ['Mon', 'Tue', ..., 'Fri']
-  //     dayBlocks: { 'Mon': [slot1, slot2, ...], 'Tue': [...], ... }
-  //   }
-  // Note: In production, this would be fetched from backend via API
-  // ============================================================================
   const [schedulesByProvider, setSchedulesByProvider] = useState(() => {
-    const initialSchedules = {};
+    return {};
+  });
 
-    providers.forEach((provider) => {
-      const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-      const isManual = provider.actionType === 'inquire';
-      const slotTemplates = [
-        {
-          id: `slot-${provider.id}-1`,
-          startTime: '09:00',
-          endTime: '11:00',
-          capacity: 5,
-          slotsLeft: 3,
-        },
-        {
-          id: `slot-${provider.id}-2`,
-          startTime: '11:30',
-          endTime: '13:30',
-          capacity: 4,
-          slotsLeft: 1,
-        },
-        {
-          id: `slot-${provider.id}-3`,
-          startTime: '14:00',
-          endTime: '16:00',
-          capacity: 6,
-          slotsLeft: 4,
-        },
-        {
-          id: `slot-${provider.id}-4`,
-          startTime: '16:30',
-          endTime: '18:30',
-          capacity: 3,
-          slotsLeft: 0,
-        },
-      ];
+  // Keep schedule map in sync with whichever providers are currently displayed.
+  useEffect(() => {
+    // For providers backed by DB (realServicesMapped) fetch service_slots and build schedules.
+    let mounted = true;
+
+    const buildWeeklyScheduleFromSlots = (slotsForService, provider) => {
+      // If provider is inquiry-based, treat as manual scheduling
+      if ((provider || {}).actionType === 'inquire') {
+        return createScheduleForProvider(provider);
+      }
 
       const dayBlocks = {};
-      defaultDays.forEach((day, dayIndex) => {
-        if (isManual) {
-          dayBlocks[day] = [];
+      const operatingDaysSet = new Set();
+
+        (slotsForService || []).forEach((slot) => {
+        try {
+          const start = new Date(slot.start_ts);
+          const end = new Date(slot.end_ts);
+          const dayKey = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][start.getDay()];
+          operatingDaysSet.add(dayKey);
+
+          const pad = (n) => String(n).padStart(2, '0');
+          const startTime = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+          const endTime = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+          const blockId = `svc-${provider.id}-${dayKey}-${startTime}-${endTime}`;
+
+          // weekday bucket
+          if (!dayBlocks[dayKey]) dayBlocks[dayKey] = [];
+
+          // Try to find an existing block with same time window
+          const existing = dayBlocks[dayKey].find((b) => b.startTime === startTime && b.endTime === endTime);
+          if (existing) {
+            existing.capacity = (existing.capacity || 0) + (slot.capacity || 1);
+            existing.slotsLeft = (existing.slotsLeft || 0) + ((slot.status === 'available') ? (slot.capacity || 1) : 0);
+          } else {
+            dayBlocks[dayKey].push({
+              id: blockId,
+              startTime,
+              endTime,
+              capacity: slot.capacity || 1,
+              slotsLeft: slot.status === 'available' ? (slot.capacity || 1) : 0,
+            });
+          }
+
+          // exact-date bucket (ISO date key)
+          const dateKey = start.toISOString().slice(0, 10);
+          if (!dayBlocks[dateKey]) dayBlocks[dateKey] = [];
+          const existingDate = dayBlocks[dateKey].find((b) => b.startTime === startTime && b.endTime === endTime);
+          if (existingDate) {
+            existingDate.capacity = (existingDate.capacity || 0) + (slot.capacity || 1);
+            existingDate.slotsLeft = (existingDate.slotsLeft || 0) + ((slot.status === 'available') ? (slot.capacity || 1) : 0);
+          } else {
+            dayBlocks[dateKey].push({
+              id: `svc-${provider.id}-${dateKey}-${startTime}-${endTime}`,
+              startTime,
+              endTime,
+              capacity: slot.capacity || 1,
+              slotsLeft: slot.status === 'available' ? (slot.capacity || 1) : 0,
+            });
+          }
+        } catch (e) {
+          // ignore parse errors per-slot
+        }
+      });
+
+      const operatingDays = Array.from(operatingDaysSet);
+      // If no operating days were found, fall back to generated schedule
+      if (operatingDays.length === 0) return createScheduleForProvider(provider);
+
+      return {
+        manualScheduling: false,
+        operatingDays,
+        dayBlocks,
+      };
+    };
+
+    const loadSlotsForProviders = async () => {
+      try {
+        const dbProviders = (dataProviders || []).filter((p) => p && p.rawService);
+        const serviceIds = dbProviders.map((p) => p.rawService.id).filter(Boolean);
+
+        // Initialize fallback schedules for mock-only providers
+        setSchedulesByProvider((prev) => {
+          const next = { ...(prev || {}) };
+          (dataProviders || []).forEach((provider) => {
+            if (!next[provider.id]) next[provider.id] = createScheduleForProvider(provider);
+          });
+          return next;
+        });
+
+        if (serviceIds.length === 0) return;
+
+        const { data: slots, error } = await supabase
+          .from('service_slots')
+          .select('*')
+          .in('service_id', serviceIds)
+          .order('start_ts', { ascending: true });
+
+        if (error) {
+          console.warn('Failed to load service_slots:', error);
           return;
         }
 
-        // Slightly vary slots per day so calendar shows realistic mixed availability.
-        dayBlocks[day] = slotTemplates.map((slot, slotIndex) => ({
-          ...slot,
-          id: `${slot.id}-${day}`,
-          slotsLeft: Math.max(0, Math.min(slot.capacity, slot.slotsLeft + ((dayIndex + slotIndex) % 2 === 0 ? 1 : 0))),
-        }));
-      });
+        if (!mounted) return;
 
-      initialSchedules[provider.id] = {
-        manualScheduling: isManual,
-        operatingDays: defaultDays,
-        dayBlocks,
-      };
-    });
+        // Group slots by service_id
+        const byService = {};
+        (slots || []).forEach((s) => {
+          if (!byService[s.service_id]) byService[s.service_id] = [];
+          byService[s.service_id].push(s);
+        });
 
-    return initialSchedules;
-  });
+        setSchedulesByProvider((prev) => {
+          const next = { ...(prev || {}) };
+          dbProviders.forEach((provider) => {
+            const svcId = provider.rawService?.id;
+            const svcSlots = byService[svcId] || [];
+            next[provider.id] = buildWeeklyScheduleFromSlots(svcSlots, provider);
+          });
+          return next;
+        });
+      } catch (e) {
+        console.error('Error loading slots:', e);
+      }
+    };
+
+    loadSlotsForProviders();
+
+    // Subscribe to changes in service_slots and update schedules when relevant
+    const channel = supabase
+      .channel('service-slots')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'service_slots' }, (payload) => {
+        try {
+          const rec = payload.new || payload.record || null;
+          const old = payload.old || null;
+          const svcId = (rec && rec.service_id) || (old && old.service_id) || null;
+          if (!svcId) return;
+
+          // If the changed slot belongs to a provider we display, re-run slot load
+          const hasProvider = (dataProviders || []).some((p) => p.rawService && p.rawService.id === svcId);
+          if (hasProvider) loadSlotsForProviders();
+        } catch (e) {}
+      })
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      try { supabase.removeChannel(channel); } catch (e) {}
+    };
+  }, [dataProviders, realServices]);
 
   // ============================================================================
   // EFFECTS - Page Initialization & Responsive Behavior
@@ -295,7 +572,7 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
   // Keeps data in sync without extra state variables
   
   const topLevelChips = ['All', ...CORE_SERVICE_CHIPS, 'More Services'];
-  const districts = ['All Districts', ...new Set(providers.map((provider) => provider.location))];
+  const districts = ['All Districts', ...new Set(dataProviders.map((provider) => provider.location).filter(Boolean))];
 
   // ============================================================================
   // EVENT HANDLERS - User Interactions (Search, Filter, Modal)
@@ -341,6 +618,10 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
 
   // HANDLER 6: "Book Now" button in WorkerDetailModal - Opens BookingCalendarModal
   const handleBookNow = (worker) => {
+    setSchedulesByProvider((prev) => {
+      if (prev?.[worker.id]) return prev;
+      return { ...(prev || {}), [worker.id]: createScheduleForProvider(worker) };
+    });
     setIsWorkerModalOpen(false);
     setSelectedWorker(worker);
     setIsBookingCalendarOpen(true);
@@ -362,8 +643,10 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       return;
     }
 
-    const worker = providers.find((provider) => provider.id === workerId);
-    const selectedBlock = schedulesByProvider[workerId]?.dayBlocks?.[dayKey]?.find((block) => block.id === blockId);
+    const worker = dataProviders.find((provider) => provider.id === workerId);
+    const selectedBlock =
+      schedulesByProvider[workerId]?.dayBlocks?.[date]?.find((block) => block.id === blockId)
+      || schedulesByProvider[workerId]?.dayBlocks?.[dayKey]?.find((block) => block.id === blockId);
 
     if (!worker || !selectedBlock) {
       setBookingMessage('Unable to continue booking. Please try again.');
@@ -373,7 +656,13 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       return;
     }
 
-    const quoteAmount = worker.hourlyRate || worker.dailyRate || worker.projectRate || 0;
+    const quoteAmount =
+      worker.hourlyRate
+      || worker.dailyRate
+      || worker.weeklyRate
+      || worker.monthlyRate
+      || worker.projectRate
+      || 0;
 
     setPendingBooking({
       workerId,
@@ -382,6 +671,7 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       quoteAmount,
       selectedSlot: {
         date,
+        dateKey: date,
         dayKey,
         blockId,
         timeBlock: selectedBlock,
@@ -399,18 +689,21 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     if (!pendingBooking) return;
 
     const { workerId, selectedSlot } = pendingBooking;
-    const { dayKey, blockId } = selectedSlot;
+    const { dateKey, dayKey, blockId } = selectedSlot;
 
     setSchedulesByProvider((prev) => {
       const providerSchedule = prev[workerId];
-      const currentBlocks = providerSchedule?.dayBlocks?.[dayKey] || [];
-      const updatedBlocks = currentBlocks.map((block) => {
-        if (block.id !== blockId) return block;
-        return {
-          ...block,
-          slotsLeft: Math.max(0, block.slotsLeft - 1),
-        };
-      });
+      const applyDecrement = (blocks = []) =>
+        blocks.map((block) => {
+          if (block.id !== blockId) return block;
+          return {
+            ...block,
+            slotsLeft: Math.max(0, block.slotsLeft - 1),
+          };
+        });
+
+      const updatedDateBlocks = applyDecrement(providerSchedule?.dayBlocks?.[dateKey] || []);
+      const updatedDayBlocks = applyDecrement(providerSchedule?.dayBlocks?.[dayKey] || []);
 
       return {
         ...prev,
@@ -418,7 +711,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
           ...providerSchedule,
           dayBlocks: {
             ...providerSchedule.dayBlocks,
-            [dayKey]: updatedBlocks,
+            ...(dateKey ? { [dateKey]: updatedDateBlocks } : {}),
+            [dayKey]: updatedDayBlocks,
           },
         },
       };
@@ -456,7 +750,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
   // Provides real-time filtering across three dimensions: search, category, district
   
   // FILTER LOGIC: Applies all three filters and returns matching providers
-  const filteredProviders = providers.filter((provider) => {
+
+  const filteredProviders = dataProviders.filter((provider) => {
     // SEARCH FILTER: Matches user text input against provider name OR service type
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const serviceLabel = getDisplayServiceType(provider);
@@ -816,7 +1111,7 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
         isOpen={isBookingCalendarOpen}
         onClose={handleCloseBookingCalendar}
         worker={selectedWorker}
-        schedule={selectedWorker ? schedulesByProvider[selectedWorker.id] : null}
+        schedule={selectedWorker ? (schedulesByProvider[selectedWorker.id] || createScheduleForProvider(selectedWorker)) : null}
         onConfirmBooking={handleConfirmBooking}
       />
 
@@ -843,7 +1138,20 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
           Shows: Toast notification with booking confirmation message
           Auto-dismisses: After 3 seconds or user clicks close
       */}
+      <SuccessNotification
+        message={bookingMessage}
+        isVisible={showBookingNotification}
+        onClose={handleCloseNotification}
       />
+
+      {realServicesError && (
+        <ErrorNotification
+          message={realServicesError}
+          isVisible={Boolean(realServicesError)}
+          onClose={() => setRealServicesError(null)}
+        />
+      )}
+
       <ReviewsModal
         isOpen={isReviewsModalOpen}
         provider={reviewsTarget}
