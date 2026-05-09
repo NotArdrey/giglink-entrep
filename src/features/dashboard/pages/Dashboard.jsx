@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 // ============================================================================
 // DASHBOARD PAGE - Service-First Discovery Interface
 // ============================================================================
@@ -347,7 +347,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     return () => { isMounted = false; try { supabase.removeChannel(channel); } catch (e) {} };
   }, []);
 
-  const realServicesMapped = (realServices || []).map((svc) => {
+  const realServicesMapped = useMemo(() => {
+  return (realServices || []).map((svc) => {
     const seller = svc?.sellers || svc?.seller || {};
     const sellerMeta = seller?.search_meta || {};
     const rateBasis = getRateBasisFromService(svc);
@@ -359,7 +360,6 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     return {
       id: svc.id,
       name: seller?.display_name || sellerMeta?.name || svc.title || 'Service Provider',
-      // Prefer service title so custom names like "TutorTest" appear correctly.
       serviceType: svc.title || sellerMeta?.service_type || (svc.metadata && svc.metadata.service_type) || 'Service',
       description: svc.short_description || svc.description || '',
       rating: svc.rating || 0,
@@ -379,8 +379,9 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       rawService: svc,
     };
   });
+}, [realServices]);
 
-  const dataProviders = realServicesMapped;
+const dataProviders = realServicesMapped;
 
   // ============================================================================
   // SCHEDULES BY PROVIDER - Availability Calendar State

@@ -101,6 +101,7 @@ const getServicePricingModel = (serviceData = {}) => {
 const toReadableDatabaseSetupError = (error) => {
   const message = String(error?.message || '');
   
+  console.error('🔴 REAL SUPABASE ERROR:', message, error); // ADD THIS LINE
   // Network/connectivity issues
   if (/Failed to fetch|network|unable to reach|refused to connect/i.test(message)) {
     return new Error(
