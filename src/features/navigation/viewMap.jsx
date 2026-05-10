@@ -18,6 +18,7 @@ export const viewMap = {
       currentView: context.currentView,
       onLogout: context.handleLogout,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'client-dashboard': {
@@ -37,6 +38,7 @@ export const viewMap = {
       onOpenSettings: context.handleOpenSettings,
       onOpenSellerSetup: context.handleOpenSellerOnboarding,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'my-bookings': {
@@ -56,6 +58,7 @@ export const viewMap = {
       onOpenSettings: context.handleOpenSettings,
       onOpenMyBookings: context.handleOpenMyBookings,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'profile': {
@@ -78,6 +81,7 @@ export const viewMap = {
       onBackToDashboard: context.handleBackToClientDashboard,
       onUpdateProfile: context.handleProfileUpdate,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'account-settings': {
@@ -100,6 +104,7 @@ export const viewMap = {
       onOpenDashboard: context.handleBackToClientDashboard,
       onUpdateProfile: context.handleProfileUpdate,
       onUpdatePassword: context.handlePasswordUpdate,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'settings': {
@@ -123,6 +128,7 @@ export const viewMap = {
       onThemeChange: context.handleThemeChange,
       onLanguageChange: context.handleLanguageChange,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'my-work': {
@@ -143,6 +149,7 @@ export const viewMap = {
       onBackToDashboard: context.handleBackToClientDashboard,
       onAddNewWork: context.handleOpenSellerOnboarding,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
   'worker-dashboard': {
@@ -162,6 +169,7 @@ export const viewMap = {
       onOpenSettings: context.handleOpenSettings,
       onBackToClient: context.handleBackToClientDashboard,
       onOpenDashboard: context.handleBackToClientDashboard,
+      onOpenAdminDashboard: context.handleOpenAdminDashboard,
     }),
   },
 };

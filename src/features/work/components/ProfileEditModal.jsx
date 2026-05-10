@@ -39,11 +39,11 @@ const ProfileEditModal = ({
       setServiceType(profileData.serviceType || '');
       setDescription(profileData.description || '');
       setPricingModel(profileData.pricingModel || 'fixed');
-      setFixedPrice(profileData.fixedPrice || '');
-      setHourlyRate(profileData.hourlyRate || '');
-      setDailyRate(profileData.dailyRate || '');
-      setWeeklyRate(profileData.weeklyRate || '');
-      setMonthlyRate(profileData.monthlyRate || '');
+      setFixedPrice(String(profileData.fixedPrice ?? ''));
+      setHourlyRate(String(profileData.hourlyRate ?? ''));
+      setDailyRate(String(profileData.dailyRate ?? ''));
+      setWeeklyRate(String(profileData.weeklyRate ?? ''));
+      setMonthlyRate(String(profileData.monthlyRate ?? ''));
       setPaymentAdvance(profileData.paymentAdvance !== false);
       setPaymentAfterService(profileData.paymentAfterService !== false);
       setAfterServicePaymentType(profileData.afterServicePaymentType || 'both');
@@ -65,27 +65,27 @@ const ProfileEditModal = ({
       return;
     }
 
-    if (pricingModel === 'fixed' && (!fixedPrice.trim() || Number(fixedPrice) <= 0)) {
+    if (pricingModel === 'fixed' && (!String(fixedPrice).trim() || Number(fixedPrice) <= 0)) {
       setError('Please enter a valid fixed price');
       return;
     }
 
-    if (pricingModel === 'hourly' && (!hourlyRate.trim() || Number(hourlyRate) <= 0)) {
+    if (pricingModel === 'hourly' && (!String(hourlyRate).trim() || Number(hourlyRate) <= 0)) {
       setError('Please enter a valid hourly rate');
       return;
     }
 
-    if (pricingModel === 'daily' && (!dailyRate.trim() || Number(dailyRate) <= 0)) {
+    if (pricingModel === 'daily' && (!String(dailyRate).trim() || Number(dailyRate) <= 0)) {
       setError('Please enter a valid daily rate');
       return;
     }
 
-    if (pricingModel === 'weekly' && (!weeklyRate.trim() || Number(weeklyRate) <= 0)) {
+    if (pricingModel === 'weekly' && (!String(weeklyRate).trim() || Number(weeklyRate) <= 0)) {
       setError('Please enter a valid weekly rate');
       return;
     }
 
-    if (pricingModel === 'monthly' && (!monthlyRate.trim() || Number(monthlyRate) <= 0)) {
+    if (pricingModel === 'monthly' && (!String(monthlyRate).trim() || Number(monthlyRate) <= 0)) {
       setError('Please enter a valid monthly rate');
       return;
     }

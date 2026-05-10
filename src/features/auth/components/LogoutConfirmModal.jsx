@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLogoutController } from '../hooks';
 
 const styles = {
   overlay: {
@@ -56,6 +57,20 @@ const styles = {
 };
 
 function LogoutConfirmModal({ isOpen, onConfirm, onCancel }) {
+  // Initialize controller hook
+  const controller = useLogoutController(
+    async (result) => {
+      // Callback when logout is successful
+      if (onConfirm) {
+        try {
+          await onConfirm();
+        } catch (error) {
+          console.error('Logout confirmation callback error:', error);
+        }
+      }
+    }
+  );
+
   const [isCancelHovered, setIsCancelHovered] = useState(false);
   const [isConfirmHovered, setIsConfirmHovered] = useState(false);
 
@@ -89,9 +104,10 @@ function LogoutConfirmModal({ isOpen, onConfirm, onCancel }) {
             }}
             onMouseEnter={() => setIsConfirmHovered(true)}
             onMouseLeave={() => setIsConfirmHovered(false)}
-            onClick={onConfirm}
+            onClick={controller.handleConfirmLogout}
+            disabled={controller.isLoading}
           >
-            Yes, Logout
+            {controller.isLoading ? 'Logging out...' : 'Yes, Logout'}
           </button>
         </div>
       </div>

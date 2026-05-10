@@ -3,7 +3,7 @@ import DashboardNavigation from '../../../shared/components/DashboardNavigation'
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile }) {
+function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile, onOpenAdminDashboard }) {
   const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
   const fallbackName = 'Juan Dela Cruz';
   const fallbackBio = 'Dedicated service provider focused on quality, punctuality, and client satisfaction.';
@@ -183,6 +183,21 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
     event.target.value = '';
   };
 
+  const handleRemovePhoto = async () => {
+    if (!onUpdateProfile) return;
+    try {
+      setSaveError('');
+      setIsSavingPhoto(true);
+      const merged = await onUpdateProfile({ profilePhoto: '' });
+      setProfilePhoto(merged?.profilePhoto || '');
+      setIsPhotoSourceOpen(false);
+    } catch (error) {
+      setSaveError(error?.message || 'Unable to remove profile photo right now. Please try again.');
+    } finally {
+      setIsSavingPhoto(false);
+    }
+  };
+
   const styles = {
     page: { minHeight: '100vh', background: themeTokens.pageBg, color: themeTokens.textPrimary, fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", display: 'flex', flexDirection: 'column', alignItems: 'stretch' },
     header: { width: '100%', boxSizing: 'border-box', backgroundColor: themeTokens.surface, borderBottom: `1px solid ${themeTokens.border}`, padding: isMobile ? '12px 14px' : '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50, boxShadow: themeTokens.shadowSoft },
@@ -253,6 +268,8 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        isAdminView={false}
+        onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
 
       <main style={styles.main}>
@@ -402,6 +419,14 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
                 <div style={styles.photoSourceActions}>
                   <button style={styles.photoActionBtn} onClick={() => cameraInputRef.current && cameraInputRef.current.click()}>Use Camera</button>
                   <button style={styles.photoActionBtn} onClick={() => deviceInputRef.current && deviceInputRef.current.click()}>From Device</button>
+                  {profilePhoto && (
+                    <button
+                      style={{ ...styles.cancelBtn, border: '1px solid transparent', background: '#f3f4f6', color: '#111827' }}
+                      onClick={handleRemovePhoto}
+                    >
+                      {isSavingPhoto ? 'Removing...' : 'Remove Photo'}
+                    </button>
+                  )}
                   <button style={styles.cancelBtn} onClick={() => setIsPhotoSourceOpen(false)}>Cancel</button>
                 </div>
 

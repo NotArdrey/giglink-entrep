@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 // ============================================================================
 // DASHBOARD PAGE - Service-First Discovery Interface
 // ============================================================================
@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 // Design Principle: Service-First (What user needs?) → Price/Availability → Provider Identity
 // This addresses professor feedback: "Users should see if you have what they want on first glance"
 
-import { fetchAllActiveServices, fetchServiceWithSeller } from '../../../shared/services/authService';
+import { fetchAllActiveServices } from '../../../shared/services/authService';
 import { supabase } from '../../../shared/services/supabaseClient';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
 import ErrorNotification from '../../../shared/components/ErrorNotification';
@@ -50,6 +50,37 @@ const getDisplayServiceType = (provider) => {
   }
 
   return normalizedType || 'General Service';
+};
+
+const resolveServiceTitle = (svc, seller, sellerMeta, sellerProfile) => {
+  const rawTitle = String(svc?.title || '').trim();
+  const providerName = seller?.display_name || sellerMeta?.name || sellerProfile?.fullName || sellerProfile?.full_name || 'Service Provider';
+  const serviceType = String(
+    sellerMeta?.service_type
+    || svc?.metadata?.service_type
+    || svc?.metadata?.serviceType
+    || ''
+  ).trim();
+  const normalizedTitle = rawTitle.toLowerCase();
+  const normalizedType = serviceType.toLowerCase();
+
+  if (!rawTitle) return providerName;
+  if (normalizedType && normalizedTitle === normalizedType) return providerName;
+  if (CORE_SERVICE_CHIPS.some((chip) => chip.toLowerCase() === normalizedTitle)) return providerName;
+
+  return rawTitle;
+};
+
+const resolveProviderName = (svc, seller, sellerMeta, sellerProfile) => {
+  const sellerDisplayName = seller?.display_name || sellerMeta?.name || '';
+  const currentUserName = sellerProfile?.fullName || sellerProfile?.full_name || '';
+  const isOwnSellerRow = Boolean(seller?.user_id && sellerProfile?.userId && seller.user_id === sellerProfile.userId);
+
+  if (isOwnSellerRow && currentUserName) {
+    return currentUserName;
+  }
+
+  return sellerDisplayName || currentUserName || svc?.title || 'Service Provider';
 };
 
 const normalizeRateBasis = (value) => {
@@ -144,117 +175,7 @@ const createScheduleForProvider = (provider) => {
 };
 
 
-function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings }) {
-  // ============================================================================
-  // MOCK DATA - Service Provider List (Static for skeleton/demo)
-  // ============================================================================
-  // This represents the database of service providers that would be fetched from backend
-  // In production: Replace with API call (useEffect + setState) to fetch providers
-  // Structure: Array of provider objects with service details, pricing, availability, etc.
-  // ============================================================================
-  const providers = [
-    {
-      id: 1,
-      name: 'Arian Cortez',
-      serviceType: 'Tutor',
-      rating: 4.9,
-      reviews: 142,
-      photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-      description: 'Patient and structured tutoring sessions for students and skill-learners.',
-      experience: 6,
-      location: 'District 1',
-      hourlyRate: 450,
-      pricingType: 'fixed',
-      actionType: 'book',
-    },
-    {
-      id: 2,
-      name: 'Mika Santos',
-      serviceType: 'Technician',
-      rating: 4.8,
-      reviews: 96,
-      photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-      description: 'Reliable technical help for setup, troubleshooting, and maintenance tasks.',
-      experience: 8,
-      location: 'District 2',
-      hourlyRate: null,
-      pricingType: 'inquiry',
-      actionType: 'inquire',
-    },
-    {
-      id: 3,
-      name: 'Daryl Ng',
-      serviceType: 'Cleaner',
-      rating: 4.7,
-      reviews: 121,
-      photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
-      description: 'Efficient cleaning services with attention to detail for homes and spaces.',
-      experience: 5,
-      location: 'District 3',
-      hourlyRate: 320,
-      pricingType: 'fixed',
-      actionType: 'book',
-    },
-    {
-      id: 4,
-      name: 'Jenna Lim',
-      serviceType: 'Tutor',
-      rating: 4.9,
-      reviews: 178,
-      photo: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-      description: 'Interactive tutoring for communication, writing, and exam preparation.',
-      experience: 7,
-      location: 'District 2',
-      hourlyRate: null,
-      pricingType: 'inquiry',
-      actionType: 'inquire',
-    },
-    {
-      id: 5,
-      name: 'Paolo Diaz',
-      serviceType: 'Technician',
-      rating: 4.8,
-      reviews: 109,
-      photo: 'https://images.unsplash.com/photo-1507539803627-c150f650b237?w=400&h=400&fit=crop',
-      description: 'Hands-on technical support for devices, software, and network setups.',
-      experience: 9,
-      location: 'District 1',
-      hourlyRate: 600,
-      pricingType: 'fixed',
-      actionType: 'book',
-    },
-    {
-      id: 6,
-      name: 'Lia Ramos',
-      serviceType: 'Cleaner',
-      rating: 4.8,
-      reviews: 87,
-      photo: 'https://images.unsplash.com/photo-1517331156700-3c241d2b4d83?w=400&h=400&fit=crop',
-      description: 'Thorough and flexible cleaning plans designed around your schedule.',
-      experience: 4,
-      location: 'District 3',
-      hourlyRate: null,
-      pricingType: 'inquiry',
-      actionType: 'inquire',
-    },
-    {
-      id: 7,
-      name: 'Vince Tan',
-      serviceType: 'Others',
-      customServiceType: 'Valorant Account Booster',
-      rating: 4.9,
-      reviews: 63,
-      photo: 'https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=400&h=400&fit=crop',
-      description: 'Secure and performance-focused account boosting sessions with transparent progress updates.',
-      experience: 3,
-      location: 'District 2',
-      projectRate: 1200,
-      pricingType: 'fixed',
-      actionType: 'book',
-      rateBasis: 'per-project',
-    },
-  ];
-
+function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenAdminDashboard }) {
   // ============================================================================
   // REACT STATE - Dashboard UI State Management
   // ============================================================================
@@ -283,6 +204,19 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   ); // Mobile breakpoint: 768px (tablets and below)
+
+  // Admin view toggle (local UI state). Admin-only UI elements appear when this is true.
+  const [isAdminView, setIsAdminView] = useState(false);
+  const handleToggleAdminView = () => {
+    if (typeof onOpenAdminDashboard === 'function') {
+      // navigate to admin dashboard
+      onOpenAdminDashboard();
+      setIsAdminView(true);
+      return;
+    }
+
+    setIsAdminView((s) => !s);
+  };
 
   // Real database-backed services
   const [realServices, setRealServices] = useState([]);
@@ -347,7 +281,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     return () => { isMounted = false; try { supabase.removeChannel(channel); } catch (e) {} };
   }, []);
 
-  const realServicesMapped = (realServices || []).map((svc) => {
+  const realServicesMapped = useMemo(() => {
+  return (realServices || []).map((svc) => {
     const seller = svc?.sellers || svc?.seller || {};
     const sellerMeta = seller?.search_meta || {};
     const rateBasis = getRateBasisFromService(svc);
@@ -355,16 +290,17 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     const pricingType = getPricingModelFromService(svc);
     const actionType = pricingType === 'inquiry' ? 'inquire' : 'book';
     const bookingMode = getBookingModeFromService(svc, seller);
+    const photoUrl = seller?.profile_photo || seller?.avatar_url || null;
 
     return {
       id: svc.id,
-      name: seller?.display_name || sellerMeta?.name || svc.title || 'Service Provider',
-      // Prefer service title so custom names like "TutorTest" appear correctly.
-      serviceType: svc.title || sellerMeta?.service_type || (svc.metadata && svc.metadata.service_type) || 'Service',
+      name: resolveProviderName(svc, seller, sellerMeta, sellerProfile),
+      title: resolveServiceTitle(svc, seller, sellerMeta, sellerProfile),
+      serviceType: sellerMeta?.service_type || (svc.metadata && svc.metadata.service_type) || 'Service',
       description: svc.short_description || svc.description || '',
       rating: svc.rating || 0,
       reviews: svc.reviews_count || 0,
-      photo: seller?.profile_photo || seller?.avatar_url || '',
+      photo: photoUrl,
       experience: seller?.years_experience || 0,
       location: sellerMeta?.location?.city || sellerMeta?.location?.province || '',
       hourlyRate: rateBasis === 'per-hour' ? basePrice : null,
@@ -379,8 +315,9 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
       rawService: svc,
     };
   });
+}, [realServices]);
 
-  const dataProviders = realServicesMapped;
+const dataProviders = realServicesMapped;
 
   // ============================================================================
   // SCHEDULES BY PROVIDER - Availability Calendar State
@@ -880,7 +817,7 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
     // ACTIVE CHIP STATE - Selected category highlighted in blue with shadow
     chipActive: {
       backgroundColor: themeTokens.accent,
-      borderColor: themeTokens.accent,
+      border: `1px solid ${themeTokens.accent}`,
       color: '#ffffff',
       boxShadow: `0 6px 14px ${appTheme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(37, 99, 235, 0.24)'}`,
     },
@@ -992,6 +929,8 @@ function Dashboard({ appTheme = 'light', onLogout, onBecomeSeller, onOpenMyBooki
         onOpenProfile={onOpenProfile}
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
+        isAdminView={isAdminView}
+        onToggleAdminView={handleToggleAdminView}
       />
 
       <main style={styles.main}>

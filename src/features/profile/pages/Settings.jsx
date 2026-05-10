@@ -14,6 +14,7 @@ const Settings = ({
   onOpenAccountSettings,
   onOpenSettings,
   onOpenDashboard,
+  onOpenAdminDashboard,
   onBack,
   appTheme = 'light',
   themeMode = 'system',
@@ -487,6 +488,8 @@ const Settings = ({
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        isAdminView={false}
+        onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
 
       <main style={styles.main}>

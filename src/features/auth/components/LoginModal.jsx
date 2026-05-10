@@ -1,9 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useAuthModalController } from '../hooks';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
 function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerification }) {
-  const [isLoginMode, setIsLoginMode] = useState(true);
+  // Initialize controller hook
+  const controller = useAuthModalController(
+    async (result, isLoginMode) => {
+      // Callback when auth is successful
+      const formDataForParent = controller.isLoginMode ? formData : formData;
+      if (onSubmit) {
+        try {
+          await onSubmit(formDataForParent, isLoginMode);
+          
+          // For signup, show success message; for login, close immediately
+          if (!isLoginMode) {
+            // Signup success - show message
+            setIsSignupSuccess(true);
+          } else {
+            // Login success - reset and close
+            resetAllState();
+          }
+        } catch (error) {
+          // Error handling is done in the parent
+          console.error('Auth submission error in parent:', error);
+        }
+      }
+    },
+    async (email) => {
+      // Callback when resend verification is successful
+      if (onResendVerification) {
+        try {
+          await onResendVerification(email);
+        } catch (error) {
+          console.error('Resend verification error in parent:', error);
+        }
+      }
+    }
+  );
+
+  // Form data state
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -20,26 +56,34 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
-  const [selectedProvinceCode, setSelectedProvinceCode] = useState('');
-  const [selectedCityMunicipalityCode, setSelectedCityMunicipalityCode] = useState('');
-  const [loadingProvinces, setLoadingProvinces] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [loadingBarangays, setLoadingBarangays] = useState(false);
-  const [apiError, setApiError] = useState('');
   const [hoveredButton, setHoveredButton] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const [isSignupSuccess, setIsSignupSuccess] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && !isLoginMode) {
-      fetchProvinces();
-    }
-  }, [isOpen, isLoginMode]);
+  // Helper to reset all state when modal closes
+  const resetAllState = () => {
+    setFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      confirmPassword: '',
+      province: '',
+      city: '',
+      barangay: '',
+      address: '',
+    });
+    setProvinces([]);
+    setCities([]);
+    setBarangays([]);
+    setHoveredButton('');
+    setIsSignupSuccess(false);
+    controller.resetForm();
+  };
 
-  const fetchProvinces = async () => {
-    setLoadingProvinces(true);
-    setApiError('');
+  const fetchProvinces = useCallback(async () => {
+    controller.setLoadingProvinces(true);
+    controller.setApiError('');
     try {
       const response = await fetch(`${PSGC_BASE_URL}/provinces/`);
       if (!response.ok) throw new Error('Failed to fetch provinces');
@@ -47,42 +91,48 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       setProvinces(data);
     } catch (error) {
       console.error('Error fetching provinces:', error);
-      setApiError('Could not load provinces. Using fallback data.');
+      controller.setApiError('Could not load provinces. Using fallback data.');
       setProvinces([
         { code: 'PHR030000000', name: 'Bulacan' },
         { code: 'PHR010000000', name: 'Abra' },
         { code: 'PHR020000000', name: 'Agusan del Norte' },
       ]);
     } finally {
-      setLoadingProvinces(false);
+      controller.setLoadingProvinces(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && !controller.isLoginMode) {
+      fetchProvinces();
+    }
+  }, [isOpen, controller.isLoginMode, fetchProvinces]);
 
   const fetchCities = async (provinceCode) => {
     if (!provinceCode) {
       setCities([]);
-      setSelectedCityMunicipalityCode('');
+      controller.setSelectedCityMunicipalityCode('');
       return;
     }
-    setLoadingCities(true);
-    setApiError('');
+    controller.setLoadingCities(true);
+    controller.setApiError('');
     try {
       const response = await fetch(`${PSGC_BASE_URL}/provinces/${provinceCode}/cities-municipalities/`);
       if (!response.ok) throw new Error('Failed to fetch cities');
       const data = await response.json();
       setCities(data);
       setFormData((prev) => ({ ...prev, city: '', barangay: '' }));
-      setSelectedCityMunicipalityCode('');
+      controller.setSelectedCityMunicipalityCode('');
       setBarangays([]);
     } catch (error) {
       console.error('Error fetching cities:', error);
-      setApiError('Could not load cities. Using fallback data.');
+      controller.setApiError('Could not load cities. Using fallback data.');
       setCities([
         { code: 'PHM030000000', name: 'Meycauayan' },
         { code: 'PHM031000000', name: 'Bulacan' },
       ]);
     } finally {
-      setLoadingCities(false);
+      controller.setLoadingCities(false);
     }
   };
 
@@ -91,8 +141,8 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       setBarangays([]);
       return;
     }
-    setLoadingBarangays(true);
-    setApiError('');
+    controller.setLoadingBarangays(true);
+    controller.setApiError('');
     try {
       const response = await fetch(`${PSGC_BASE_URL}/cities-municipalities/${cityCode}/barangays/`);
       if (!response.ok) throw new Error('Failed to fetch barangays');
@@ -101,13 +151,13 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       setFormData((prev) => ({ ...prev, barangay: '' }));
     } catch (error) {
       console.error('Error fetching barangays:', error);
-      setApiError('Could not load barangays. Using fallback data.');
+      controller.setApiError('Could not load barangays. Using fallback data.');
       setBarangays([
         { code: 'PHB030000000', name: 'Binakayan' },
         { code: 'PHB030100000', name: 'Canumay' },
       ]);
     } finally {
-      setLoadingBarangays(false);
+      controller.setLoadingBarangays(false);
     }
   };
 
@@ -119,7 +169,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
   const handleProvinceChange = (event) => {
     const provinceCode = event.target.value;
     const selectedProvince = provinces.find((province) => province.code === provinceCode);
-    setSelectedProvinceCode(provinceCode);
+    controller.setSelectedProvinceCode(provinceCode);
     setFormData((prev) => ({
       ...prev,
       province: selectedProvince ? selectedProvince.name : '',
@@ -132,7 +182,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
   const handleCityChange = (event) => {
     const cityCode = event.target.value;
     const selectedCity = cities.find((city) => city.code === cityCode);
-    setSelectedCityMunicipalityCode(cityCode);
+    controller.setSelectedCityMunicipalityCode(cityCode);
     setFormData((prev) => ({
       ...prev,
       city: selectedCity ? selectedCity.name : '',
@@ -152,80 +202,43 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setSubmitError('');
+    controller.setSubmitError('');
 
-    if (!isLoginMode && formData.password !== formData.confirmPassword) {
-      setSubmitError('Password and confirm password do not match.');
+    if (!controller.isLoginMode && formData.password !== formData.confirmPassword) {
+      controller.setSubmitError('Password and confirm password do not match.');
       return;
     }
 
-    if (!isLoginMode && (!formData.firstName.trim() || !formData.lastName.trim())) {
-      setSubmitError('First name and last name are required.');
+    if (!controller.isLoginMode && (!formData.firstName.trim() || !formData.lastName.trim())) {
+      controller.setSubmitError('First name and last name are required.');
       return;
     }
 
-    if (!isLoginMode && (!formData.province || !formData.city || !formData.barangay || !formData.address)) {
-      setSubmitError('Please fill in all location fields.');
-      return;
-    }
-
-    if (typeof onSubmit !== 'function') {
-      setSubmitError('Authentication is not available yet.');
+    if (!controller.isLoginMode && (!formData.province || !formData.city || !formData.barangay || !formData.address)) {
+      controller.setSubmitError('Please fill in all location fields.');
       return;
     }
 
     try {
-      setIsSubmitting(true);
-      await onSubmit(formData, isLoginMode);
-      // Success - reset form and close modal
-      setFormData({
-        email: '',
-        password: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        confirmPassword: '',
-        province: '',
-        city: '',
-        barangay: '',
-        address: '',
-      });
-      setSelectedProvinceCode('');
-      setSelectedCityMunicipalityCode('');
-      setCities([]);
-      setBarangays([]);
-      // Close the modal after successful authentication
-      onClose();
+      await controller.handleSubmit(formData);
     } catch (error) {
-      setSubmitError(error?.message || 'Unable to complete authentication.');
-    } finally {
-      setIsSubmitting(false);
+      // Error is already set in controller
+      console.error('Form submission error:', error);
     }
-  };
-
-  const toggleMode = () => {
-    setIsLoginMode((prev) => !prev);
   };
 
   const handleResendVerification = async () => {
     const email = formData.email?.trim();
     if (!email) {
-      setSubmitError('Enter your email first, then resend verification.');
-      return;
-    }
-
-    if (typeof onResendVerification !== 'function') {
-      setSubmitError('Resend verification is not available right now.');
+      controller.setSubmitError('Enter your email first, then resend verification.');
       return;
     }
 
     try {
-      setIsResendingVerification(true);
-      await onResendVerification(email);
+      await controller.handleResendVerification(email);
     } catch (error) {
-      setSubmitError(error?.message || 'Unable to resend verification email.');
-    } finally {
-      setIsResendingVerification(false);
+      // Error is already set in controller
+      console.error('Resend verification error:', error);
     }
   };
 
@@ -356,6 +369,28 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       fontSize: '12px',
       marginTop: '10px',
     },
+    successBox: {
+      padding: '16px',
+      background: '#dcfce7',
+      border: '2px solid #22c55e',
+      borderRadius: '6px',
+      color: '#15803d',
+      marginTop: '15px',
+      marginBottom: '15px',
+      textAlign: 'center',
+    },
+    successTitle: {
+      fontWeight: 700,
+      marginBottom: '10px',
+      fontSize: '15px',
+      color: '#15803d',
+    },
+    successText: {
+      fontSize: '14px',
+      lineHeight: '1.6',
+      fontWeight: 500,
+      color: '#15803d',
+    },
   };
 
   return (
@@ -372,10 +407,11 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
           x
         </button>
 
-        <h2 style={styles.title}>{isLoginMode ? 'Login' : 'Create Account'}</h2>
+        <h2 style={styles.title}>{controller.isLoginMode ? 'Login' : 'Create Account'}</h2>
 
+        {!isSignupSuccess ? (
         <form onSubmit={handleSubmit} style={styles.form}>
-          {!isLoginMode && (
+          {!controller.isLoginMode && (
             <>
               <div style={styles.group}>
                 <label htmlFor="firstName" style={styles.label}>First Name</label>
@@ -404,22 +440,22 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
             <input id="password" name="password" type="password" value={formData.password} onChange={handleInputChange} style={styles.input} placeholder="Enter your password" required />
           </div>
 
-          {!isLoginMode && (
+          {!controller.isLoginMode && (
             <div style={styles.group}>
               <label htmlFor="confirmPassword" style={styles.label}>Confirm Password</label>
               <input id="confirmPassword" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleInputChange} style={styles.input} placeholder="Confirm your password" required />
             </div>
           )}
 
-          {!isLoginMode && (
+          {!controller.isLoginMode && (
             <>
               <div style={styles.locationHeader}>
                 <p style={styles.locationLabel}>Service Location (Philippines)</p>
               </div>
 
               <div style={styles.group}>
-                <label htmlFor="province" style={styles.label}>Province {loadingProvinces && '(Loading...)'}</label>
-                <select id="province" value={selectedProvinceCode} onChange={handleProvinceChange} style={styles.input} required disabled={loadingProvinces}>
+                <label htmlFor="province" style={styles.label}>Province {controller.loadingProvinces && '(Loading...)'}</label>
+                <select id="province" value={controller.selectedProvinceCode} onChange={handleProvinceChange} style={styles.input} required disabled={controller.loadingProvinces}>
                   <option value="">Select a Province</option>
                   {provinces.map((province) => (
                     <option key={province.code} value={province.code}>{province.name}</option>
@@ -428,9 +464,9 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
               </div>
 
               <div style={styles.group}>
-                <label htmlFor="city" style={styles.label}>City/Municipality {loadingCities && '(Loading...)'}</label>
-                <select id="city" value={selectedCityMunicipalityCode} onChange={handleCityChange} style={styles.input} required disabled={!selectedProvinceCode || loadingCities}>
-                  <option value="">{!selectedProvinceCode ? 'Select Province First' : 'Select City/Municipality'}</option>
+                <label htmlFor="city" style={styles.label}>City/Municipality {controller.loadingCities && '(Loading...)'}</label>
+                <select id="city" value={controller.selectedCityMunicipalityCode} onChange={handleCityChange} style={styles.input} required disabled={!controller.selectedProvinceCode || controller.loadingCities}>
+                  <option value="">{!controller.selectedProvinceCode ? 'Select Province First' : 'Select City/Municipality'}</option>
                   {cities.map((city) => (
                     <option key={city.code} value={city.code}>{city.name}</option>
                   ))}
@@ -438,9 +474,9 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
               </div>
 
               <div style={styles.group}>
-                <label htmlFor="barangay" style={styles.label}>Barangay {loadingBarangays && '(Loading...)'}</label>
-                <select id="barangay" value={formData.barangay ? (barangays.find((barangay) => barangay.name === formData.barangay)?.code || '') : ''} onChange={handleBarangayChange} style={styles.input} required disabled={!selectedCityMunicipalityCode || loadingBarangays}>
-                  <option value="">{!selectedCityMunicipalityCode ? 'Select City First' : 'Select Barangay'}</option>
+                <label htmlFor="barangay" style={styles.label}>Barangay {controller.loadingBarangays && '(Loading...)'}</label>
+                <select id="barangay" value={formData.barangay ? (barangays.find((barangay) => barangay.name === formData.barangay)?.code || '') : ''} onChange={handleBarangayChange} style={styles.input} required disabled={!controller.selectedCityMunicipalityCode || controller.loadingBarangays}>
+                  <option value="">{!controller.selectedCityMunicipalityCode ? 'Select City First' : 'Select Barangay'}</option>
                   {barangays.map((barangay) => (
                     <option key={barangay.code} value={barangay.code}>{barangay.name}</option>
                   ))}
@@ -452,40 +488,71 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
                 <input id="address" name="address" type="text" value={formData.address} onChange={handleInputChange} style={styles.input} placeholder="e.g., 123 Main St, Blk 5" required />
               </div>
 
-              {apiError && <div style={styles.errorBox}>{apiError}</div>}
+              {controller.apiError && <div style={styles.errorBox}>{controller.apiError}</div>}
             </>
           )}
 
-          {submitError && <div style={styles.errorBox}>{submitError}</div>}
+          {controller.submitError && <div style={styles.errorBox}>{controller.submitError}</div>}
 
           <button
             type="submit"
             style={{
               ...styles.submit,
-              ...(isSubmitting ? { backgroundColor: '#94a3b8', cursor: 'not-allowed' } : {}),
+              ...(controller.isSubmitting ? { backgroundColor: '#94a3b8', cursor: 'not-allowed' } : {}),
             }}
             onMouseEnter={() => setHoveredButton('submit')}
             onMouseLeave={() => setHoveredButton('')}
-            disabled={isSubmitting}
+            disabled={controller.isSubmitting}
           >
-            {isSubmitting ? (isLoginMode ? 'Logging in...' : 'Creating Account...') : (isLoginMode ? 'Login' : 'Create Account')}
+            {controller.isSubmitting ? (controller.isLoginMode ? 'Logging in...' : 'Creating Account...') : (controller.isLoginMode ? 'Login' : 'Create Account')}
           </button>
         </form>
+        ) : null}
+
+        {isSignupSuccess && (
+          <div style={styles.successBox}>
+            <div style={styles.successTitle}>✓ Account Created Successfully!</div>
+            <div style={styles.successText}>
+              We've sent a confirmation email to <strong>{formData.email}</strong>. 
+              <br />
+              Please check your email and click the confirmation link to activate your account.
+            </div>
+          </div>
+        )}
 
         <div style={styles.footer}>
-          <p style={styles.toggleText}>
-            {isLoginMode ? "Don't have an account? " : 'Already have an account? '}
+          {isSignupSuccess ? (
             <button
               type="button"
-              onClick={toggleMode}
+              onClick={() => {
+                setIsSignupSuccess(false);
+                resetAllState();
+                onClose();
+              }}
+              style={{
+                ...styles.submit,
+                width: '100%',
+              }}
+              onMouseEnter={() => setHoveredButton('close-success')}
+              onMouseLeave={() => setHoveredButton('')}
+            >
+              Close
+            </button>
+          ) : (
+          <>
+          <p style={styles.toggleText}>
+            {controller.isLoginMode ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              type="button"
+              onClick={controller.toggleMode}
               style={styles.toggleLink('toggle')}
               onMouseEnter={() => setHoveredButton('toggle')}
               onMouseLeave={() => setHoveredButton('')}
             >
-              {isLoginMode ? 'Register' : 'Login'}
+              {controller.isLoginMode ? 'Register' : 'Login'}
             </button>
           </p>
-          {isLoginMode && (
+          {controller.isLoginMode && (
             <p style={styles.toggleText}>
               <button
                 type="button"
@@ -501,7 +568,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
               </button>
             </p>
           )}
-          {isLoginMode && /verify your email|email not verified|email not confirmed/i.test(submitError || '') && (
+          {controller.isLoginMode && /verify your email|email not verified|email not confirmed/i.test(controller.submitError || '') && (
             <p style={styles.toggleText}>
               <button
                 type="button"
@@ -509,11 +576,13 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
                 style={styles.toggleLink('resend')}
                 onMouseEnter={() => setHoveredButton('resend')}
                 onMouseLeave={() => setHoveredButton('')}
-                disabled={isResendingVerification}
+                disabled={controller.isResendingVerification}
               >
-                {isResendingVerification ? 'Resending verification...' : 'Resend verification email'}
+                {controller.isResendingVerification ? 'Resending verification...' : 'Resend verification email'}
               </button>
             </p>
+          )}
+          </>
           )}
         </div>
       </div>

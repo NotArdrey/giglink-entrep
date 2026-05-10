@@ -1,11 +1,21 @@
 import { useState } from 'react';
+import { useResetPasswordController } from '../hooks';
 
 function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
+  // Initialize controller hook
+  const controller = useResetPasswordController(
+    async (result) => {
+      // Callback when password is successfully reset
+      if (onClose) {
+        try {
+          await onClose();
+        } catch (error) {
+          console.error('Reset password success callback error:', error);
+        }
+      }
+    }
+  );
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hoveredButton, setHoveredButton] = useState('');
@@ -167,33 +177,34 @@ function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    controller.setError('');
 
-    if (!password) {
-      setError('Please enter a new password');
+    if (!controller.newPassword) {
+      controller.setError('Please enter a new password');
       return;
     }
 
-    if (!validatePassword(password)) {
-      setError('Password must be at least 8 characters with uppercase and numbers');
+    if (!validatePassword(controller.newPassword)) {
+      controller.setError('Password must be at least 8 characters with uppercase and numbers');
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (controller.newPassword !== controller.confirmPassword) {
+      controller.setError('Passwords do not match');
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsSuccess(true);
-    }, 1500);
+    try {
+      await controller.handleResetWithToken(email);
+    } catch (error) {
+      // Error is already set in controller
+      console.error('Reset password error:', error);
+    }
   };
 
   if (!isOpen) return null;
 
-  if (isSuccess) {
+  if (controller.isSuccess) {
     return (
       <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onBack()}>
         <div style={styles.modal}>
@@ -237,7 +248,7 @@ function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
         <h2 style={styles.heading}>Reset Password</h2>
         <p style={styles.subheading}>Enter your new password below</p>
 
-        {error && <div style={styles.errorMessage}>{error}</div>}
+        {controller.error && <div style={styles.errorMessage}>{controller.error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
@@ -245,8 +256,8 @@ function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
             <div style={styles.inputContainer}>
               <input
                 type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={controller.newPassword}
+                onChange={(e) => controller.setNewPassword(e.target.value)}
                 style={styles.input}
                 placeholder="••••••••"
               />
@@ -270,8 +281,8 @@ function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
             <div style={styles.inputContainer}>
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={controller.confirmPassword}
+                onChange={(e) => controller.setConfirmPassword(e.target.value)}
                 style={styles.input}
                 placeholder="••••••••"
               />
@@ -287,16 +298,16 @@ function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={controller.isLoading}
             onMouseEnter={() => setHoveredButton('submit')}
             onMouseLeave={() => setHoveredButton('')}
             style={{
               ...styles.button,
-              opacity: isLoading ? 0.7 : 1,
-              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: controller.isLoading ? 0.7 : 1,
+              cursor: controller.isLoading ? 'not-allowed' : 'pointer',
             }}
           >
-            {isLoading ? 'Resetting...' : 'Reset Password'}
+            {controller.isLoading ? 'Resetting...' : 'Reset Password'}
           </button>
         </form>
 

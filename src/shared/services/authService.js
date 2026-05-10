@@ -101,6 +101,7 @@ const getServicePricingModel = (serviceData = {}) => {
 const toReadableDatabaseSetupError = (error) => {
   const message = String(error?.message || '');
   
+  console.error('🔴 REAL SUPABASE ERROR:', message, error); // ADD THIS LINE
   // Network/connectivity issues
   if (/Failed to fetch|network|unable to reach|refused to connect/i.test(message)) {
     return new Error(
@@ -232,7 +233,7 @@ const ensureWorkerProfileBaseRow = async (userId, source = {}) => {
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (existingProfileError) throw toReadableDatabaseSetupError(existingProfileError);
+  if (existingProfileError && existingProfileError.code !== 'PGRST116') throw toReadableDatabaseSetupError(existingProfileError);
 
   const existingFullName = getNullableString(existingProfile?.full_name);
   const existingEmail = getNullableString(existingProfile?.email);
@@ -261,25 +262,34 @@ const ensureWorkerProfileBaseRow = async (userId, source = {}) => {
 
   const nameParts = resolveNameParts(source, {}, { full_name: existingFullName });
 
-  const { error: profileUpsertError } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        user_id: userId,
-        first_name: getNullableString(nameParts.firstName),
-        middle_name: getNullableString(nameParts.middleName),
-        last_name: getNullableString(nameParts.lastName),
-        full_name: resolvedFullName,
-        email: resolvedEmail,
-        is_client: true,
-        is_worker: true,
-        role: 'worker',
-        updated_at: getTimestamp(),
-      },
-      { onConflict: 'user_id' }
-    );
+  const profilePayload = {
+    user_id: userId,
+    first_name: getNullableString(nameParts.firstName),
+    middle_name: getNullableString(nameParts.middleName),
+    last_name: getNullableString(nameParts.lastName),
+    full_name: resolvedFullName,
+    email: resolvedEmail,
+    is_client: true,
+    is_worker: true,
+    role: 'worker',
+    updated_at: getTimestamp(),
+  };
 
-  if (profileUpsertError) throw toReadableDatabaseSetupError(profileUpsertError);
+  // If profile exists, update it; otherwise insert it
+  if (existingProfile) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(profilePayload)
+      .eq('user_id', userId);
+
+    if (updateError) throw toReadableDatabaseSetupError(updateError);
+  } else {
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert([profilePayload]);
+
+    if (insertError) throw toReadableDatabaseSetupError(insertError);
+  }
 };
 
 const mapLocation = (profileRow) => ({
@@ -349,6 +359,40 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
   };
 };
 
+const reactivateExpiredSuspensionIfNeeded = async (userId, profileRow = null) => {
+  if (!userId || !profileRow) return profileRow;
+
+  const accountStatus = getCleanString(profileRow.account_status || 'active').toLowerCase() || 'active';
+  const suspendedUntil = profileRow.suspended_until || null;
+  if (accountStatus !== 'suspended' || !suspendedUntil) return profileRow;
+
+  const suspendedUntilDate = new Date(suspendedUntil);
+  if (Number.isNaN(suspendedUntilDate.getTime()) || suspendedUntilDate.getTime() > Date.now()) {
+    return profileRow;
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      account_status: 'active',
+      suspended_reason: null,
+      suspended_until: null,
+      suspended_at: null,
+      updated_at: getTimestamp(),
+    })
+    .eq('user_id', userId);
+
+  if (error) throw toReadableDatabaseSetupError(error);
+
+  return {
+    ...profileRow,
+    account_status: 'active',
+    suspended_reason: null,
+    suspended_until: null,
+    suspended_at: null,
+  };
+};
+
 export const fetchUserProfileBundle = async (userId) => {
   if (!userId) return null;
 
@@ -360,6 +404,8 @@ export const fetchUserProfileBundle = async (userId) => {
 
   if (profileError) throw toReadableDatabaseSetupError(profileError);
 
+  const normalizedProfileRow = await reactivateExpiredSuspensionIfNeeded(userId, profileRow);
+
   const { data: workerRow, error: workerError } = await supabase
     .from('worker_profiles')
     .select('*')
@@ -368,7 +414,7 @@ export const fetchUserProfileBundle = async (userId) => {
 
   if (workerError) throw toReadableDatabaseSetupError(workerError);
 
-  return mapAppProfile(profileRow, workerRow);
+  return mapAppProfile(normalizedProfileRow, workerRow);
 };
 
 export const upsertClientProfile = async (user, source = {}) => {
@@ -380,14 +426,27 @@ export const upsertClientProfile = async (user, source = {}) => {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (existingError) throw toReadableDatabaseSetupError(existingError);
+  if (existingError && existingError.code !== 'PGRST116') throw toReadableDatabaseSetupError(existingError);
 
   const payload = buildProfilePayload(user, source, existingProfile);
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(payload, { onConflict: 'user_id' });
 
-  if (error) throw toReadableDatabaseSetupError(error);
+  // If profile exists, use UPDATE; otherwise use INSERT
+  if (existingProfile?.full_name || existingProfile?.email) {
+    // Profile already exists (created by trigger or previous signup), so UPDATE
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('user_id', user.id);
+
+    if (updateError) throw toReadableDatabaseSetupError(updateError);
+  } else {
+    // Profile doesn't exist, INSERT it
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert([payload]);
+
+    if (insertError) throw toReadableDatabaseSetupError(insertError);
+  }
 
   return fetchUserProfileBundle(user.id);
 };
@@ -445,9 +504,11 @@ export const updateUserProfileFields = async (user, fields = {}) => {
     updated_at: getTimestamp(),
   };
 
+  // Profile exists (we just fetched it), so UPDATE it
   const { error } = await supabase
     .from('profiles')
-    .upsert(payload, { onConflict: 'user_id' });
+    .update(payload)
+    .eq('user_id', user.id);
 
   if (error) throw toReadableDatabaseSetupError(error);
 
@@ -490,6 +551,39 @@ export const fetchAdminAccounts = async () => {
     .order('updated_at', { ascending: false });
 
   if (error) throw toReadableDatabaseSetupError(error);
+
+  const expiredSuspensions = (data || []).filter((row) => {
+    const accountStatus = getCleanString(row.account_status || 'active').toLowerCase() || 'active';
+    if (accountStatus !== 'suspended' || !row.suspended_until) return false;
+    const suspendedUntilDate = new Date(row.suspended_until);
+    return !Number.isNaN(suspendedUntilDate.getTime()) && suspendedUntilDate.getTime() <= Date.now();
+  });
+
+  if (expiredSuspensions.length > 0) {
+    await Promise.all(expiredSuspensions.map(async (row) => {
+      const { error: reactivateError } = await supabase
+        .from('profiles')
+        .update({
+          account_status: 'active',
+          suspended_reason: null,
+          suspended_until: null,
+          suspended_at: null,
+          updated_at: getTimestamp(),
+        })
+        .eq('user_id', row.user_id);
+
+      if (reactivateError) throw toReadableDatabaseSetupError(reactivateError);
+    }));
+
+    const { data: refreshedData, error: refreshError } = await supabase
+      .from('profiles')
+      .select('user_id, first_name, middle_name, last_name, full_name, email, role, account_status, disabled_reason, suspended_reason, suspended_until, disabled_at, suspended_at, updated_at, created_at')
+      .order('updated_at', { ascending: false });
+
+    if (refreshError) throw toReadableDatabaseSetupError(refreshError);
+
+    return (refreshedData || []).map(normalizeAdminAccountRow);
+  }
 
   return (data || []).map(normalizeAdminAccountRow);
 };
@@ -764,59 +858,54 @@ export const syncAuthenticatedUserProfile = async (user, source = {}) => {
 // SELLER MANAGEMENT FUNCTIONS
 // ============================================================================
 
-const buildSellerPayload = (userId, source = {}) => ({
-  user_id: userId,
-  display_name: getNullableString(source.fullName || source.displayName),
-  headline: getNullableString(source.headline),
-  tagline: getNullableString(source.tagline),
-  about: getNullableString(source.bio || source.about),
-  is_verified: Boolean(source.isVerified),
-  verification_status: getCleanString(source.verificationStatus) || 'pending',
-  response_time_minutes: getNullableNumber(source.responseTimeMinutes) || 1440,
-  languages: Array.isArray(source.languages) ? source.languages : [],
-  default_currency: getCleanString(source.defaultCurrency) || 'PHP',
-  business_hours: source.businessHours || null,
-  search_meta: {
-    name: getNullableString(source.fullName),
-    service_type: getNullableString(source.serviceType || source.customServiceType),
-    bio: getNullableString(source.bio),
-    location: {
-      city: getNullableString(source.city),
-      province: getNullableString(source.province),
-    },
-  },
-  updated_at: getTimestamp(),
-});
+// ============================================================================
+// SIMPLIFIED SELLER PAYLOAD BUILDER
+// ============================================================================
+// Purpose: Take onboarding form data and write it directly to sellers table.
+// Ensures fullName → display_name, bio → tagline/about, matching the manual SQL.
+// ============================================================================
 
-const buildDefaultSellerFromWorkerProfile = (userId, workerProfile = {}, profileData = {}) => {
-  const displayName = profileData?.fullName || profileData?.full_name || workerProfile?.fullName || '';
-  const headline = [
-    workerProfile?.serviceType,
-    workerProfile?.customServiceType,
-  ].filter(Boolean).join(' - ') || 'Service Provider';
+const buildSellerPayload = (userId, onboardingData = {}, existingSeller = null) => {
+  // Extract directly from onboarding form (or fall back to existing seller)
+  const displayName = getNullableString(
+    onboardingData.fullName
+    || onboardingData.full_name
+    || existingSeller?.display_name
+    || ''
+  );
 
-  const about = workerProfile?.bio || '';
-  const location = profileData?.location || {};
+  const bio = getNullableString(onboardingData.bio || existingSeller?.about || '');
+  const serviceType = getNullableString(
+    onboardingData.serviceType
+    || onboardingData.customServiceType
+    || existingSeller?.search_meta?.service_type
+    || ''
+  );
+
+  const city = getNullableString(onboardingData.city || existingSeller?.search_meta?.location?.city || '');
+  const province = getNullableString(onboardingData.province || existingSeller?.search_meta?.location?.province || '');
+  const bookingMode = getCleanString(onboardingData.bookingMode || existingSeller?.search_meta?.booking_mode || '');
 
   return {
     user_id: userId,
-    display_name: getNullableString(displayName),
-    headline: getNullableString(headline),
-    tagline: null,
-    about: getNullableString(about),
-    is_verified: false,
+    display_name: displayName,
+    headline: getNullableString(serviceType) || 'Service Provider',
+    tagline: bio, // bio → tagline (direct mapping)
+    about: bio, // bio → about (direct mapping)
+    is_verified: Boolean(existingSeller?.is_verified ?? false),
     verification_status: 'pending',
     response_time_minutes: 1440,
     languages: ['en'],
     default_currency: 'PHP',
     business_hours: null,
     search_meta: {
-      name: getNullableString(displayName),
-      service_type: getNullableString(workerProfile?.serviceType || workerProfile?.customServiceType),
-      bio: getNullableString(about),
+      name: displayName, // display_name → search_meta.name
+      service_type: serviceType,
+      bio, // bio → search_meta.bio
+      booking_mode: bookingMode || null,
       location: {
-        city: getNullableString(location.city),
-        province: getNullableString(location.province),
+        city,
+        province,
       },
     },
     updated_at: getTimestamp(),
@@ -826,7 +915,17 @@ const buildDefaultSellerFromWorkerProfile = (userId, workerProfile = {}, profile
 export const createOrUpdateSeller = async (userId, source = {}) => {
   if (!userId) throw new Error('Missing user ID for seller account.');
 
-  const payload = buildSellerPayload(userId, source);
+  const { data: existingSeller, error: existingSellerError } = await supabase
+    .from('sellers')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingSellerError && existingSellerError.code !== 'PGRST116') {
+    throw toReadableDatabaseSetupError(existingSellerError);
+  }
+
+  const payload = buildSellerPayload(userId, source, existingSeller || null);
   const { data: sellerData, error: upsertError } = await supabase
     .from('sellers')
     .upsert(payload, { onConflict: 'user_id' })
@@ -938,20 +1037,121 @@ export const createSellerService = async (sellerId, serviceData = {}) => {
   return data;
 };
 
-export const syncWorkerSetup = async (userId, source = {}) => {
-  // Step 1: Update worker profile
-  const profile = await upsertWorkerProfile(userId, source);
+const buildDefaultServiceFromOnboarding = (source = {}) => {
+  const serviceLabel = getNullableString(source.serviceType || source.customServiceType) || 'Service';
+  const serviceTitle = getNullableString(source.fullName || source.full_name) || serviceLabel;
+  const bookingMode = getNullableString(source.bookingMode) || 'with-slots';
+  const rateBasis = getCleanString(source.rateBasis) || 'per-project';
+  const pricingModel = getServicePricingModel(source);
+  const basePrice =
+    getNullableNumber(source.fixedPrice)
+    || getNullableNumber(source.hourlyRate)
+    || getNullableNumber(source.dailyRate)
+    || getNullableNumber(source.weeklyRate)
+    || getNullableNumber(source.monthlyRate)
+    || getNullableNumber(source.projectRate)
+    || null;
 
-  // Step 2: Create or update seller record from worker setup data
-  try {
-    const sellerData = buildDefaultSellerFromWorkerProfile(userId, source, profile);
-    await createOrUpdateSeller(userId, sellerData);
-  } catch (sellerError) {
-    console.error('Failed to create seller record during worker setup:', sellerError);
-    // Continue anyway - the worker profile was created successfully
+  return {
+    title: serviceTitle,
+    slug: `default-${serviceTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+    shortDescription: getNullableString(source.bio) || serviceLabel,
+    description: getNullableString(source.bio) || serviceLabel,
+    priceType: pricingModel === 'inquiry' ? 'custom' : 'fixed',
+    basePrice,
+    currency: 'PHP',
+    durationMinutes: null,
+    metadata: {
+      pricing_model: pricingModel,
+      booking_mode: bookingMode,
+      rate_basis: rateBasis,
+    },
+  };
+};
+
+export const syncWorkerSetup = async (userId, source = {}) => {
+  if (!userId) throw new Error('Missing user ID for worker setup.');
+
+  // ============================================================================
+  // STEP 1: Update profiles table (basic account info)
+  // ============================================================================
+  const profilePayload = {
+    user_id: userId,
+    full_name: getNullableString(source.fullName || source.full_name) || 'Service Provider',
+    is_worker: true,
+    role: 'worker',
+    updated_at: getTimestamp(),
+  };
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update(profilePayload)
+    .eq('user_id', userId);
+
+  if (profileError) throw toReadableDatabaseSetupError(profileError);
+
+  // ============================================================================
+  // STEP 2: Update worker_profiles table (worker-specific details)
+  // ============================================================================
+  const workerPayload = buildWorkerProfilePayload(userId, source);
+  const { error: workerError } = await supabase
+    .from('worker_profiles')
+    .upsert(workerPayload, { onConflict: 'user_id' });
+
+  if (workerError) throw toReadableDatabaseSetupError(workerError);
+
+  // ============================================================================
+  // STEP 3: Update sellers table (public seller profile)
+  // ============================================================================
+  // Map onboarding data directly to sellers columns
+  const sellerPayload = {
+    user_id: userId,
+    display_name: getNullableString(source.fullName || source.full_name) || 'Service Provider',
+    headline: getNullableString(source.serviceType || source.customServiceType) || 'Service Provider',
+    tagline: getNullableString(source.bio) || null,
+    about: getNullableString(source.bio) || null,
+    is_verified: false,
+    verification_status: 'pending',
+    response_time_minutes: 1440,
+    languages: ['en'],
+    default_currency: 'PHP',
+    business_hours: null,
+    search_meta: {
+      name: getNullableString(source.fullName || source.full_name) || 'Service Provider',
+      service_type: getNullableString(source.serviceType || source.customServiceType) || null,
+      bio: getNullableString(source.bio) || null,
+      booking_mode: getNullableString(source.bookingMode) || null,
+      location: {
+        city: getNullableString(source.city) || null,
+        province: getNullableString(source.province) || null,
+      },
+    },
+    updated_at: getTimestamp(),
+  };
+
+  const { error: sellerError } = await supabase
+    .from('sellers')
+    .upsert(sellerPayload, { onConflict: 'user_id' });
+
+  if (sellerError) throw toReadableDatabaseSetupError(sellerError);
+
+  // ============================================================================
+  // STEP 4: Ensure at least one service row exists for dashboard/My Work
+  // ============================================================================
+  const existingServices = await fetchSellerServices(userId);
+  if (!existingServices || existingServices.length === 0) {
+    const defaultServicePayload = buildDefaultServiceFromOnboarding(source);
+    try {
+      await createSellerService(userId, defaultServicePayload);
+    } catch (serviceError) {
+      console.error('Failed to create default service during worker setup:', serviceError);
+    }
   }
 
-  return profile;
+  // ============================================================================
+  // STEP 5: Fetch and return complete profile
+  // ============================================================================
+  return fetchUserProfileBundle(userId);
 };
 
 export const uploadProfilePhoto = async ({ userId, file }) => {

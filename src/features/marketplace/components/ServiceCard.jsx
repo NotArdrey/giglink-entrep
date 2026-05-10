@@ -44,8 +44,9 @@ const styles = {
   serviceTypePill: {
     alignSelf: 'flex-start',
     borderRadius: '999px',
-    backgroundColor: 'var(--giglink-badge-bg)',
-    color: 'var(--giglink-badge-text)',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--giglink-accent)',
+    color: 'var(--giglink-accent)',
     fontSize: '0.74rem',
     fontWeight: 800,
     letterSpacing: '0.03em',
@@ -294,10 +295,10 @@ function ServiceCard({ provider, onViewProfile, onViewReviews }) {
     >
       <div style={styles.cardContent}>
         {/* SECTION 1: SERVICE TYPE LABEL - Small "SERVICE" pill indicator */}
-        <span style={styles.serviceTypePill}>Service</span>
+        <span style={styles.serviceTypePill}>{displayServiceType || 'Service'}</span>
 
-        {/* SECTION 2: SERVICE TYPE HEADING - Large primary headline (e.g., "Tutor", "Cleaner") */}
-        <h3 style={styles.serviceTypeHeading}>{displayServiceType}</h3>
+        {/* SECTION 2: SERVICE TITLE - Large primary headline (e.g., "Tutor 2:52am") */}
+        <h3 style={styles.serviceTypeHeading}>{provider.title || displayServiceType}</h3>
 
         {/* SECTION 3: DESCRIPTION - What the provider offers (2-3 sentences) */}
         <p style={styles.description}>{provider.description}</p>
@@ -320,7 +321,11 @@ function ServiceCard({ provider, onViewProfile, onViewReviews }) {
 
         {/* SECTION 6: PROVIDER IDENTITY - Avatar, name, experience (moved to bottom per service-first design) */}
         <div style={styles.providerRow}>
-          <img src={provider.photo} alt={provider.name} style={styles.avatar} />
+          {provider.photo ? (
+            <img src={provider.photo} alt={provider.name} style={styles.avatar} />
+          ) : (
+            <div style={{ ...styles.avatar, backgroundColor: '#e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', color: '#999' }}>👤</div>
+          )}
           <div style={styles.providerMeta}>
             <p style={styles.providerName}>{provider.name}</p>
             <p style={styles.providerSubline}>{provider.experience}+ years experience</p>
