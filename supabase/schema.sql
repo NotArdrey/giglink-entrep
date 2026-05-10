@@ -107,6 +107,8 @@ create table if not exists public.worker_profiles (
   service_type text,
   custom_service_type text,
   bio text,
+  age integer,
+  experience_years integer,
   pricing_model text not null default 'fixed',
   fixed_price numeric,
   hourly_rate numeric,
@@ -124,6 +126,9 @@ create table if not exists public.worker_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.worker_profiles add column if not exists age integer;
+alter table public.worker_profiles add column if not exists experience_years integer;
 
 alter table public.profiles enable row level security;
 alter table public.worker_profiles enable row level security;

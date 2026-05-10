@@ -1,10 +1,20 @@
 import { useState } from 'react';
+import { useForgotPasswordController } from '../hooks';
 
 function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
-  const [email, setEmail] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  // Initialize controller hook
+  const controller = useForgotPasswordController(
+    async (email) => {
+      // Callback when reset email is sent successfully
+      if (onSubmit) {
+        try {
+          await onSubmit(email);
+        } catch (error) {
+          console.error('Forgot password submission error in parent:', error);
+        }
+      }
+    }
+  );
 
   const [hoveredButton, setHoveredButton] = useState('');
 
@@ -146,30 +156,23 @@ function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    controller.setError('');
 
-    if (!email) {
-      setError('Please enter your email address');
+    if (!controller.email) {
+      controller.setError('Please enter your email address');
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email address');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(controller.email)) {
+      controller.setError('Please enter a valid email address');
       return;
     }
 
     try {
-      setIsLoading(true);
-      if (typeof onSubmit !== 'function') {
-        throw new Error('Password reset is not available right now.');
-      }
-
-      await onSubmit(email);
-      setIsLoading(false);
-      setIsSubmitted(true);
+      await controller.handleSubmit(controller.email);
     } catch (submitError) {
-      setIsLoading(false);
-      setError(submitError?.message || 'Unable to send password reset link.');
+      // Error is already set in controller
+      console.error('Forgot password submission error:', submitError);
     }
   };
 
@@ -188,17 +191,15 @@ function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
         </button>
         <h2 style={styles.heading}>Forgot Password?</h2>
         <p style={styles.subheading}>
-          {isSubmitted ? 'Check your email for reset link' : 'Enter your email to receive a password reset link'}
+          {controller.isSubmitted ? 'Check your email for reset link' : 'Enter your email to receive a password reset link'}
         </p>
 
-        {error && <div style={styles.errorMessage}>{error}</div>}
-
-        {isSubmitted ? (
+        {controller.isSubmitted ? (
           <div>
             <div style={styles.successMessage}>
               <div style={styles.successTitle}>✓ Success!</div>
               <div style={styles.successText}>
-                We've sent a password reset link to <strong>{email}</strong>. Open the link from your email to create a new password.
+                We've sent a password reset link to <strong>{controller.email}</strong>. Open the link from your email to create a new password.
               </div>
             </div>
 
@@ -206,9 +207,7 @@ function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
               Didn't receive the email? Check your spam folder or{' '}
               <button
                 onClick={() => {
-                  setIsSubmitted(false);
-                  setEmail('');
-                  setError('');
+                  controller.resetForm();
                 }}
                 onMouseEnter={() => setHoveredButton('reset')}
                 onMouseLeave={() => setHoveredButton('')}
@@ -224,25 +223,27 @@ function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
               <label style={styles.label}>Email Address</label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={controller.email}
+                onChange={(e) => controller.setEmail(e.target.value)}
                 style={styles.input}
                 placeholder="you@example.com"
               />
             </div>
 
+            {controller.error && <div style={styles.errorMessage}>{controller.error}</div>}
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={controller.isLoading}
               onMouseEnter={() => setHoveredButton('submit')}
               onMouseLeave={() => setHoveredButton('')}
               style={{
                 ...styles.button,
-                opacity: isLoading ? 0.7 : 1,
-                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: controller.isLoading ? 0.7 : 1,
+                cursor: controller.isLoading ? 'not-allowed' : 'pointer',
               }}
             >
-              {isLoading ? 'Sending...' : 'Send Reset Link'}
+              {controller.isLoading ? 'Sending...' : 'Send Reset Link'}
             </button>
           </form>
         )}

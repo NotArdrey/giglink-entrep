@@ -13,6 +13,8 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     fullName: '',
     serviceType: '',
     customServiceType: '',
+    age: '',
+    experienceYears: '',
     bio: '',
     pricingModel: 'fixed',
     fixedPrice: '',
@@ -48,11 +50,23 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
 
   const handleNext = () => {
     if (step === 1) {
-      const hasBasicFields = formData.fullName.trim() && formData.serviceType && formData.bio.trim();
+      const hasBasicFields = formData.fullName.trim() && formData.serviceType && formData.bio.trim() && formData.age && formData.experienceYears;
       const hasCustomService = formData.serviceType !== 'Others' || formData.customServiceType.trim().length > 0;
+      const ageValid = formData.age && Number(formData.age) > 0 && Number(formData.age) < 120;
+      const experienceValid = formData.experienceYears && Number(formData.experienceYears) >= 0;
 
       if (!hasBasicFields || !hasCustomService) {
-        setErrorMessage('Please complete all required fields in Step 1.');
+        setErrorMessage('Please complete all required fields in Step 1 (including Age and Years of Experience).');
+        return;
+      }
+
+      if (!ageValid) {
+        setErrorMessage('Please enter a valid age (between 1 and 119).');
+        return;
+      }
+
+      if (!experienceValid) {
+        setErrorMessage('Please enter valid years of experience (0 or more).');
         return;
       }
     }
@@ -251,6 +265,12 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
                 <input id="customServiceType" type="text" value={formData.customServiceType} onChange={(event) => updateField('customServiceType', event.target.value)} placeholder="Example: Pilot Service for Online Games" style={styles.input} />
               </>
             )}
+
+            <label htmlFor="age" style={styles.fieldLabel}>Age *</label>
+            <input id="age" type="number" min="1" max="119" value={formData.age} onChange={(event) => updateField('age', event.target.value)} placeholder="Enter your age" style={styles.input} />
+
+            <label htmlFor="experienceYears" style={styles.fieldLabel}>Years of Experience *</label>
+            <input id="experienceYears" type="number" min="0" value={formData.experienceYears} onChange={(event) => updateField('experienceYears', event.target.value)} placeholder="Enter years of experience" style={styles.input} />
 
             <label htmlFor="bio" style={styles.fieldLabel}>Bio</label>
             <textarea id="bio" value={formData.bio} onChange={(event) => updateField('bio', event.target.value)} placeholder="Tell clients about your experience and style" rows={4} style={styles.textarea}></textarea>

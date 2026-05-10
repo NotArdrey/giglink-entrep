@@ -6,7 +6,7 @@ import PaymentModal from '../components/PaymentModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 // Import service and controller hooks
-import { getMockBookings } from '../services/bookingService';
+import { getMockBookings, bookingService } from '../services/bookingService';
 import {
   useBookingListController,
   usePaymentController,
@@ -113,10 +113,6 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ========================================================================
-  // COMPUTED VALUES & HELPER FUNCTIONS
-  // ========================================================================
-
   const parseDateOnly = (dateString) => {
     const date = new Date(dateString);
     date.setHours(0, 0, 0, 0);
@@ -163,151 +159,688 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     return `${channel.toUpperCase()}-TRX-${dateStamp}-${bookingId}-${suffix}`;
   };
 
+  const pushHeaderNotification = (title, message) => {
+    const id = `notif-${Date.now()}-${Math.floor(Math.random() * 999)}`;
+    setHeaderNotifications((prev) => [
+      {
+        id,
+        title,
+        message,
+        time: 'just now',
+        isRead: false,
+      },
+      ...prev,
+    ]);
+  };
+
+  const [bookings, setBookings] = useState([
+    {
+      id: 1,
+      workerId: 101,
+      workerName: 'Maria Santos',
+      serviceType: 'House Cleaning',
+      status: 'Negotiating',
+      requestDate: '2026-03-20',
+      description: 'Full house cleaning (3 bedrooms)',
+      quoteAmount: 2500,
+      quoteApproved: false,
+      selectedSlot: null,
+      paymentMethod: null,
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+    },
+    {
+      id: 2,
+      workerId: 102,
+      workerName: 'Juan dela Cruz',
+      serviceType: 'Tutoring',
+      status: 'Active Service',
+      requestDate: '2026-03-19',
+      description: 'Math tutoring - High School Level (recurring weekly sessions)',
+      quoteAmount: 3200,
+      quoteApproved: true,
+      selectedSlot: null,
+      paymentMethod: 'after-service-gcash',
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
+      billingCycle: 'weekly',
+      serviceActive: true,
+      lastChargeDate: '2026-03-14',
+      nextChargeDate: '2026-03-21',
+      stopRequested: false,
+      workerStopApproved: false,
+    },
+    {
+      id: 3,
+      workerId: 103,
+      workerName: 'Ana Reyes',
+      serviceType: 'Electrical Repair',
+      status: 'Quote Sent',
+      requestDate: '2026-03-15',
+      description: 'Fix broken circuit breaker',
+      quoteAmount: 1500,
+      quoteApproved: false,
+      selectedSlot: null,
+      paymentMethod: null,
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'gcash-only',
+    },
+    {
+      id: 4,
+      workerId: 104,
+      workerName: 'Carlo Mendoza',
+      serviceType: 'Aircon Cleaning',
+      status: 'Completed Service',
+      requestDate: '2026-03-10',
+      description: '1.5HP split-type indoor and outdoor cleaning',
+      quoteAmount: 1800,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-12',
+        timeBlock: { id: 'morning', startTime: '09:00 AM', endTime: '11:00 AM', slotsLeft: 0 },
+      },
+      paymentMethod: 'gcash-advance',
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
+      paymentProofSubmitted: false,
+      paymentReference: 'GCASH-TRX-20260312-4-8832',
+      transactionId: 'GCASH-TRX-20260312-4-8832',
+      canRate: false,
+      rating: null,
+      review: '',
+    },
+    {
+      id: 5,
+      workerId: 105,
+      workerName: 'Joshua Paul Santos',
+      serviceType: 'Pilot Service for Valorant',
+      status: 'Awaiting GCash Payment',
+      requestDate: '2026-03-20',
+      description: 'Rank support session - one game set',
+      quoteAmount: 200,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-22',
+        timeBlock: { id: 'night', startTime: '08:00 PM', endTime: '10:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'gcash-advance',
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
+      paymentProofSubmitted: false,
+      paymentReference: '',
+      canRate: false,
+      rating: null,
+      review: '',
+    },
+    {
+      id: 6,
+      workerId: 106,
+      workerName: 'Lara De Jesus',
+      serviceType: 'Pet Grooming',
+      status: 'Service Scheduled',
+      requestDate: '2026-03-21',
+      description: 'Home service grooming for small breed dog',
+      quoteAmount: 950,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-23',
+        timeBlock: { id: 'afternoon', startTime: '02:00 PM', endTime: '04:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'after-service-cash',
+      allowGcashAdvance: false,
+      allowAfterService: true,
+      afterServicePaymentType: 'cash-only',
+      paymentProofSubmitted: false,
+      paymentReference: '',
+      transactionId: '',
+      cashConfirmationStatus: 'awaiting-client-scan',
+      cashVerifierQrId: 'CASHQR-106-20260323',
+      submittedCashAmount: null,
+      canRate: false,
+      rating: null,
+      review: '',
+    },
+    {
+      id: 7,
+      workerId: 107,
+      workerName: 'Ralph Mendoza',
+      serviceType: 'Academic Mentoring',
+      status: 'Active Service',
+      requestDate: '2026-03-01',
+      description: 'Monthly mentoring plan with weekly progress check-ins',
+      quoteAmount: 12000,
+      quoteApproved: true,
+      selectedSlot: null,
+      paymentMethod: 'after-service-gcash',
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
+      paymentProofSubmitted: false,
+      paymentReference: '',
+      canRate: false,
+      rating: null,
+      review: '',
+      billingCycle: 'monthly',
+      serviceActive: true,
+      lastChargeDate: '2026-02-21',
+      nextChargeDate: '2026-03-23',
+      stopRequested: false,
+      workerStopApproved: false,
+    },
+    {
+      id: 8,
+      workerId: 108,
+      workerName: 'Diane Flores',
+      serviceType: 'Home Plumbing Repair',
+      status: 'Completed Service',
+      requestDate: '2026-03-16',
+      description: 'Kitchen sink leak fix with valve replacement.',
+      quoteAmount: 1450,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-18',
+        timeBlock: { id: 'late-afternoon', startTime: '04:00 PM', endTime: '06:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'after-service-cash',
+      allowGcashAdvance: false,
+      allowAfterService: true,
+      afterServicePaymentType: 'cash-only',
+      paymentProofSubmitted: true,
+      paymentReference: 'CASH-TRX-20260318-8-4517',
+      transactionId: 'CASH-TRX-20260318-8-4517',
+      cashConfirmationStatus: 'approved',
+      cashVerifierQrId: 'CASHQR-108-20260318',
+      submittedCashAmount: 1450,
+      canRate: true,
+      rating: 5,
+      review: 'Secure and smooth payment confirmation flow.',
+    },
+    {
+      id: 9,
+      workerId: 109,
+      workerName: 'Nico Alvarez',
+      serviceType: 'Home Deep Cleaning',
+      status: 'Cancelled (Cash)',
+      requestDate: '2026-03-22',
+      description: 'Client cancelled a cash-on-service booking before meetup.',
+      quoteAmount: 2200,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-24',
+        timeBlock: { id: 'morning', startTime: '10:00 AM', endTime: '12:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'after-service-cash',
+      allowGcashAdvance: false,
+      allowAfterService: true,
+      afterServicePaymentType: 'cash-only',
+      cancellationReason: 'Client requested cancellation due to schedule conflict.',
+      cancelledBy: 'Client',
+      canRate: false,
+      rating: null,
+      review: '',
+    },
+    {
+      id: 10,
+      workerId: 110,
+      workerName: 'Mara Lim',
+      serviceType: 'Weekly Tutoring',
+      status: 'Refund Processing',
+      requestDate: '2026-03-17',
+      description: 'Advance payment received, then service was cancelled and refund was initiated.',
+      quoteAmount: 2800,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-19',
+        timeBlock: { id: 'night', startTime: '07:00 PM', endTime: '09:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'gcash-advance',
+      allowGcashAdvance: true,
+      allowAfterService: true,
+      afterServicePaymentType: 'both',
+      gcashNumber: '09054891105',
+      qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
+      paymentProofSubmitted: true,
+      paymentReference: 'GCASH-TRX-20260318-10-6821',
+      transactionId: 'GCASH-TRX-20260318-10-6821',
+      refundStatus: 'processing',
+      refundAmount: 2800,
+      refundReference: 'REFUND-REQ-20260324-10',
+      refundReason: 'Worker unavailable for scheduled date.',
+      canRate: false,
+      rating: null,
+      review: '',
+    },
+    {
+      id: 11,
+      workerId: 111,
+      workerName: 'Rico Santos',
+      serviceType: 'Website Design',
+      status: 'Completed Service',
+      requestDate: '2026-03-23',
+      description: 'Landing page completed, but client requested a partial refund due to missing sections.',
+      quoteAmount: 4200,
+      quoteApproved: true,
+      selectedSlot: {
+        date: '2026-03-25',
+        timeBlock: { id: 'afternoon', startTime: '01:00 PM', endTime: '03:00 PM', slotsLeft: 0 },
+      },
+      paymentMethod: 'gcash-advance',
+      allowGcashAdvance: true,
+      allowAfterService: false,
+      afterServicePaymentType: 'gcash-only',
+      paymentProofSubmitted: true,
+      paymentReference: 'GCASH-TRX-20260325-11-8841',
+      transactionId: 'GCASH-TRX-20260325-11-8841',
+      refundEligible: true,
+      refundStatus: null,
+      refundReason: 'Client requested a partial refund after delivery review.',
+      refundReference: null,
+      canRate: true,
+      rating: 4,
+      review: 'Good work, but not everything requested was included.',
+    },
+  ]);
+
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
   const isRefundBooking = (booking) => Boolean(booking.refundStatus) || booking.status === 'Refund Processing' || booking.status === 'Refunded';
   const isCancelledCashBooking = (booking) => booking.status === 'Cancelled (Cash)' && booking.paymentMethod === 'after-service-cash';
 
-  // ========================================================================
-  // EVENT HANDLERS - Delegate to Controllers
-  // ========================================================================
-
-  // Chat navigation
-  const handleOpenChat = useCallback((bookingId) => {
+  const handleOpenChat = (bookingId) => {
     setSelectedBookingId(bookingId);
     setUiState('chat');
-  }, []);
+  };
 
-  // Slot selection
-  const handleOpenSlotSelection = useCallback(() => {
+  const handleOpenSlotSelection = () => {
     setUiState('slots');
-  }, []);
+  };
 
-  // Rating workflow
-  const handleOpenRating = useCallback((bookingId) => {
-    ratingCtrl.handleOpenRating(bookingId);
-  }, [ratingCtrl]);
+  const handleOpenRating = (bookingId) => {
+    setRatingTargetId(bookingId);
+    setRatingValue(5);
+    setRatingHover(0);
+    setRatingComment('');
+  };
 
-  const handleSubmitRating = useCallback(() => {
-    const booking = bookingListCtrl.getBooking(ratingCtrl.ratingTargetId);
-    if (booking) {
-      ratingCtrl.handleSubmitRating(booking);
-    }
-  }, [ratingCtrl, bookingListCtrl]);
+  const handleOpenPaymentProofModal = (bookingId) => {
+    setPaymentProofBookingId(bookingId);
+    setProofFileName('');
+    setReferenceNo('');
+    setPaymentProofError('');
+  };
 
-  const handleLeaveRating = useCallback((payload) => {
-    ratingCtrl.handleLeaveRating(payload);
-  }, [ratingCtrl]);
+  const handleOpenCashConfirmModal = (bookingId) => {
+    setCashConfirmBookingId(bookingId);
+    setCashEnteredAmount('');
+    setCashReviewState('idle');
+    setCashReviewMessage('');
+  };
 
-  // Payment workflow
-  const handleOpenPaymentProofModal = useCallback((bookingId) => {
-    paymentCtrl.handleOpenPaymentProofModal(bookingId);
-  }, [paymentCtrl]);
-
-  const handleProofFileChange = useCallback((event) => {
-    paymentCtrl.handleProofFileChange(event);
-  }, [paymentCtrl]);
-
-  const handleSubmitPaymentProof = useCallback(() => {
-    const booking = bookingListCtrl.getBooking(paymentCtrl.paymentProofBookingId);
-    if (booking) {
-      paymentCtrl.handleSubmitPaymentProof(booking, isRecurringBilling(booking));
-    }
-  }, [paymentCtrl, bookingListCtrl, isRecurringBilling]);
-
-  const handleSelectPaymentMethod = useCallback((bookingId, paymentMethod) => {
-    const booking = bookingListCtrl.getBooking(bookingId);
-    if (booking) {
-      paymentCtrl.handleSelectPaymentMethod(booking, paymentMethod);
-      setUiState('confirmed');
-      
-      // Show notification for cash payments
-      if (paymentMethod === 'after-service-cash') {
-        pushHeaderNotification(
-          'Cash QR Ready',
-          `Worker ${booking.workerName} generated a Cash Confirmation QR. Scan and submit amount after meetup.`
-        );
-      }
-    }
-  }, [paymentCtrl, bookingListCtrl, pushHeaderNotification]);
-
-  // Cash confirmation workflow
-  const handleOpenCashConfirmModal = useCallback((bookingId) => {
-    cashCtrl.handleOpenCashConfirmModal(bookingId);
-  }, [cashCtrl]);
-
-  const handleSubmitCashConfirmation = useCallback(() => {
-    const booking = bookingListCtrl.getBooking(cashCtrl.cashConfirmBookingId);
-    if (booking) {
-      cashCtrl.handleSubmitCashConfirmation(booking);
-    }
-  }, [cashCtrl, bookingListCtrl]);
-
-  const handleOpenTransactionProof = useCallback((bookingId) => {
+  const handleOpenTransactionProof = (bookingId) => {
     setTransactionProofBookingId(bookingId);
-  }, []);
+  };
 
-  // Refund workflow
-  const handleRequestRefund = useCallback((bookingId, reason) => {
-    const booking = bookingListCtrl.getBooking(bookingId);
-    if (booking) {
-      refundCtrl.handleRequestRefund(booking, reason);
+  const handleProofFileChange = (event) => {
+    const selectedFile = event.target.files && event.target.files[0];
+    setProofFileName(selectedFile ? selectedFile.name : '');
+  };
+
+  const handleSubmitPaymentProof = () => {
+    if (!proofFileName && !referenceNo.trim()) {
+      setPaymentProofError('Please upload proof of transaction or enter a reference number.');
+      return;
     }
-  }, [refundCtrl, bookingListCtrl]);
 
-  const handleConfirmRefundReceived = useCallback((bookingId) => {
-    const booking = bookingListCtrl.getBooking(bookingId);
-    if (booking) {
-      refundCtrl.handleConfirmRefundReceived(booking);
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === paymentProofBookingId
+          ? (() => {
+              if (isRecurringBilling(booking)) {
+                const chargeDate = booking.nextChargeDate || new Date().toISOString().slice(0, 10);
+                return {
+                  ...booking,
+                  paymentProofSubmitted: true,
+                  paymentReference: referenceNo.trim(),
+                  status: 'Active Service',
+                  canRate: false,
+                  lastChargeDate: chargeDate,
+                  nextChargeDate: getNextChargeDate(booking, chargeDate),
+                };
+              }
+
+              return {
+                ...booking,
+                paymentProofSubmitted: true,
+                paymentReference: referenceNo.trim(),
+                status: 'Payment Submitted',
+                canRate: true,
+              };
+            })()
+          : booking
+      )
+    );
+
+    setPaymentProofBookingId(null);
+    setProofFileName('');
+    setReferenceNo('');
+    setPaymentProofError('');
+    setPaymentStatusMessage('Payment proof submitted. Please check My Bookings for the updated status.');
+    setShowPaymentStatusNotice(true);
+    setTimeout(() => setShowPaymentStatusNotice(false), 2600);
+  };
+
+  const handleSubmitCashConfirmation = () => {
+    if (!cashConfirmBookingId) return;
+
+    const targetBooking = bookings.find((booking) => booking.id === cashConfirmBookingId);
+    if (!targetBooking) return;
+
+    const parsedAmount = Number(cashEnteredAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setCashReviewMessage('Enter a valid cash amount before sending for worker review.');
+      setCashReviewState('error');
+      return;
     }
-  }, [refundCtrl, bookingListCtrl]);
 
-  // Slot and payment confirmation
-  const handleConfirmSlot = useCallback((bookingId, slotInfo) => {
-    bookingListCtrl.updateBooking(bookingId, {
-      selectedSlot: slotInfo,
-      status: 'Slot Selected - Payment Pending',
-    });
-    setUiState('payment');
-  }, [bookingListCtrl]);
+    const requestId = `cash-request-${cashConfirmBookingId}-${Date.now()}`;
 
-  // Quote operations
-  const handleApproveQuote = useCallback((bookingId) => {
-    bookingListCtrl.handleApproveQuote(bookingId);
+    setCashReviewState('pending');
+    setCashReviewMessage('Cash confirmation sent to the worker review queue.');
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === cashConfirmBookingId
+          ? {
+              ...booking,
+              cashConfirmationStatus: 'pending-worker-review',
+              submittedCashAmount: parsedAmount,
+              status: 'Cash Verification Pending',
+              paymentProofSubmitted: true,
+              transactionId: '',
+              paymentReference: '',
+            }
+          : booking
+      )
+    );
+
+    const existingRequests = (() => {
+      try {
+        const raw = window.localStorage.getItem(CASH_CONFIRMATION_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const nextRequests = [
+      ...existingRequests.filter((request) => String(request.bookingId) !== String(cashConfirmBookingId)),
+      {
+        id: requestId,
+        bookingId: cashConfirmBookingId,
+        clientName: 'Client',
+        workerName: targetBooking.workerName,
+        serviceType: targetBooking.serviceType,
+        submittedCashAmount: parsedAmount,
+        expectedCashAmount: targetBooking.quoteAmount,
+        status: 'pending-worker-review',
+        transactionId: '',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    window.localStorage.setItem(CASH_CONFIRMATION_REQUESTS_KEY, JSON.stringify(nextRequests));
+
+    pushHeaderNotification(
+      'Cash Confirmation Sent',
+      `Your cash payment for ${targetBooking.serviceType} is now waiting for worker verification.`
+    );
+
+    setPaymentStatusMessage('Cash confirmation submitted. Waiting for worker verification.');
+    setShowPaymentStatusNotice(true);
+    setTimeout(() => setShowPaymentStatusNotice(false), 3200);
+
+    setCashReviewMessage('Your cash confirmation is now in the worker review queue.');
+  };
+
+  const handleSubmitRating = () => {
+    if (!ratingTargetId) return;
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === ratingTargetId
+          ? {
+              ...booking,
+              rating: ratingValue,
+              review: ratingComment.trim(),
+              status: 'Completed Service',
+            }
+          : booking
+      )
+    );
+
+    setRatingTargetId(null);
+    setRatingValue(5);
+    setRatingHover(0);
+    setRatingComment('');
+  };
+
+  const handleLeaveRating = (payload) => {
+    if (!payload || !payload.bookingId) return;
+    setBookings((prev) => prev.map((b) => (b.id === payload.bookingId ? { ...b, rating: payload.rating, review: payload.comment || '', canRate: false } : b)));
+    pushHeaderNotification('Rating Submitted', `Thanks — your rating for booking #${payload.bookingId} was recorded (mock).`);
+  };
+
+  const handleApproveQuote = (bookingId) => {
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? { ...booking, quoteApproved: true, status: 'Awaiting Slot Selection', quoteRejectionReason: null }
+          : booking
+      )
+    );
     setUiState('chat');
-  }, [bookingListCtrl]);
+  };
 
-  const handleRejectQuote = useCallback((bookingId, reason) => {
-    bookingListCtrl.handleRejectQuote(bookingId, reason);
+  const handleRejectQuote = (bookingId, reason) => {
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              quoteApproved: false,
+              status: 'Quote Rejected',
+              quoteRejectionReason: reason,
+            }
+          : booking
+      )
+    );
+
     pushHeaderNotification('Quote Rejected', 'Your reason was sent to the worker so they can review or revise the quote.');
     setUiState('chat');
-  }, [bookingListCtrl, pushHeaderNotification]);
+  };
 
-  // Service control
-  const handleStopServiceAccepted = useCallback((bookingId) => {
-    bookingListCtrl.handleStopServiceAccepted(bookingId);
-  }, [bookingListCtrl]);
+  const handleStopServiceAccepted = (bookingId) => {
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status: 'Service Stopped',
+              serviceActive: false,
+              stopRequested: true,
+              workerStopApproved: true,
+              canRate: true,
+              nextChargeDate: null,
+            }
+          : booking
+      )
+    );
+  };
 
-  // Navigation
-  const handleBackToList = useCallback(() => {
+  const handleRequestRefund = (bookingId, reason) => {
+    const targetBooking = bookings.find((booking) => booking.id === bookingId);
+    if (!targetBooking) return;
+
+    const refundReference = `REFUND-REQ-${String(bookingId).padStart(4, '0')}-${Date.now().toString().slice(-4)}`;
+    const existingRequests = (() => {
+      try {
+        const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const nextRequests = [
+      ...existingRequests.filter((request) => String(request.bookingId) !== String(bookingId)),
+      {
+        id: `refund-request-${bookingId}-${Date.now()}`,
+        bookingId,
+        clientName: 'Client',
+        workerName: targetBooking.workerName,
+        serviceType: targetBooking.serviceType,
+        refundAmount: targetBooking.refundAmount || targetBooking.quoteAmount,
+        refundReason: reason,
+        refundReference,
+        status: 'requested',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    window.localStorage.setItem(REFUND_REQUESTS_KEY, JSON.stringify(nextRequests));
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status: 'Refund Processing',
+              refundStatus: 'requested',
+              refundReason: reason,
+              refundReference,
+              refundAmount: booking.refundAmount || booking.quoteAmount,
+            }
+          : booking
+      )
+    );
+
+    pushHeaderNotification(
+      'Refund Requested',
+      `Your refund request for ${targetBooking.serviceType} has been submitted and is awaiting review.`
+    );
+
+    setPaymentStatusMessage('Refund request submitted. The worker review queue will be notified.');
+    setShowPaymentStatusNotice(true);
+    setTimeout(() => setShowPaymentStatusNotice(false), 3200);
+  };
+
+  const handleConfirmRefundReceived = (bookingId) => {
+    const targetBooking = bookings.find((booking) => booking.id === bookingId);
+    if (!targetBooking) return;
+
+    const existingRequests = (() => {
+      try {
+        const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    const nextRequests = existingRequests.map((request) =>
+      String(request.bookingId) === String(bookingId)
+        ? { ...request, status: 'completed', completedAt: new Date().toISOString() }
+        : request
+    );
+
+    window.localStorage.setItem(REFUND_REQUESTS_KEY, JSON.stringify(nextRequests));
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status: 'Refunded',
+              refundStatus: 'approved',
+            }
+          : booking
+      )
+    );
+
+    pushHeaderNotification(
+      'Refund Confirmed',
+      `You confirmed receiving the refund for ${targetBooking.serviceType}.`
+    );
+  };
+
+  const handleConfirmSlot = (bookingId, slotInfo) => {
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? { ...booking, selectedSlot: slotInfo, status: 'Slot Selected - Payment Pending' }
+          : booking
+      )
+    );
+    setUiState('payment');
+  };
+
+  const handleSelectPaymentMethod = (bookingId, paymentMethod) => {
+    const targetBooking = bookings.find((booking) => booking.id === bookingId);
+
+    setBookings((prevBookings) =>
+      prevBookings.map((booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              paymentMethod,
+              status: paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled',
+              cashConfirmationStatus:
+                paymentMethod === 'after-service-cash'
+                  ? 'awaiting-client-scan'
+                  : booking.cashConfirmationStatus,
+              cashVerifierQrId:
+                paymentMethod === 'after-service-cash'
+                  ? booking.cashVerifierQrId || `CASHQR-${booking.workerId || booking.id}-${booking.id}`
+                  : booking.cashVerifierQrId,
+              submittedCashAmount: paymentMethod === 'after-service-cash' ? null : booking.submittedCashAmount,
+            }
+          : booking
+      )
+    );
+
+    if (paymentMethod === 'after-service-cash' && targetBooking) {
+      pushHeaderNotification(
+        'Cash QR Ready',
+        `Worker ${targetBooking.workerName} generated a Cash Confirmation QR. Scan and submit amount after meetup.`
+      );
+    }
+
+    setUiState('confirmed');
+  };
+
+  const handleBackToList = () => {
     setSelectedBookingId(null);
     setUiState('chat');
-  }, []);
+  };
 
-  const handleNewInquiry = useCallback(() => {
-    setSelectedBookingId(null);
-    setUiState('chat');
-  }, []);
-
-  // ========================================================================
-  // COMPUTED VALUES FOR RENDERING
-  // ========================================================================
-
-  const currentBooking = bookingListCtrl.bookings.find((b) => b.id === selectedBookingId);
   const themeTokens = getThemeTokens(appTheme);
 
-  // ========================================================================
-  // STYLES (UNCHANGED - Moved to end for clarity)
-  // ========================================================================
+  const handleNewInquiry = () => {
+    setSelectedBookingId(null);
+    setUiState('chat');
+  };
 
   const styles = {
     myBookings: {
@@ -456,11 +989,33 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     Refunded: { background: '#dcfce7', color: '#166534' },
   };
 
-  // ========================================================================
-  // RENDER - Main Page Component
-  // ========================================================================
+  const currentBooking = bookings.find((b) => b.id === selectedBookingId);
+  const terminalStatuses = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refunded'];
+  const statusFilteredBookings = bookings.filter((booking) => {
+    if (activeFilter === 'completed') {
+      return terminalStatuses.includes(booking.status) || booking.status === 'Refund Processing';
+    }
+    if (activeFilter === 'active') {
+      return !terminalStatuses.includes(booking.status);
+    }
+    return true;
+  });
+
+  const filteredBookings = statusFilteredBookings.filter((booking) => {
+    if (displayFilter === 'cash-approvals') {
+      return booking.paymentMethod === 'after-service-cash';
+    }
+    if (displayFilter === 'refunds') {
+      return isRefundBooking(booking);
+    }
+    if (displayFilter === 'cancelled') {
+      return isCancelledCashBooking(booking);
+    }
+    return true;
+  });
 
   if (!selectedBookingId) {
+    // Skip booking list - go directly to chat interface
     setSelectedBookingId(1);
     return null;
   }
@@ -488,7 +1043,7 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
         <ChatWindow
           appTheme={appTheme}
           booking={currentBooking}
-          bookings={bookingListCtrl.filteredBookings}
+          bookings={bookings}
           selectedBookingId={selectedBookingId}
           onSelectBooking={handleOpenChat}
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
