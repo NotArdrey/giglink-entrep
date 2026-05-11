@@ -28,6 +28,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
   const [showProcessing, setShowProcessing] = useState(false);
   const [hoveredKey, setHoveredKey] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
+  );
 
   const allowsAdvanceGcash = booking?.allowGcashAdvance !== false;
   const allowsAfterService = booking?.allowAfterService !== false;
@@ -50,6 +53,15 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       setAfterServiceChannel('cash');
     }
   }, [allowsAdvanceGcash, allowsAfterService, afterServicePaymentType, selectedMethod]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleResize = () => setIsMobile(window.innerWidth <= 720);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // ============ EVENT HANDLERS ============
   
@@ -94,14 +106,15 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       inset: 0,
       backgroundColor: 'rgba(15, 23, 42, 0.55)',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'center',
       zIndex: 280,
-      padding: '1rem',
+      padding: isMobile ? '0.75rem' : '1rem',
+      overflowY: 'auto',
     },
     card: {
-      width: 'min(95vw, 900px)',
-      maxHeight: '94vh',
+      width: 'min(100%, 900px)',
+      maxHeight: isMobile ? 'calc(100svh - 24px)' : '94vh',
       overflowY: 'auto',
       borderRadius: '8px',
       border: '1px solid #e2e8f0',
@@ -111,11 +124,12 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
     header: {
       borderBottom: '1px solid #e2e8f0',
       backgroundColor: '#f8fafc',
-      padding: '0.85rem 1rem',
+      padding: isMobile ? '0.75rem' : '0.85rem 1rem',
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: isMobile ? 'flex-start' : 'center',
       gap: '0.6rem',
+      flexWrap: 'wrap',
     },
     subtitle: { marginTop: '0.25rem', color: '#64748b' },
     close: { width: '34px', height: '34px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
@@ -129,7 +143,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       flexDirection: 'column',
       gap: '0.35rem',
     },
-    row: { display: 'flex', justifyContent: 'space-between', gap: '0.5rem', color: '#334155' },
+    row: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: isMobile ? '0.15rem' : '0.5rem', color: '#334155' },
     label: { fontWeight: 700 },
     value: { color: '#0f172a' },
     amount: { color: '#166534', fontWeight: 800 },
@@ -153,7 +167,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
     methods: {
       padding: '0.9rem 1rem',
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 270px), 1fr))',
       gap: '0.65rem',
     },
     option: {
@@ -164,7 +178,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       cursor: 'pointer',
     },
     optionSelected: { borderColor: '#2563eb', backgroundColor: '#eff6ff' },
-    optionHeader: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
+    optionHeader: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' },
     icon: { fontSize: '1.1rem' },
     desc: { color: '#334155', fontSize: '0.9rem' },
     list: { margin: '0.45rem 0', color: '#334155', paddingLeft: '1.15rem' },
@@ -186,8 +200,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       display: 'flex',
       justifyContent: 'space-between',
       gap: '0.7rem',
-      alignItems: 'center',
+      alignItems: isMobile ? 'stretch' : 'center',
       flexWrap: 'wrap',
+      flexDirection: isMobile ? 'column' : 'row',
     },
     note: { margin: 0, color: '#334155', fontSize: '0.9rem', maxWidth: '560px' },
     confirm: {
@@ -198,6 +213,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       fontWeight: 700,
       cursor: 'pointer',
       padding: '0.55rem 0.85rem',
+      width: isMobile ? '100%' : 'auto',
     },
   };
   

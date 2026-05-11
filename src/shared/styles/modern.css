@@ -2282,6 +2282,18 @@ textarea {
   max-width: 100%;
 }
 
+:where(.gl-page, .gl-admin-page, .auth-page, [data-testid]) {
+  overflow-x: hidden;
+}
+
+:where(.gl-page, .gl-admin-page, [data-testid]) :where(main, section, article, aside, header, footer, form, div) {
+  min-width: 0;
+}
+
+:where(.gl-page, .gl-admin-page, [data-testid]) :where(h1, h2, h3, p, span, strong, small, a, button, label) {
+  overflow-wrap: break-word;
+}
+
 .gl-button,
 .gl-icon-button,
 .gl-app-nav-item,
@@ -2563,5 +2575,39 @@ textarea {
 
   .gl-app-mobile-nav .gl-app-nav-item {
     min-height: 40px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .gl-app-shell-active .gl-page,
+  .gl-app-shell-active [data-testid="my-bookings-page"],
+  .gl-app-shell-active [data-testid="my-work-page"],
+  .gl-app-shell-active [data-testid="profile-page"],
+  .gl-app-shell-active [data-testid="account-settings-page"],
+  .gl-app-shell-active [data-testid="settings-page"] {
+    padding-bottom: 132px !important;
+  }
+
+  .gl-app-shell-active [data-testid="my-work-page"] > main {
+    padding-bottom: 156px !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .gl-app-topbar {
+    padding: 0 8px !important;
+  }
+
+  .gl-app-mobile-brand strong {
+    font-size: 15px;
+  }
+
+  .gl-app-topbar-actions {
+    gap: 6px;
+  }
+
+  .gl-app-icon-btn {
+    width: 38px;
+    height: 38px;
   }
 }

@@ -25,8 +25,6 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [ctaHovered, setCtaHovered] = useState(false);
-  const [prevBtnHovered, setPrevBtnHovered] = useState(false);
-  const [nextBtnHovered, setNextBtnHovered] = useState(false);
   const [windowWidth, setWindowWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
@@ -51,16 +49,8 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
     setCurrentSlide(slideIndex);
   };
 
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + sliderImages.length) % sliderImages.length);
-  };
-
   const currentImage = sliderImages[currentSlide];
-  const isMobile = windowWidth <= 720;
+  const isMobile = windowWidth <= 768;
   const isSmallMobile = windowWidth <= 480;
   const handleBrowseServices = onBrowseServices || onGetStarted;
 
@@ -68,10 +58,10 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
     heroSlider: {
       position: 'relative',
       width: '100%',
-      height: isMobile ? 'auto' : 'min(760px, calc(100vh - 128px))',
-      minHeight: isMobile ? 'calc(100svh - 64px)' : '520px',
+      height: isMobile ? 'clamp(660px, calc(100svh - 150px), 720px)' : 'min(760px, calc(100vh - 128px))',
+      minHeight: isMobile ? '660px' : '520px',
       overflow: 'hidden',
-      marginTop: isMobile ? '64px' : '70px',
+      marginTop: isMobile ? '66px' : '70px',
       background: '#0f172a',
     },
     sliderContainer: {
@@ -99,39 +89,39 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
       display: 'flex',
       alignItems: 'center',
       zIndex: 10,
-      padding: isMobile ? '46px 0 62px' : 0,
+      padding: isMobile ? '32px 0 58px' : 0,
     },
     sliderContent: {
-      width: 'min(1180px, calc(100vw - 32px))',
+      width: isMobile ? 'min(640px, calc(100vw - 28px))' : 'min(1180px, calc(100vw - 32px))',
       margin: '0 auto',
       textAlign: 'left',
       color: '#ffffff',
       display: 'grid',
       alignItems: 'center',
-      gap: '22px',
+      gap: isMobile ? '16px' : '22px',
       padding: isMobile ? 0 : '0 0 42px',
     },
     sliderTitle: {
       maxWidth: isMobile ? '640px' : '780px',
-      fontSize: isSmallMobile ? 'clamp(2rem, 12vw, 3rem)' : 'clamp(2.4rem, 6vw, 5.2rem)',
+      fontSize: isSmallMobile ? 'clamp(1.85rem, 8.5vw, 2.35rem)' : 'clamp(2.35rem, 6.2vw, 5.2rem)',
       fontWeight: 850,
       margin: 0,
-      lineHeight: 1.08,
+      lineHeight: isMobile ? 1.1 : 1.08,
       letterSpacing: 0,
       textShadow: '0 10px 24px rgba(2, 6, 23, 0.45)',
     },
     sliderDescription: {
-      fontSize: 'clamp(1rem, 1.65vw, 1.24rem)',
-      margin: '14px 0 0',
+      fontSize: isMobile ? 'clamp(0.95rem, 3.5vw, 1.1rem)' : 'clamp(1rem, 1.65vw, 1.24rem)',
+      margin: isMobile ? '10px 0 0' : '14px 0 0',
       maxWidth: '650px',
-      lineHeight: 1.65,
+      lineHeight: isMobile ? 1.55 : 1.65,
       textShadow: '0 4px 12px rgba(2, 6, 23, 0.5)',
     },
     sliderActions: {
       display: 'flex',
       flexWrap: 'wrap',
       gap: '10px',
-      marginTop: '24px',
+      marginTop: isMobile ? '18px' : '24px',
     },
     sliderCtaButton: (variant = 'primary') => ({
       background: variant === 'primary'
@@ -163,7 +153,7 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
       alignItems: 'center',
       gap: '10px',
       minHeight: '56px',
-      marginTop: '24px',
+      marginTop: isMobile ? '18px' : '24px',
       padding: '8px',
       border: '1px solid rgba(255, 255, 255, 0.28)',
       borderRadius: '8px',
@@ -176,7 +166,8 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
       gap: '10px',
       minWidth: 0,
       color: 'rgba(255, 255, 255, 0.88)',
-      padding: '0 10px',
+      padding: isMobile ? '0 6px' : '0 10px',
+      fontSize: isMobile ? '0.94rem' : '1rem',
       fontWeight: 600,
       lineHeight: 1.45,
     },
@@ -196,7 +187,7 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
       display: 'flex',
       flexWrap: 'wrap',
       gap: '10px',
-      marginTop: '16px',
+      marginTop: isMobile ? '12px' : '16px',
     },
     heroTrustPill: {
       display: 'inline-flex',
@@ -208,32 +199,8 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
       borderRadius: '999px',
       background: 'rgba(15, 23, 42, 0.32)',
       color: '#ffffff',
-      fontSize: '0.85rem',
+      fontSize: isSmallMobile ? '0.78rem' : '0.85rem',
       fontWeight: 700,
-    },
-    sliderButton: {
-      position: 'absolute',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      backgroundColor: prevBtnHovered || nextBtnHovered
-        ? 'rgba(255, 255, 255, 1)' 
-        : 'rgba(255, 255, 255, 0.82)',
-      color: prevBtnHovered || nextBtnHovered ? '#2563eb' : '#1f2937',
-      border: 'none',
-      fontSize: '1.9rem',
-      width: '44px',
-      height: '44px',
-      padding: 0,
-      cursor: 'pointer',
-      zIndex: 20,
-      borderRadius: '8px',
-      transition: 'all 0.3s ease',
-    },
-    sliderButtonPrev: {
-      left: '1rem',
-    },
-    sliderButtonNext: {
-      right: '1rem',
     },
     sliderIndicators: {
       position: 'absolute',
@@ -258,9 +225,6 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
     mobileStyles: {
       heroSearchStrip: {
         gridTemplateColumns: '1fr',
-      },
-      sliderButton: {
-        display: 'none',
       },
     },
   };
@@ -317,26 +281,6 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
           </div>
         </div>
       </div>
-
-      <button
-        onClick={prevSlide}
-        style={{ ...styles.sliderButton, ...styles.sliderButtonPrev, ...(isMobile ? styles.mobileStyles.sliderButton : {}) }}
-        aria-label="Previous slide"
-        onMouseEnter={() => setPrevBtnHovered(true)}
-        onMouseLeave={() => setPrevBtnHovered(false)}
-      >
-        &#8249;
-      </button>
-
-      <button
-        onClick={nextSlide}
-        style={{ ...styles.sliderButton, ...styles.sliderButtonNext, ...(isMobile ? styles.mobileStyles.sliderButton : {}) }}
-        aria-label="Next slide"
-        onMouseEnter={() => setNextBtnHovered(true)}
-        onMouseLeave={() => setNextBtnHovered(false)}
-      >
-        &#8250;
-      </button>
 
       <div style={styles.sliderIndicators}>
         {sliderImages.map((_, index) => (

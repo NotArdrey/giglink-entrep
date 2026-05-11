@@ -1550,7 +1550,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
       {/* Floating Add Service button (visible when seller exists) */}
       {sellerData && (
-        <button onClick={() => setIsCreateServiceOpen(true)} aria-label="Add service" style={{ position: 'fixed', right: 20, bottom: 28, zIndex: 2500, background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 999, width: 56, height: 56, fontSize: 20 }}>+</button>
+        <button onClick={() => setIsCreateServiceOpen(true)} aria-label="Add service" style={{ position: 'fixed', right: isMobile ? 14 : 20, bottom: isMobile ? 112 : 28, zIndex: 2500, background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 999, width: 56, height: 56, fontSize: 20 }}>+</button>
       )}
 
       {/* PROFILE EDIT MODAL */}
