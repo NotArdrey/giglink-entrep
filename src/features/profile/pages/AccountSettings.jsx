@@ -8,14 +8,14 @@ const BULACAN_CODE = '031400000';
 /**
  * Navigation Flow:
  * - Opened from Profile page via "Manage Account & Privacy".
- * - "← Back to Profile" returns users to Profile Hub.
+ * - "<- Back to Profile" returns users to Profile Hub.
  *
  * Security Validation Logic:
  * - Password update checks if New Password and Confirm New Password match.
  * - If mismatch: show red error message.
  * - If match: clear error and show success toast notification.
  */
-function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
+function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
   const splitNameParts = (value = '') => {
     const parts = String(value).trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
@@ -297,7 +297,7 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
   };
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} data-testid="account-settings-page">
       <DashboardNavigation
         appTheme={appTheme}
         currentView={currentView}
@@ -312,11 +312,12 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        onOpenBrowseServices={onOpenBrowseServices}
         isAdminView={false}
         onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
 
-      <div style={styles.card}>
+      <div className="gl-settings-card-modern" style={styles.card}>
 
         <h1>Account & Privacy Settings</h1>
         <p style={styles.ownerText}>Managing account for: {profileName}</p>

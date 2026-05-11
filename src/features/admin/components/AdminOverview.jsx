@@ -10,7 +10,7 @@ import PropTypes from 'prop-types';
 function AdminOverview({ stats, accounts, logs, themeTokens, styles }) {
   return (
     <>
-      <section style={styles.header}>
+      <section className="gl-admin-header-panel" style={styles.header}>
         <div style={styles.headerCopy}>
           <span style={styles.eyebrow}>Admin Portal UI</span>
           <h1 style={styles.title}>GigLink Admin Dashboard</h1>
@@ -20,7 +20,7 @@ function AdminOverview({ stats, accounts, logs, themeTokens, styles }) {
         </div>
       </section>
 
-      <section style={styles.statsGrid}>
+      <section className="gl-admin-stats-grid" style={styles.statsGrid}>
         <div style={styles.statCard}>
           <p style={styles.statLabel}>Total Accounts</p>
           <p style={styles.statValue}>{accounts.length}</p>
@@ -35,11 +35,11 @@ function AdminOverview({ stats, accounts, logs, themeTokens, styles }) {
         </div>
       </section>
 
-      <section style={styles.overviewGrid}>
+      <section className="gl-admin-overview-grid" style={styles.overviewGrid}>
         <article style={styles.miniChartCard}>
           <div>
             <h2 style={styles.panelTitle}>Accounts Trend</h2>
-            <p style={styles.panelDesc}>Mock chart showing overall account activity.</p>
+            <p style={styles.panelDesc}>Recent account activity snapshot.</p>
           </div>
           <div style={styles.miniChartBars}>
             <div style={styles.miniBar('30%', '#dbeafe')} />
@@ -77,7 +77,7 @@ function AdminOverview({ stats, accounts, logs, themeTokens, styles }) {
         </article>
       </section>
 
-      <section style={styles.summaryRow}>
+      <section className="gl-admin-summary-row" style={styles.summaryRow}>
         <article style={styles.panel}>
           <div style={styles.panelHeader}>
             <div style={styles.panelTitleWrap}>

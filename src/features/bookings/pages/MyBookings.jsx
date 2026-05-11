@@ -5,23 +5,20 @@ import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-// Import service and controller hooks
-import { getMockBookings } from '../services/bookingService';
 import {
   useBookingListController,
   usePaymentController,
-  useCashConfirmationController,
   useRefundController,
   useRatingController,
 } from '../hooks';
 
-const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard, onOpenAdminDashboard }) => {
+const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
   // ========================================================================
   // CONTROLLER HOOKS INITIALIZATION
   // ========================================================================
   
   // Helper function to push header notifications
-  const [headerNotifications, setHeaderNotifications] = useState([]);
+  const [, setHeaderNotifications] = useState([]);
   const pushHeaderNotification = useCallback((title, message) => {
     const id = `notif-${Date.now()}-${Math.floor(Math.random() * 999)}`;
     setHeaderNotifications((prev) => [
@@ -37,7 +34,7 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
   }, []);
 
   // Main booking list controller
-  const bookingListCtrl = useBookingListController(getMockBookings());
+  const bookingListCtrl = useBookingListController();
 
   // Payment controller
   const paymentCtrl = usePaymentController(
@@ -46,17 +43,9 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     bookingListCtrl.updateBooking
   );
 
-  // Cash confirmation controller
-  const cashCtrl = useCashConfirmationController(
-    bookingListCtrl.bookings,
-    bookingListCtrl.updateBooking,
-    pushHeaderNotification
-  );
-
   // Refund controller
   const refundCtrl = useRefundController(
-    bookingListCtrl.bookings,
-    bookingListCtrl.updateBooking,
+    bookingListCtrl.replaceBooking,
     pushHeaderNotification
   );
 
@@ -74,18 +63,9 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
   const [selectedBookingId, setSelectedBookingId] = useState(1);
   const [uiState, setUiState] = useState('chat');
 
-  // Hover states for visual feedback
-  const [hoveredCardId, setHoveredCardId] = useState(null);
-  const [hoveredOpenChatId, setHoveredOpenChatId] = useState(null);
-  const [hoveredRateId, setHoveredRateId] = useState(null);
-  const [hoveredPayId, setHoveredPayId] = useState(null);
   const [hoveredBackToBookings, setHoveredBackToBookings] = useState(false);
 
-  // Transaction proof modal
-  const [transactionProofBookingId, setTransactionProofBookingId] = useState(null);
-
   // Loading and responsive state
-  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
@@ -94,14 +74,6 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
   // EFFECTS - Page Initialization & Responsive Behavior
   // ========================================================================
   
-  // Simulate initial loading of bookings before list is shown
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoadingBookings(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Handle window resize for responsive mobile layout
   useEffect(() => {
     const handleResize = () => {
@@ -116,56 +88,6 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
   // ========================================================================
   // COMPUTED VALUES & HELPER FUNCTIONS
   // ========================================================================
-
-  const parseDateOnly = (dateString) => {
-    const date = new Date(dateString);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  };
-
-  const addDaysToDate = (dateString, days) => {
-    const date = parseDateOnly(dateString);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().slice(0, 10);
-  };
-
-  const isRecurringBilling = (booking) =>
-    booking.billingCycle === 'weekly' || booking.billingCycle === 'monthly';
-
-  const isBookingStopped = (booking) =>
-    booking.status === 'Service Stopped' || booking.serviceActive === false;
-
-  const isRecurringChargeDue = (booking) => {
-    if (!isRecurringBilling(booking) || isBookingStopped(booking)) return false;
-    if (!booking.nextChargeDate) return false;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return parseDateOnly(booking.nextChargeDate) <= today;
-  };
-
-  const getNextChargeDate = (booking, fromDate) => {
-    if (booking.billingCycle === 'weekly') return addDaysToDate(fromDate, 7);
-    if (booking.billingCycle === 'monthly') return addDaysToDate(fromDate, 30);
-    return null;
-  };
-
-  const getBillingLabel = (booking) => {
-    if (booking.billingCycle === 'weekly') return 'Weekly';
-    if (booking.billingCycle === 'monthly') return 'Monthly';
-    return null;
-  };
-
-  const buildMockTransactionId = (bookingId, channel) => {
-    const now = new Date();
-    const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = String(Math.floor(Math.random() * 9000) + 1000);
-    return `${channel.toUpperCase()}-TRX-${dateStamp}-${bookingId}-${suffix}`;
-  };
-
-  const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
-  const isRefundBooking = (booking) => Boolean(booking.refundStatus) || booking.status === 'Refund Processing' || booking.status === 'Refunded';
-  const isCancelledCashBooking = (booking) => booking.status === 'Cancelled (Cash)' && booking.paymentMethod === 'after-service-cash';
 
   // ========================================================================
   // EVENT HANDLERS - Delegate to Controllers
@@ -182,110 +104,97 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     setUiState('slots');
   }, []);
 
-  // Rating workflow
-  const handleOpenRating = useCallback((bookingId) => {
-    ratingCtrl.handleOpenRating(bookingId);
-  }, [ratingCtrl]);
-
-  const handleSubmitRating = useCallback(() => {
-    const booking = bookingListCtrl.getBooking(ratingCtrl.ratingTargetId);
-    if (booking) {
-      ratingCtrl.handleSubmitRating(booking);
+  const handleLeaveRating = useCallback(async (payload) => {
+    try {
+      await ratingCtrl.handleLeaveRating(payload);
+    } catch (error) {
+      pushHeaderNotification('Rating Failed', error?.message || 'Unable to save rating right now.');
     }
-  }, [ratingCtrl, bookingListCtrl]);
+  }, [pushHeaderNotification, ratingCtrl]);
 
-  const handleLeaveRating = useCallback((payload) => {
-    ratingCtrl.handleLeaveRating(payload);
-  }, [ratingCtrl]);
-
-  // Payment workflow
-  const handleOpenPaymentProofModal = useCallback((bookingId) => {
-    paymentCtrl.handleOpenPaymentProofModal(bookingId);
-  }, [paymentCtrl]);
-
-  const handleProofFileChange = useCallback((event) => {
-    paymentCtrl.handleProofFileChange(event);
-  }, [paymentCtrl]);
-
-  const handleSubmitPaymentProof = useCallback(() => {
-    const booking = bookingListCtrl.getBooking(paymentCtrl.paymentProofBookingId);
-    if (booking) {
-      paymentCtrl.handleSubmitPaymentProof(booking, isRecurringBilling(booking));
-    }
-  }, [paymentCtrl, bookingListCtrl, isRecurringBilling]);
-
-  const handleSelectPaymentMethod = useCallback((bookingId, paymentMethod) => {
+  const handleSelectPaymentMethod = useCallback(async (bookingId, paymentMethod) => {
     const booking = bookingListCtrl.getBooking(bookingId);
     if (booking) {
-      paymentCtrl.handleSelectPaymentMethod(booking, paymentMethod);
-      setUiState('confirmed');
-      
-      // Show notification for cash payments
-      if (paymentMethod === 'after-service-cash') {
-        pushHeaderNotification(
-          'Cash QR Ready',
-          `Worker ${booking.workerName} generated a Cash Confirmation QR. Scan and submit amount after meetup.`
-        );
+      try {
+        await paymentCtrl.handleSelectPaymentMethod(booking, paymentMethod);
+        setUiState('confirmed');
+
+        if (paymentMethod === 'after-service-cash') {
+          pushHeaderNotification(
+            'Cash QR Ready',
+            `Worker ${booking.workerName} generated a Cash Confirmation QR. Scan and submit amount after meetup.`
+          );
+        }
+      } catch (error) {
+        pushHeaderNotification('Payment Update Failed', error?.message || 'Unable to update payment method.');
       }
     }
   }, [paymentCtrl, bookingListCtrl, pushHeaderNotification]);
 
-  // Cash confirmation workflow
-  const handleOpenCashConfirmModal = useCallback((bookingId) => {
-    cashCtrl.handleOpenCashConfirmModal(bookingId);
-  }, [cashCtrl]);
-
-  const handleSubmitCashConfirmation = useCallback(() => {
-    const booking = bookingListCtrl.getBooking(cashCtrl.cashConfirmBookingId);
-    if (booking) {
-      cashCtrl.handleSubmitCashConfirmation(booking);
-    }
-  }, [cashCtrl, bookingListCtrl]);
-
-  const handleOpenTransactionProof = useCallback((bookingId) => {
-    setTransactionProofBookingId(bookingId);
-  }, []);
-
   // Refund workflow
-  const handleRequestRefund = useCallback((bookingId, reason) => {
+  const handleRequestRefund = useCallback(async (bookingId, reason) => {
     const booking = bookingListCtrl.getBooking(bookingId);
     if (booking) {
-      refundCtrl.handleRequestRefund(booking, reason);
+      try {
+        await refundCtrl.handleRequestRefund(booking, reason);
+      } catch (error) {
+        pushHeaderNotification('Refund Request Failed', error?.message || 'Unable to submit refund request.');
+      }
     }
-  }, [refundCtrl, bookingListCtrl]);
+  }, [refundCtrl, bookingListCtrl, pushHeaderNotification]);
 
-  const handleConfirmRefundReceived = useCallback((bookingId) => {
+  const handleConfirmRefundReceived = useCallback(async (bookingId) => {
     const booking = bookingListCtrl.getBooking(bookingId);
     if (booking) {
-      refundCtrl.handleConfirmRefundReceived(booking);
+      try {
+        await refundCtrl.handleConfirmRefundReceived(booking);
+      } catch (error) {
+        pushHeaderNotification('Refund Update Failed', error?.message || 'Unable to confirm refund.');
+      }
     }
-  }, [refundCtrl, bookingListCtrl]);
+  }, [refundCtrl, bookingListCtrl, pushHeaderNotification]);
 
   // Slot and payment confirmation
-  const handleConfirmSlot = useCallback((bookingId, slotInfo) => {
-    bookingListCtrl.updateBooking(bookingId, {
-      selectedSlot: slotInfo,
-      status: 'Slot Selected - Payment Pending',
-    });
-    setUiState('payment');
-  }, [bookingListCtrl]);
+  const handleConfirmSlot = useCallback(async (bookingId, slotInfo) => {
+    try {
+      await bookingListCtrl.updateBooking(bookingId, {
+        selectedSlot: slotInfo,
+        status: 'Slot Selected - Payment Pending',
+      });
+      setUiState('payment');
+    } catch (error) {
+      pushHeaderNotification('Slot Update Failed', error?.message || 'Unable to update selected slot.');
+    }
+  }, [bookingListCtrl, pushHeaderNotification]);
 
   // Quote operations
-  const handleApproveQuote = useCallback((bookingId) => {
-    bookingListCtrl.handleApproveQuote(bookingId);
-    setUiState('chat');
-  }, [bookingListCtrl]);
+  const handleApproveQuote = useCallback(async (bookingId) => {
+    try {
+      await bookingListCtrl.handleApproveQuote(bookingId);
+      setUiState('chat');
+    } catch (error) {
+      pushHeaderNotification('Quote Update Failed', error?.message || 'Unable to approve quote.');
+    }
+  }, [bookingListCtrl, pushHeaderNotification]);
 
-  const handleRejectQuote = useCallback((bookingId, reason) => {
-    bookingListCtrl.handleRejectQuote(bookingId, reason);
-    pushHeaderNotification('Quote Rejected', 'Your reason was sent to the worker so they can review or revise the quote.');
-    setUiState('chat');
+  const handleRejectQuote = useCallback(async (bookingId, reason) => {
+    try {
+      await bookingListCtrl.handleRejectQuote(bookingId, reason);
+      pushHeaderNotification('Quote Rejected', 'Your reason was sent to the worker so they can review or revise the quote.');
+      setUiState('chat');
+    } catch (error) {
+      pushHeaderNotification('Quote Update Failed', error?.message || 'Unable to reject quote.');
+    }
   }, [bookingListCtrl, pushHeaderNotification]);
 
   // Service control
-  const handleStopServiceAccepted = useCallback((bookingId) => {
-    bookingListCtrl.handleStopServiceAccepted(bookingId);
-  }, [bookingListCtrl]);
+  const handleStopServiceAccepted = useCallback(async (bookingId) => {
+    try {
+      await bookingListCtrl.handleStopServiceAccepted(bookingId);
+    } catch (error) {
+      pushHeaderNotification('Service Update Failed', error?.message || 'Unable to stop service.');
+    }
+  }, [bookingListCtrl, pushHeaderNotification]);
 
   // Navigation
   const handleBackToList = useCallback(() => {
@@ -301,6 +210,11 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
   // ========================================================================
   // COMPUTED VALUES FOR RENDERING
   // ========================================================================
+
+  useEffect(() => {
+    if (selectedBookingId && bookingListCtrl.bookings.some((booking) => booking.id === selectedBookingId)) return;
+    setSelectedBookingId(bookingListCtrl.bookings[0]?.id || null);
+  }, [bookingListCtrl.bookings, selectedBookingId]);
 
   const currentBooking = bookingListCtrl.bookings.find((b) => b.id === selectedBookingId);
   const themeTokens = getThemeTokens(appTheme);
@@ -435,38 +349,12 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     confirmationNote: { fontSize: '12px', color: themeTokens.textSecondary, margin: 0, lineHeight: 1.5 },
   };
 
-  const statusStyleMap = {
-    Negotiating: { background: '#fef3c7', color: '#92400e' },
-    'Awaiting Payment': { background: '#fecaca', color: '#7f1d1d' },
-    'Quote Sent': { background: '#bfdbfe', color: '#1e3a8a' },
-    'Awaiting Slot Selection': { background: '#cffafe', color: '#164e63' },
-    'Slot Selected - Payment Pending': { background: '#fecdd3', color: '#831843' },
-    'Payment Confirmed': { background: '#dcfce7', color: '#15803d' },
-    'Service Scheduled': { background: '#d1fae5', color: '#065f46' },
-    'Completed Service': { background: '#dcfce7', color: '#166534' },
-    'Awaiting GCash Payment': { background: '#fef3c7', color: '#92400e' },
-    'Active Service': { background: '#dbeafe', color: '#1e40af' },
-    'Service Stopped': { background: '#fee2e2', color: '#991b1b' },
-    'Payment Submitted': { background: '#dbeafe', color: '#1e40af' },
-    'Cash Verification Pending': { background: '#ffedd5', color: '#9a3412' },
-    'Cash Verification Denied': { background: '#fee2e2', color: '#b91c1c' },
-    'Cancelled (Cash)': { background: '#fee2e2', color: '#991b1b' },
-    'Refund Processing': { background: '#e0e7ff', color: '#3730a3' },
-    'Quote Rejected': { background: '#fee2e2', color: '#991b1b' },
-    Refunded: { background: '#dcfce7', color: '#166534' },
-  };
-
   // ========================================================================
   // RENDER - Main Page Component
   // ========================================================================
 
-  if (!selectedBookingId) {
-    setSelectedBookingId(1);
-    return null;
-  }
-
   return (
-    <div style={styles.myBookings}>
+    <div style={styles.myBookings} data-testid="my-bookings-page">
       <DashboardNavigation
         appTheme={appTheme}
         currentView={currentView}
@@ -481,9 +369,26 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        onOpenBrowseServices={onOpenBrowseServices}
         isAdminView={false}
         onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
+      {(bookingListCtrl.loadError || bookingListCtrl.actionError) && (
+        <div style={{ maxWidth: '900px', margin: '20px auto', padding: '0 14px', color: themeTokens.danger, fontWeight: 700 }}>
+          {bookingListCtrl.loadError || bookingListCtrl.actionError}
+        </div>
+      )}
+      {bookingListCtrl.isLoading && (
+        <div style={styles.emptyState}>Loading your bookings...</div>
+      )}
+      {!bookingListCtrl.isLoading && bookingListCtrl.bookings.length === 0 && (
+        <div style={styles.emptyState}>
+          <h2 style={{ margin: '0 0 8px', color: themeTokens.textPrimary }}>No bookings yet</h2>
+          <p style={{ margin: 0 }}>Bookings you create from the marketplace will appear here.</p>
+        </div>
+      )}
+      {!bookingListCtrl.isLoading && currentBooking && (
+        <>
       {uiState === 'chat' && (
         <ChatWindow
           appTheme={appTheme}
@@ -553,6 +458,8 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

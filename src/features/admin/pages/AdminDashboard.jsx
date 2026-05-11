@@ -299,7 +299,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
   };
 
   return (
-    <div style={styles.page}>
+    <div className="gl-admin-page" data-testid="admin-dashboard-page" style={styles.page}>
       <AdminNavigation
         appTheme={appTheme}
         activeSection={activeSection}
@@ -308,7 +308,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
         onOpenLogoutConfirm={handleOpenLogoutConfirm}
       />
 
-      <div style={styles.shell}>
+      <div className="gl-admin-shell" style={styles.shell}>
         {/* Overview Section */}
         {activeSection === 'overview' && (
           <AdminOverview
@@ -351,6 +351,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
         {activeSection === 'comments' && (
           <AdminCommentsSection
             comments={adminState.comments}
+            commentsError={adminState.commentsError}
             onOpenDeleteComment={adminState.setCommentDeleteTarget}
             styles={styles}
           />
@@ -385,7 +386,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
         isOpen={Boolean(adminState.commentDeleteTarget)}
         appTheme={appTheme}
         title="Delete Comment"
-        description="This moderation action removes the selected comment from the admin UI."
+        description="This moderation action removes the selected review comment from the database."
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onCancel={() => adminState.setCommentDeleteTarget(null)}

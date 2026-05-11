@@ -10,7 +10,6 @@ export {
 
 export {
   Dashboard,
-  HomeDashboard,
 } from './dashboard';
 
 export {
@@ -22,7 +21,7 @@ export {
 export {
   MyWork,
   WorkerDashboard,
-  SimulatedChat,
+  InquiryChatModal,
   SlotEditModal,
 } from './work';
 
@@ -38,6 +37,7 @@ export {
 } from './onboarding';
 
 export {
+  AuthPage,
   LoginModal,
   LogoutConfirmModal,
   ForgotPasswordModal,
@@ -47,4 +47,5 @@ export {
 export {
   ServiceCard,
   WorkerDetailModal,
+  BrowseServicesPage,
 } from './marketplace';

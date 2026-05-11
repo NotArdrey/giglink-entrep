@@ -3,7 +3,7 @@ import DashboardNavigation from '../../../shared/components/DashboardNavigation'
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile, onOpenAdminDashboard }) {
+function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile, onOpenAdminDashboard }) {
   const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
   const fallbackName = 'Juan Dela Cruz';
   const fallbackBio = 'Dedicated service provider focused on quality, punctuality, and client satisfaction.';
@@ -32,7 +32,7 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
   const [draftBio, setDraftBio] = useState(displayBio);
   const [isPhotoSourceOpen, setIsPhotoSourceOpen] = useState(false);
   const [isPortfolioModalOpen, setIsPortfolioModalOpen] = useState(false);
-  const [isBackHovered, setIsBackHovered] = useState(false);
+  const isBackHovered = false;
   const [isHeadingHovered, setIsHeadingHovered] = useState(false);
   const [isManageHovered, setIsManageHovered] = useState(false);
   const [isPortfolioHovered, setIsPortfolioHovered] = useState(false);
@@ -253,7 +253,7 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
   };
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} data-testid="profile-page">
       <DashboardNavigation
         appTheme={appTheme}
         currentView={currentView}
@@ -268,6 +268,7 @@ function Profile({ appTheme = 'light', currentView, searchQuery, onSearchChange,
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        onOpenBrowseServices={onOpenBrowseServices}
         isAdminView={false}
         onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />

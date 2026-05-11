@@ -199,7 +199,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       maxHeight: '92vh',
       overflowY: 'auto',
       backgroundColor: '#ffffff',
-      borderRadius: '0.9rem',
+      borderRadius: '8px',
       boxShadow: '0 20px 42px rgba(15, 23, 42, 0.28)',
       padding: '0.8rem',
       position: 'relative',
@@ -211,7 +211,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       top: '0.75rem',
       width: '32px',
       height: '32px',
-      borderRadius: '999px',
+      borderRadius: '8px',
       border: '1px solid #cbd5e1',
       backgroundColor: '#ffffff',
       cursor: 'pointer',
@@ -221,14 +221,14 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
     monthButton: {
       width: '36px',
       height: '36px',
-      borderRadius: '999px',
+      borderRadius: '8px',
       border: '1px solid #cbd5e1',
       backgroundColor: '#ffffff',
       cursor: 'pointer',
       fontWeight: 700,
     },
     monthHeading: { margin: 0 },
-    gridWrap: { marginTop: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '0.65rem', overflow: 'hidden' },
+    gridWrap: { marginTop: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' },
     weekHeadings: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', backgroundColor: '#f8fafc' },
     weekHeading: { padding: '0.35rem', fontWeight: 700, fontSize: '0.78rem', textAlign: 'center', color: '#334155' },
     dateGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' },
@@ -246,13 +246,13 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
     dayNumber: { fontWeight: 700 },
     daySlots: { fontSize: '0.72rem', color: '#334155' },
     selectedDateLabel: { margin: '0.55rem 0', color: '#334155' },
-    note: { borderRadius: '0.6rem', backgroundColor: '#eff6ff', color: '#1e3a8a', padding: '0.65rem 0.75rem' },
+    note: { borderRadius: '8px', backgroundColor: '#eff6ff', color: '#1e3a8a', padding: '0.65rem 0.75rem' },
     slotSection: { borderTop: '1px solid #e2e8f0', paddingTop: '0.55rem' },
     helper: { color: '#64748b', margin: '0.3rem 0' },
     slotGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.45rem', marginTop: '0.45rem' },
     slotButton: {
       border: '1px solid #cbd5e1',
-      borderRadius: '0.5rem',
+      borderRadius: '8px',
       backgroundColor: '#ffffff',
       padding: '0.6rem',
       textAlign: 'left',
@@ -265,7 +265,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       marginTop: '0.6rem',
       width: '100%',
       border: 'none',
-      borderRadius: '0.55rem',
+      borderRadius: '8px',
       padding: '0.62rem 0.85rem',
       fontWeight: 700,
       color: '#ffffff',
@@ -289,13 +289,13 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
     confirmContent: {
       width: 'min(92vw, 470px)',
       backgroundColor: '#ffffff',
-      borderRadius: '0.75rem',
+      borderRadius: '8px',
       border: '1px solid #e2e8f0',
       padding: '1rem',
     },
     confirmActions: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.8rem' },
-    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.5rem', backgroundColor: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
-    submitButton: { border: 'none', borderRadius: '0.5rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
+    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
+    submitButton: { border: 'none', borderRadius: '8px', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
   };
 
   return (
@@ -315,8 +315,9 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
               prev.setMonth(prev.getMonth() - 1);
               setVisibleMonth(prev);
             }}
+            aria-label="Previous month"
           >
-            ←
+            Back
           </button>
           <h3 style={styles.monthHeading}>{formatMonthHeading(visibleMonth)}</h3>
           <button
@@ -326,8 +327,9 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
               next.setMonth(next.getMonth() + 1);
               setVisibleMonth(next);
             }}
+            aria-label="Next month"
           >
-            →
+            Next
           </button>
         </div>
 
@@ -406,7 +408,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
                     <span>
                       {formatTime(block.startTime)} - {formatTime(block.endTime)} [{block.slotsLeft} slots left]
                     </span>
-                    {isSelected && <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Selected</span>}
+                    {isSelected && <span style={{ color: '#15803d', fontWeight: 700 }}>- Selected</span>}
                   </button>
                 );
               })}

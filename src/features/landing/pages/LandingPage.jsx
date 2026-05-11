@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { BriefcaseBusiness, Check, Network, Star, Target, TrendingUp, Wrench } from 'lucide-react';
 import Navigation from '../../../shared/components/Navigation';
 import HeroSlider from '../components/HeroSlider';
-import LoginModal from '../../auth/components/LoginModal';
-import ForgotPasswordModal from '../../auth/components/ForgotPasswordModal';
+import AuthPage from '../../auth/pages/AuthPage';
+import BrowseServicesPage from '../../marketplace/pages/BrowseServicesPage';
 
 const LANDING_STATS = [
   { id: 1, value: '80+', label: 'Active service categories' },
@@ -109,73 +110,90 @@ function SocialIcon({ id }) {
 const GOAL_CARDS = [
   {
     id: 1,
-    icon: '🎯',
-    title: 'Find Your First Client',
-    description: 'Set a goal to land your first gig within 30 days. We\'ll match you with clients who need your skills.',
-    tag: 'Getting Started',
+    icon: Target,
+    title: 'Academic Tutors',
+    description: 'Find patient tutors for school subjects, exam prep, review sessions, and recurring study support.',
+    tag: 'Learning',
     color: '#2563EB',
   },
   {
     id: 2,
-    icon: '💼',
-    title: 'Build a Portfolio',
-    description: 'Showcase 5 completed projects and attract higher-paying opportunities in your field.',
-    tag: 'Growth',
-    color: '#1D4ED8',
+    icon: Wrench,
+    title: 'Home Repair',
+    description: 'Book practical help for repairs, troubleshooting, installations, and maintenance work.',
+    tag: 'Home Services',
+    color: '#059669',
   },
   {
     id: 3,
-    icon: '📈',
-    title: 'Scale Your Income',
-    description: 'Set a monthly earning target and track your progress. Top freelancers earn 3x more with clear goals.',
-    tag: 'Income',
-    color: '#3B82F6',
+    icon: TrendingUp,
+    title: 'Cleaning Services',
+    description: 'Compare cleaners by location, rates, booking type, and availability before starting a chat.',
+    tag: 'Household',
+    color: '#D97706',
   },
   {
     id: 4,
-    icon: '🤝',
-    title: 'Expand Your Network',
-    description: 'Connect with 10 professionals in your industry. Referrals drive 40% of gig bookings on GigLink.',
-    tag: 'Networking',
-    color: '#60A5FA',
+    icon: Network,
+    title: 'Creative Design',
+    description: 'Hire freelancers for posters, social posts, layouts, branding assets, and quick creative work.',
+    tag: 'Creative',
+    color: '#2563EB',
   },
   {
     id: 5,
-    icon: '⭐',
-    title: 'Earn Top Rated Status',
-    description: 'Maintain a 4.8+ rating across 20 reviews. Top Rated pros get 60% more profile views.',
-    tag: 'Reputation',
-    color: '#1E40AF',
+    icon: Star,
+    title: 'Beauty & Wellness',
+    description: 'Discover rated local providers for care, grooming, wellness, and appointment-based services.',
+    tag: 'Personal Care',
+    color: '#BE185D',
   },
   {
     id: 6,
-    icon: '🛠️',
-    title: 'Master a New Skill',
-    description: 'Add a high-demand skill to your profile and tap into a new market of clients waiting to hire.',
-    tag: 'Skills',
-    color: '#93C5FD',
+    icon: BriefcaseBusiness,
+    title: 'Event Support',
+    description: 'Coordinate reliable help for small events, setup tasks, photo support, and short-term gigs.',
+    tag: 'Events',
+    color: '#475569',
   },
 ];
 
+const getAuthModeFromHash = () => {
+  if (typeof window === 'undefined') return null;
+
+  if (window.location.hash === '#login') return 'login';
+  if (window.location.hash === '#register') return 'register';
+  if (window.location.hash === '#forgot-password') return 'forgot';
+
+  return null;
+};
+
+const getAuthHash = (mode) => {
+  if (mode === 'register') return 'register';
+  if (mode === 'forgot') return 'forgot-password';
+  return 'login';
+};
+
 function GoalCard({ icon, title, description, tag, color, onSet }) {
   const [isHovered, setIsHovered] = useState(false);
+  const Icon = icon;
 
   const styles = {
     goalCard: {
       position: 'relative',
       backgroundColor: 'var(--bg-surface)',
       border: isHovered ? `1px solid ${color}` : '1px solid var(--border-default)',
-      borderRadius: '16px',
-      padding: '28px 28px 24px',
+      borderRadius: '8px',
+      padding: '22px',
       display: 'flex',
       flexDirection: 'column',
       gap: '10px',
       cursor: 'pointer',
       transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, background 0.2s ease, box-shadow 0.25s ease',
       overflow: 'hidden',
-      transform: isHovered ? 'translateY(-6px)' : 'translateY(0)',
-      background: isHovered ? 'var(--bg-surface-soft)' : 'var(--bg-surface)',
-      boxShadow: isHovered ? 'var(--shadow-soft), 0 0 0 1px ' + color + ' inset' : 'none',
+      transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
+      background: isHovered ? 'var(--gl-surface-2)' : 'var(--gl-surface)',
+      boxShadow: isHovered ? 'var(--gl-shadow-soft), 0 0 0 1px ' + color + ' inset' : '0 1px 0 rgba(15, 23, 42, 0.03)',
     },
     goalCardAccentBar: {
       position: 'absolute',
@@ -184,37 +202,40 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
       right: 0,
       height: '3px',
       background: color,
-      borderRadius: '16px 16px 0 0',
+      borderRadius: '8px 8px 0 0',
       opacity: isHovered ? 1 : 0,
       transform: isHovered ? 'scaleX(1)' : 'scaleX(0.4)',
       transformOrigin: 'left',
       transition: 'opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
     },
     goalCardIcon: {
-      fontSize: '32px',
-      lineHeight: 1,
+      width: '42px',
+      height: '42px',
+      borderRadius: '8px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(37, 99, 235, 0.08)',
+      color,
       marginBottom: '4px',
     },
     goalCardTag: {
-      fontFamily: "'DM Mono', 'Courier New', monospace",
       fontSize: '11px',
-      letterSpacing: '0.14em',
+      letterSpacing: 0,
       textTransform: 'uppercase',
       color: color,
-      fontWeight: 500,
+      fontWeight: 800,
     },
     goalCardTitle: {
-      fontFamily: "'Playfair Display', Georgia, serif",
-      fontSize: '28px',
-      fontWeight: 700,
+      fontSize: '20px',
+      fontWeight: 850,
       color: 'var(--text-primary)',
       margin: 0,
-      lineHeight: 1.18,
+      lineHeight: 1.25,
     },
     goalCardDescription: {
-      fontFamily: "'DM Sans', sans-serif",
-      fontSize: '16px',
-      lineHeight: 1.68,
+      fontSize: '14px',
+      lineHeight: 1.6,
       color: 'var(--text-secondary)',
       margin: 0,
       flex: 1,
@@ -224,9 +245,8 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
       alignItems: 'center',
       gap: isHovered ? '10px' : '6px',
       marginTop: '12px',
-      fontFamily: "'DM Sans', sans-serif",
-      fontSize: '15px',
-      fontWeight: 700,
+      fontSize: '14px',
+      fontWeight: 850,
       color: color,
       background: 'transparent',
       border: 'none',
@@ -249,12 +269,14 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div style={styles.goalCardAccentBar} />
-      <span style={styles.goalCardIcon}>{icon}</span>
+      <span style={styles.goalCardIcon}>
+        <Icon size={24} aria-hidden="true" />
+      </span>
       <span style={styles.goalCardTag}>{tag}</span>
       <h3 style={styles.goalCardTitle}>{title}</h3>
       <p style={styles.goalCardDescription}>{description}</p>
       <button style={styles.goalCardBtn} onClick={() => onSet(title)}>
-        Set This Goal
+        Browse Providers
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style={styles.goalCardBtnSvg}>
           <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
@@ -442,7 +464,9 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
 
       {showToast && (
         <div style={styles.goalsToast} role="status" aria-live="polite">
-          <span style={styles.goalsToastIcon}>✓</span>
+          <span style={styles.goalsToastIcon}>
+            <Check size={12} aria-hidden="true" />
+          </span>
           <span>
             <strong>"{activeGoal}"</strong> added! Sign in to track your progress.
           </span>
@@ -453,8 +477,10 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
 }
 
 function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) {
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState(() => getAuthModeFromHash());
+  const [isPublicBrowseOpen, setIsPublicBrowseOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.location.hash === '#browse-services' && !getAuthModeFromHash() : false
+  );
   const [socialLinkHovered, setSocialLinkHovered] = useState(null);
   const [footerLinkHovered, setFooterLinkHovered] = useState(null);
   const [isMobile, setIsMobile] = useState(() =>
@@ -475,26 +501,58 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleLoginClick = () => {
-    setIsLoginModalOpen(true);
+  useEffect(() => {
+    const handleHashChange = () => {
+      const nextAuthMode = getAuthModeFromHash();
+      setAuthMode(nextAuthMode);
+      setIsPublicBrowseOpen(!nextAuthMode && window.location.hash === '#browse-services');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleAuthModeChange = (nextMode) => {
+    const resolvedMode = nextMode === 'register' || nextMode === 'forgot' ? nextMode : 'login';
+    setAuthMode(resolvedMode);
+    setIsPublicBrowseOpen(false);
+
+    if (typeof window !== 'undefined') {
+      window.location.hash = getAuthHash(resolvedMode);
+    }
   };
 
-  const handleCloseModal = () => {
-    setIsLoginModalOpen(false);
+  const handleLoginClick = () => {
+    handleAuthModeChange('login');
+  };
+
+  const handleRegisterClick = () => {
+    handleAuthModeChange('register');
+  };
+
+  const handleBrowseServicesClick = () => {
+    setAuthMode(null);
+    setIsPublicBrowseOpen(true);
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'browse-services';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleCloseAuthPage = () => {
+    setAuthMode(null);
+    setIsPublicBrowseOpen(false);
+
+    if (typeof window !== 'undefined') {
+      window.history.pushState('', document.title, window.location.pathname + window.location.search);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleLoginSubmit = (formData, isLoginMode) => {
     return onLogin && onLogin(formData, isLoginMode);
-  };
-
-  const handleForgotPasswordClick = () => {
-    setIsLoginModalOpen(false);
-    setIsForgotPasswordModalOpen(true);
-  };
-
-  const handleBackToLogin = () => {
-    setIsForgotPasswordModalOpen(false);
-    setIsLoginModalOpen(true);
   };
 
   const styles = {
@@ -506,6 +564,11 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
     },
     landingMain: {
       width: '100%',
+    },
+    publicBrowseMain: {
+      paddingTop: isMobile ? '64px' : '72px',
+      background: 'var(--gl-page)',
+      minHeight: '100vh',
     },
     landingStatsSection: {
       maxWidth: '1200px',
@@ -645,10 +708,30 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
 
   return (
     <div style={styles.landingPage}>
-      <Navigation onLoginClick={handleLoginClick} />
+      {!authMode && (
+        <Navigation onLoginClick={handleLoginClick} onBrowseServices={handleBrowseServicesClick} />
+      )}
 
+      {authMode ? (
+        <AuthPage
+          mode={authMode}
+          onModeChange={handleAuthModeChange}
+          onBack={handleCloseAuthPage}
+          onSubmit={handleLoginSubmit}
+          onForgotPasswordSubmit={onForgotPasswordSubmit}
+          onResendVerification={onResendVerification}
+        />
+      ) : isPublicBrowseOpen ? (
+        <main style={styles.publicBrowseMain}>
+          <BrowseServicesPage
+            mode="public"
+            appTheme="light"
+            onRequireLogin={handleLoginClick}
+          />
+        </main>
+      ) : (
       <main style={styles.landingMain}>
-        <HeroSlider onGetStarted={handleLoginClick} />
+        <HeroSlider onGetStarted={handleRegisterClick} onBrowseServices={handleBrowseServicesClick} />
 
         <GoalsSection onLoginClick={handleLoginClick} isMobile={isMobile} isTablet={isTablet} />
 
@@ -691,7 +774,7 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
           </div>
 
           <div style={styles.landingFooterBottom} id="landing-footer">
-            <p style={styles.landingCopyright}>© GigLink 2026. All rights reserved.</p>
+            <p style={styles.landingCopyright}>Copyright GigLink 2026. All rights reserved.</p>
             <div style={styles.landingSocialLinks} aria-label="GigLink social media">
               {SOCIAL_LINKS.map((social) => (
                 <a
@@ -712,21 +795,7 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
           </div>
         </section>
       </main>
-
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleLoginSubmit}
-        onForgotPassword={handleForgotPasswordClick}
-        onResendVerification={onResendVerification}
-      />
-      
-      <ForgotPasswordModal
-        isOpen={isForgotPasswordModalOpen}
-        onClose={() => setIsForgotPasswordModalOpen(false)}
-        onBackToLogin={handleBackToLogin}
-        onSubmit={onForgotPasswordSubmit}
-      />
+      )}
     </div>
   );
 }

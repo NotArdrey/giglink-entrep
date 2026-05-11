@@ -1,34 +1,25 @@
 import { useState, useEffect } from 'react';
+import { ArrowRight, Search, ShieldCheck } from 'lucide-react';
 
-function HeroSlider({ onGetStarted }) {
+function HeroSlider({ onGetStarted, onBrowseServices }) {
   const sliderImages = [
     {
-      url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600&h=900&fit=crop',
-      alt: 'GigLink welcome',
-      title: 'Welcome to GigLink',
-      description: 'Find and book expert services from professionals in your area.',
-      badge: 'Local Services Marketplace',
+      url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1800&h=1100&fit=crop',
+      alt: 'Local professionals collaborating with clients',
+      title: 'Book trusted local services without the back-and-forth.',
+      description: 'Search active providers, compare details, and move from inquiry to schedule in one clean marketplace.',
     },
     {
-      url: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=1200&h=600&fit=crop',
-      alt: 'Services',
-      title: 'Connect & Get Things Done',
-      description: 'Find the help you need or offer your skills to earn',
-      badge: 'Trusted Local Marketplace',
+      url: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1800&h=1100&fit=crop',
+      alt: 'Technician preparing tools for a home service job',
+      title: 'Find the right pro for the work in front of you.',
+      description: 'From tutoring to repairs, GigLink keeps service details, pricing, ratings, and availability easy to scan.',
     },
     {
-      url: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=1200&h=600&fit=crop',
-      alt: 'Services',
-      title: 'Your Marketplace Awaits',
-      description: 'Browse services or showcase your talent today',
-      badge: 'Built for Professionals',
-    },
-    {
-      url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=600&fit=crop',
-      alt: 'Services',
-      title: 'Opportunities at Your Fingertips',
-      description: 'Join our community and start making a difference',
-      badge: 'Fast and Transparent',
+      url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1800&h=1100&fit=crop',
+      alt: 'Independent service team planning client work',
+      title: 'Run client work from discovery to booking.',
+      description: 'Freelancers get a focused workspace for inquiries, schedules, payments, and proof of service.',
     },
   ];
 
@@ -36,6 +27,9 @@ function HeroSlider({ onGetStarted }) {
   const [ctaHovered, setCtaHovered] = useState(false);
   const [prevBtnHovered, setPrevBtnHovered] = useState(false);
   const [nextBtnHovered, setNextBtnHovered] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -44,6 +38,14 @@ function HeroSlider({ onGetStarted }) {
 
     return () => clearInterval(interval);
   }, [sliderImages.length]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const goToSlide = (slideIndex) => {
     setCurrentSlide(slideIndex);
@@ -58,15 +60,19 @@ function HeroSlider({ onGetStarted }) {
   };
 
   const currentImage = sliderImages[currentSlide];
+  const isMobile = windowWidth <= 720;
+  const isSmallMobile = windowWidth <= 480;
+  const handleBrowseServices = onBrowseServices || onGetStarted;
 
   const styles = {
     heroSlider: {
       position: 'relative',
       width: '100%',
-      height: 'calc(100vh - 70px)',
-      minHeight: '640px',
+      height: isMobile ? 'auto' : 'min(760px, calc(100vh - 128px))',
+      minHeight: isMobile ? 'calc(100svh - 64px)' : '520px',
       overflow: 'hidden',
-      marginTop: '70px',
+      marginTop: isMobile ? '64px' : '70px',
+      background: '#0f172a',
     },
     sliderContainer: {
       position: 'relative',
@@ -81,6 +87,7 @@ function HeroSlider({ onGetStarted }) {
       height: '100%',
       objectFit: 'cover',
       display: 'block',
+      filter: 'saturate(1.03)',
     },
     sliderOverlay: {
       position: 'absolute',
@@ -88,82 +95,138 @@ function HeroSlider({ onGetStarted }) {
       left: 0,
       width: '100%',
       height: '100%',
-      background: 'radial-gradient(circle at 22% 48%, rgba(37, 99, 235, 0.28), transparent 52%), linear-gradient(90deg, rgba(2, 6, 23, 0.62) 0%, rgba(2, 6, 23, 0.28) 52%, rgba(2, 6, 23, 0.48) 100%)',
+      background: 'linear-gradient(90deg, rgba(2, 6, 23, 0.82) 0%, rgba(2, 6, 23, 0.56) 46%, rgba(2, 6, 23, 0.22) 100%), linear-gradient(180deg, rgba(2, 6, 23, 0.1) 0%, rgba(2, 6, 23, 0.72) 100%)',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center',
       zIndex: 10,
+      padding: isMobile ? '46px 0 62px' : 0,
     },
     sliderContent: {
-      textAlign: 'center',
+      width: 'min(1180px, calc(100vw - 32px))',
+      margin: '0 auto',
+      textAlign: 'left',
       color: '#ffffff',
-      maxWidth: '760px',
-      padding: '0 1.25rem',
-    },
-    sliderBadge: {
-      display: 'inline-flex',
+      display: 'grid',
       alignItems: 'center',
-      minHeight: '30px',
-      border: '1px solid rgba(255, 255, 255, 0.36)',
-      borderRadius: '999px',
-      padding: '0 12px',
-      fontSize: '0.78rem',
-      letterSpacing: '0.04em',
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      background: 'rgba(15, 23, 42, 0.25)',
-      marginBottom: '12px',
-      color: '#ffffff',
+      gap: '22px',
+      padding: isMobile ? 0 : '0 0 42px',
     },
     sliderTitle: {
-      fontSize: 'clamp(2.25rem, 4.8vw, 4rem)',
-      fontWeight: 800,
-      margin: '0 0 0.8rem 0',
+      maxWidth: isMobile ? '640px' : '780px',
+      fontSize: isSmallMobile ? 'clamp(2rem, 12vw, 3rem)' : 'clamp(2.4rem, 6vw, 5.2rem)',
+      fontWeight: 850,
+      margin: 0,
       lineHeight: 1.08,
-      letterSpacing: '-0.02em',
+      letterSpacing: 0,
       textShadow: '0 10px 24px rgba(2, 6, 23, 0.45)',
     },
     sliderDescription: {
-      fontSize: 'clamp(1.06rem, 1.8vw, 1.35rem)',
-      margin: '0 auto 1.8rem',
-      maxWidth: '620px',
-      lineHeight: 1.5,
+      fontSize: 'clamp(1rem, 1.65vw, 1.24rem)',
+      margin: '14px 0 0',
+      maxWidth: '650px',
+      lineHeight: 1.65,
       textShadow: '0 4px 12px rgba(2, 6, 23, 0.5)',
     },
-    sliderCtaButton: {
-      background: ctaHovered
-        ? 'linear-gradient(135deg, #1d4ed8 0%, #1546b0 100%)'
-        : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+    sliderActions: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '10px',
+      marginTop: '24px',
+    },
+    sliderCtaButton: (variant = 'primary') => ({
+      background: variant === 'primary'
+        ? (ctaHovered ? '#1d4ed8' : '#2563eb')
+        : 'rgba(255, 255, 255, 0.1)',
       color: '#ffffff',
-      border: 'none',
+      border: variant === 'primary' ? '1px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.36)',
       minHeight: '46px',
-      padding: '0.8rem 1.8rem',
-      borderRadius: '0.55rem',
+      padding: '0 16px',
+      borderRadius: '8px',
       fontSize: '1rem',
-      fontWeight: 700,
-      letterSpacing: '0.01em',
+      fontWeight: 800,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
       cursor: 'pointer',
-      transition: 'transform 0.2s ease, box-shadow 0.25s ease, filter 0.2s ease',
+      width: isSmallMobile ? '100%' : 'auto',
+      transition: 'transform 0.2s ease, box-shadow 0.25s ease, background 0.2s ease, border-color 0.2s ease',
       boxShadow: ctaHovered
-        ? '0 14px 30px rgba(29, 78, 216, 0.5)'
-        : '0 12px 28px rgba(29, 78, 216, 0.42)',
-      transform: ctaHovered ? 'translateY(-2px)' : 'translateY(0)',
-      filter: ctaHovered ? 'brightness(1.05)' : 'brightness(1)',
+        ? '0 14px 30px rgba(29, 78, 216, 0.36)'
+        : '0 10px 24px rgba(15, 23, 42, 0.28)',
+      transform: ctaHovered && variant === 'primary' ? 'translateY(-2px)' : 'translateY(0)',
+    }),
+    heroSearchStrip: {
+      width: 'min(720px, 100%)',
+      display: 'grid',
+      gridTemplateColumns: '1fr auto',
+      alignItems: 'center',
+      gap: '10px',
+      minHeight: '56px',
+      marginTop: '24px',
+      padding: '8px',
+      border: '1px solid rgba(255, 255, 255, 0.28)',
+      borderRadius: '8px',
+      background: 'rgba(255, 255, 255, 0.12)',
+      backdropFilter: 'blur(12px)',
+    },
+    heroSearchCopy: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      minWidth: 0,
+      color: 'rgba(255, 255, 255, 0.88)',
+      padding: '0 10px',
+      fontWeight: 600,
+      lineHeight: 1.45,
+    },
+    heroSearchButton: {
+      minHeight: '40px',
+      border: 'none',
+      borderRadius: '8px',
+      background: '#ffffff',
+      color: '#0f172a',
+      padding: '0 14px',
+      cursor: 'pointer',
+      fontWeight: 850,
+      whiteSpace: 'nowrap',
+      width: isMobile ? '100%' : 'auto',
+    },
+    heroTrustRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '10px',
+      marginTop: '16px',
+    },
+    heroTrustPill: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '7px',
+      minHeight: '34px',
+      padding: '0 11px',
+      border: '1px solid rgba(255, 255, 255, 0.24)',
+      borderRadius: '999px',
+      background: 'rgba(15, 23, 42, 0.32)',
+      color: '#ffffff',
+      fontSize: '0.85rem',
+      fontWeight: 700,
     },
     sliderButton: {
       position: 'absolute',
       top: '50%',
       transform: 'translateY(-50%)',
-      backgroundColor: prevBtnHovered || nextBtnHovered 
+      backgroundColor: prevBtnHovered || nextBtnHovered
         ? 'rgba(255, 255, 255, 1)' 
         : 'rgba(255, 255, 255, 0.82)',
       color: prevBtnHovered || nextBtnHovered ? '#2563eb' : '#1f2937',
       border: 'none',
-      fontSize: '2.5rem',
-      padding: '1rem 1.3rem',
+      fontSize: '1.9rem',
+      width: '44px',
+      height: '44px',
+      padding: 0,
       cursor: 'pointer',
       zIndex: 20,
-      borderRadius: '0.6rem',
+      borderRadius: '8px',
       transition: 'all 0.3s ease',
     },
     sliderButtonPrev: {
@@ -192,6 +255,14 @@ function HeroSlider({ onGetStarted }) {
       cursor: 'pointer',
       transition: 'all 0.3s ease',
     }),
+    mobileStyles: {
+      heroSearchStrip: {
+        gridTemplateColumns: '1fr',
+      },
+      sliderButton: {
+        display: 'none',
+      },
+    },
   };
 
   return (
@@ -205,25 +276,51 @@ function HeroSlider({ onGetStarted }) {
 
         <div style={styles.sliderOverlay}>
           <div style={styles.sliderContent}>
-            <span style={styles.sliderBadge}>{currentImage.badge}</span>
-            <h2 style={styles.sliderTitle}>{currentImage.title}</h2>
-            <p style={styles.sliderDescription}>{currentImage.description}</p>
-            <button
-              type="button"
-              style={styles.sliderCtaButton}
-              onClick={onGetStarted}
-              onMouseEnter={() => setCtaHovered(true)}
-              onMouseLeave={() => setCtaHovered(false)}
-            >
-              Get Started
-            </button>
+            <div>
+              <h1 style={styles.sliderTitle}>{currentImage.title}</h1>
+              <p style={styles.sliderDescription}>{currentImage.description}</p>
+              <div style={styles.sliderActions}>
+                <button
+                  type="button"
+                  style={styles.sliderCtaButton('primary')}
+                  onClick={handleBrowseServices}
+                  onMouseEnter={() => setCtaHovered(true)}
+                  onMouseLeave={() => setCtaHovered(false)}
+                >
+                  <Search size={17} aria-hidden="true" />
+                  Browse Services
+                </button>
+                <button
+                  type="button"
+                  style={styles.sliderCtaButton('secondary')}
+                  onClick={onGetStarted}
+                >
+                  Join GigLink
+                  <ArrowRight size={17} aria-hidden="true" />
+                </button>
+              </div>
+              <div style={{ ...styles.heroSearchStrip, ...(isMobile ? styles.mobileStyles.heroSearchStrip : {}) }}>
+                <div style={styles.heroSearchCopy}>
+                  <Search size={18} aria-hidden="true" />
+                  <span>Try “math tutor”, “aircon cleaning”, or “graphic design”</span>
+                </div>
+                <button type="button" style={styles.heroSearchButton} onClick={handleBrowseServices}>
+                  Search now
+                </button>
+              </div>
+              <div style={styles.heroTrustRow}>
+                <span style={styles.heroTrustPill}><ShieldCheck size={15} aria-hidden="true" /> Active provider profiles</span>
+                <span style={styles.heroTrustPill}>Transparent rates</span>
+                <span style={styles.heroTrustPill}>Schedule-ready services</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <button
         onClick={prevSlide}
-        style={{ ...styles.sliderButton, ...styles.sliderButtonPrev }}
+        style={{ ...styles.sliderButton, ...styles.sliderButtonPrev, ...(isMobile ? styles.mobileStyles.sliderButton : {}) }}
         aria-label="Previous slide"
         onMouseEnter={() => setPrevBtnHovered(true)}
         onMouseLeave={() => setPrevBtnHovered(false)}
@@ -233,7 +330,7 @@ function HeroSlider({ onGetStarted }) {
 
       <button
         onClick={nextSlide}
-        style={{ ...styles.sliderButton, ...styles.sliderButtonNext }}
+        style={{ ...styles.sliderButton, ...styles.sliderButtonNext, ...(isMobile ? styles.mobileStyles.sliderButton : {}) }}
         aria-label="Next slide"
         onMouseEnter={() => setNextBtnHovered(true)}
         onMouseLeave={() => setNextBtnHovered(false)}

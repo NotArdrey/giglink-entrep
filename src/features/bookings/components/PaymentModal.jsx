@@ -19,7 +19,7 @@ import React, { useEffect, useState } from 'react';
  * 
  * State Management:
  * - selectedMethod: 'gcash-advance' | 'after-service' | null
- * - isProcessing: Loading state during "payment confirmation"
+ * - isProcessing: Loading state while the parent persists the selection
  */
 const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
   const [selectedMethod, setSelectedMethod] = useState(null);
@@ -27,6 +27,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showProcessing, setShowProcessing] = useState(false);
   const [hoveredKey, setHoveredKey] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   const allowsAdvanceGcash = booking?.allowGcashAdvance !== false;
   const allowsAfterService = booking?.allowAfterService !== false;
@@ -63,12 +64,11 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
   
   /**
    * handleConfirmPayment()
-   * Transition: Payment Modal → Confirmation
-   * Simulates payment processing and calls parent callback
+   * Persists the chosen payment method through the parent callback.
    */
   const handleConfirmPayment = async () => {
     if (!selectedMethod) {
-      alert('Please select a payment method');
+      setSubmitError('Please select a payment method.');
       return;
     }
     
@@ -77,17 +77,15 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       resolvedMethod = afterServiceChannel === 'gcash' ? 'after-service-gcash' : 'after-service-cash';
     }
 
-    // Show processing animation
-    setShowProcessing(true);
-    setIsProcessing(true);
-    
-    // Simulate payment processing delay (2 seconds)
-    setTimeout(() => {
+    try {
+      setSubmitError('');
+      setShowProcessing(true);
+      setIsProcessing(true);
+      await Promise.resolve(onSelectPayment(resolvedMethod));
+    } finally {
       setIsProcessing(false);
-      
-      // Call parent callback to transition to confirmation
-      onSelectPayment(resolvedMethod);
-    }, 2000);
+      setShowProcessing(false);
+    }
   };
 
   const styles = {
@@ -105,7 +103,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       width: 'min(95vw, 900px)',
       maxHeight: '94vh',
       overflowY: 'auto',
-      borderRadius: '0.9rem',
+      borderRadius: '8px',
       border: '1px solid #e2e8f0',
       backgroundColor: '#ffffff',
       boxShadow: '0 18px 40px rgba(15, 23, 42, 0.24)',
@@ -120,11 +118,11 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       gap: '0.6rem',
     },
     subtitle: { marginTop: '0.25rem', color: '#64748b' },
-    close: { width: '34px', height: '34px', borderRadius: '999px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
+    close: { width: '34px', height: '34px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
     summary: {
       margin: '0.85rem 1rem 0',
       border: '1px solid #e2e8f0',
-      borderRadius: '0.6rem',
+      borderRadius: '8px',
       backgroundColor: '#f8fafc',
       padding: '0.75rem',
       display: 'flex',
@@ -139,7 +137,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       margin: '1rem',
       border: '1px solid #bfdbfe',
       backgroundColor: '#eff6ff',
-      borderRadius: '0.6rem',
+      borderRadius: '8px',
       padding: '1rem',
       textAlign: 'center',
       color: '#1e3a8a',
@@ -160,7 +158,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
     },
     option: {
       border: '1px solid #cbd5e1',
-      borderRadius: '0.65rem',
+      borderRadius: '8px',
       padding: '0.7rem',
       backgroundColor: '#ffffff',
       cursor: 'pointer',
@@ -176,7 +174,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       gap: '0.6rem',
       marginTop: '0.45rem',
       border: '1px solid #cbd5e1',
-      borderRadius: '0.5rem',
+      borderRadius: '8px',
       backgroundColor: '#ffffff',
       padding: '0.45rem 0.5rem',
       flexWrap: 'wrap',
@@ -194,7 +192,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
     note: { margin: 0, color: '#334155', fontSize: '0.9rem', maxWidth: '560px' },
     confirm: {
       border: 'none',
-      borderRadius: '0.55rem',
+      borderRadius: '8px',
       backgroundColor: '#2563eb',
       color: '#ffffff',
       fontWeight: 700,
@@ -212,7 +210,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
           <p style={styles.subtitle}>
             Choose how you'd like to pay for {booking.workerName}'s service
           </p>
-          <button style={styles.close} onClick={onCancel}>✕</button>
+          <button style={styles.close} onClick={onCancel} aria-label="Cancel payment selection">x</button>
         </div>
         
         {/* Payment Summary */}
@@ -223,7 +221,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
           </div>
           <div style={styles.row}>
             <span style={styles.label}>Cost:</span>
-            <span style={{ ...styles.value, ...styles.amount }}>₱{booking.quoteAmount}</span>
+            <span style={{ ...styles.value, ...styles.amount }}>PHP {booking.quoteAmount}</span>
           </div>
           <div style={styles.row}>
             <span style={styles.label}>Scheduled:</span>
@@ -234,10 +232,16 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
         </div>
         
         {/* Processing Overlay */}
+        {submitError && (
+          <div style={{ margin: '0.8rem 1rem 0', color: '#b91c1c', fontWeight: 700, fontSize: '13px' }}>
+            {submitError}
+          </div>
+        )}
+
         {showProcessing && (
           <div style={styles.processing}>
             <div style={styles.spinner}></div>
-            <p>{isProcessing ? 'Processing payment...' : 'Payment confirmed!'}</p>
+            <p>{isProcessing ? 'Saving payment choice...' : 'Payment choice saved.'}</p>
           </div>
         )}
         
@@ -272,14 +276,14 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 </p>
 
                 <ul style={styles.list}>
-                  <li>✓ Booking confirmed instantly</li>
-                  <li>✓ Payment secured with GCash encryption</li>
-                  <li>✓ Receive booking receipt via SMS</li>
-                  <li>✓ Refund eligible if service not rendered</li>
+                  <li>- Booking confirmed instantly</li>
+                  <li>- Payment secured with GCash encryption</li>
+                  <li>- Receive booking receipt via SMS</li>
+                  <li>- Refund eligible if service not rendered</li>
                 </ul>
 
                 <div style={styles.footer}>
-                  <p>Total: <strong>₱{booking.quoteAmount}</strong></p>
+                  <p>Total: <strong>PHP {booking.quoteAmount}</strong></p>
                 </div>
               </div>
             )}
@@ -341,14 +345,14 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 )}
 
                 <ul style={styles.list}>
-                  {allowsAfterServiceCash && <li>✓ Cash payment accepted after completion</li>}
-                  {allowsAfterServiceGcash && <li>✓ GCash payment accepted after completion</li>}
-                  <li>✓ Verify service quality before paying</li>
-                  <li>✓ Worker receives notification of your choice</li>
+                  {allowsAfterServiceCash && <li>- Cash payment accepted after completion</li>}
+                  {allowsAfterServiceGcash && <li>- GCash payment accepted after completion</li>}
+                  <li>- Verify service quality before paying</li>
+                  <li>- Worker receives notification of your choice</li>
                 </ul>
 
                 <div style={styles.footer}>
-                  <p>Total: <strong>₱{booking.quoteAmount}</strong></p>
+                  <p>Total: <strong>PHP {booking.quoteAmount}</strong></p>
                 </div>
               </div>
             )}

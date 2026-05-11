@@ -58,6 +58,10 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
   const [barangays, setBarangays] = useState([]);
   const [hoveredButton, setHoveredButton] = useState('');
   const [isSignupSuccess, setIsSignupSuccess] = useState(false);
+  const {
+    setLoadingProvinces,
+    setApiError,
+  } = controller;
 
   // Helper to reset all state when modal closes
   const resetAllState = () => {
@@ -82,8 +86,8 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
   };
 
   const fetchProvinces = useCallback(async () => {
-    controller.setLoadingProvinces(true);
-    controller.setApiError('');
+    setLoadingProvinces(true);
+    setApiError('');
     try {
       const response = await fetch(`${PSGC_BASE_URL}/provinces/`);
       if (!response.ok) throw new Error('Failed to fetch provinces');
@@ -91,16 +95,16 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       setProvinces(data);
     } catch (error) {
       console.error('Error fetching provinces:', error);
-      controller.setApiError('Could not load provinces. Using fallback data.');
+      setApiError('Could not load provinces. Using fallback data.');
       setProvinces([
         { code: 'PHR030000000', name: 'Bulacan' },
         { code: 'PHR010000000', name: 'Abra' },
         { code: 'PHR020000000', name: 'Agusan del Norte' },
       ]);
     } finally {
-      controller.setLoadingProvinces(false);
+      setLoadingProvinces(false);
     }
-  }, []);
+  }, [setLoadingProvinces, setApiError]);
 
   useEffect(() => {
     if (isOpen && !controller.isLoginMode) {

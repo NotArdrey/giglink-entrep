@@ -5,7 +5,7 @@ import SellerScheduleModal from '../components/SellerScheduleModal';
 import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
 
 
-function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToClient, onOpenAdminDashboard }) {
+function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToClient, onOpenAdminDashboard }) {
   const workerName = sellerProfile?.fullName || 'New Seller';
   const serviceType =
     sellerProfile?.serviceType === 'Others'
@@ -162,8 +162,9 @@ function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearc
         onOpenProfile={onOpenProfile}
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
-          onOpenDashboard={onOpenDashboard}
-          isAdminView={false}
+        onOpenDashboard={onOpenDashboard}
+        onOpenBrowseServices={onOpenBrowseServices}
+        isAdminView={false}
           onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
 

@@ -7,7 +7,7 @@
 
 import PropTypes from 'prop-types';
 
-function AdminCommentsSection({ comments, onOpenDeleteComment, styles }) {
+function AdminCommentsSection({ comments, commentsError, onOpenDeleteComment, styles }) {
   return (
     <section style={{ ...styles.contentGrid, gridTemplateColumns: '1fr' }}>
       <article style={styles.panel}>
@@ -15,12 +15,14 @@ function AdminCommentsSection({ comments, onOpenDeleteComment, styles }) {
           <div style={styles.panelTitleWrap}>
             <h2 style={styles.panelTitle}>Summary / Comment Moderation</h2>
             <p style={styles.panelDesc}>
-              Review worker comments and remove troll/spam entries. Buttons are local-only for now so the UI is ready before backend hookup.
+              Review worker comments from the reviews table and remove entries that violate platform policy.
             </p>
           </div>
         </div>
 
-        {comments.length > 0 ? (
+        {commentsError ? (
+          <div style={styles.emptyState}>{commentsError}</div>
+        ) : comments.length > 0 ? (
           <div style={styles.commentList}>
             {comments.map((comment) => (
               <div key={comment.id} style={styles.commentCard}>
@@ -72,8 +74,13 @@ function AdminCommentsSection({ comments, onOpenDeleteComment, styles }) {
 
 AdminCommentsSection.propTypes = {
   comments: PropTypes.arrayOf(PropTypes.object).isRequired,
+  commentsError: PropTypes.string,
   onOpenDeleteComment: PropTypes.func.isRequired,
   styles: PropTypes.object.isRequired,
+};
+
+AdminCommentsSection.defaultProps = {
+  commentsError: '',
 };
 
 export default AdminCommentsSection;

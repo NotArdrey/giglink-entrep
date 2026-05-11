@@ -30,12 +30,6 @@ const getStoredThemeMode = () => {
     : 'system';
 };
 
-const isProfilesTableApiError = (error) => {
-  const message = String(error?.message || '');
-  return /table public\.profiles is not available to the API yet/i.test(message)
-    || /Could not find the table 'public\.profiles' in the schema cache/i.test(message);
-};
-
 const toErrorMessage = (error, fallbackMessage) => {
   if (typeof error === 'string' && error.trim().length > 0) {
     return error;
@@ -624,6 +618,10 @@ export const useAppNavigation = () => {
     setCurrentView('my-bookings');
   };
 
+  const handleOpenBrowseServices = () => {
+    setCurrentView('browse-services');
+  };
+
   const handleOpenMyWork = () => {
     setCurrentView('my-work');
   };
@@ -720,6 +718,7 @@ export const useAppNavigation = () => {
     handleBackToClientDashboard,
     handleOpenAdminDashboard,
     handleOpenMyBookings,
+    handleOpenBrowseServices,
     handleOpenMyWork,
     handleOpenProfile,
     handleOpenAccountSettings,

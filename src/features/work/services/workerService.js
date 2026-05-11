@@ -1,303 +1,212 @@
-/**
- * workerService.js
- * Data operations for worker profiles, services, and inquiries
- * 
- * Handles:
- * - Worker profile data
- * - Services management
- * - Inquiry/quote handling
- * - Service metadata
- */
+import { supabase } from '../../../shared/services/supabaseClient';
+import {
+  createSellerService,
+  fetchSellerProfile,
+  fetchSellerServices,
+  fetchUserProfileBundle,
+  syncWorkerSetup,
+} from '../../../shared/services/authService';
 
-// Mock worker profile data
-const getMockWorkerProfile = () => ({
-  userId: 'worker-001',
-  fullName: 'Joshua Paul Santos',
-  serviceType: 'Tutor',
-  customServiceType: '',
-  bio: 'Professional tutor with 5+ years of experience in online tutoring.',
-  email: 'joshua@example.com',
-  city: 'Bulacan',
-  barangay: 'San Jose',
-  address: '123 Main Street',
-  province: 'Bulacan',
-  age: 28,
-  experienceYears: 5,
-  pricingModel: 'fixed',
-  fixedPrice: 500,
-  hourlyRate: 500,
-  dailyRate: 3000,
-  weeklyRate: 12000,
-  monthlyRate: 40000,
-  projectRate: null,
-  rateBasis: 'per-hour',
-  bookingMode: 'with-slots',
-  paymentAdvance: true,
-  paymentAfterService: true,
-  afterServicePaymentType: 'both',
-  gcashNumber: '09054891105',
-  qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=09054891105',
-  profilePhoto: null,
-  verificationStatus: 'verified',
-  createdAt: '2024-01-15T10:00:00Z',
-  updatedAt: '2026-05-10T10:00:00Z',
-});
+const normalizeRateBasis = (value) => {
+  const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
+  if (raw === 'per-hour' || raw === 'hourly') return 'per-hour';
+  if (raw === 'per-day' || raw === 'daily') return 'per-day';
+  if (raw === 'per-week' || raw === 'weekly') return 'per-week';
+  if (raw === 'per-month' || raw === 'monthly') return 'per-month';
+  if (raw === 'per-project' || raw === 'project' || raw === 'package' || raw === 'fixed' || raw === 'custom') return 'per-project';
+  return '';
+};
 
-// Mock services list
-const getMockWorkerServices = () => [
-  {
-    id: 'svc-001',
-    title: 'Math Tutoring - High School',
-    shortDescription: 'One-on-one math tutoring for high school students',
-    description: 'Comprehensive math tutoring covering algebra, geometry, and trigonometry',
-    category: 'Education',
-    basePrice: 500,
-    priceType: 'fixed',
-    rateBasis: 'per-hour',
-    bookingMode: 'with-slots',
-    currency: 'PHP',
-    durationMinutes: 60,
-    createdAt: '2024-02-01T08:00:00Z',
-    updatedAt: '2026-05-10T10:00:00Z',
-    metadata: {
-      pricing_model: 'fixed',
-      rate_basis: 'per-hour',
-      booking_mode: 'with-slots',
+export const getPricingModelFromService = (service) => {
+  const model = String(
+    service?.metadata?.pricing_model || service?.metadata?.pricingModel || service?.pricing_model || ''
+  ).trim().toLowerCase();
+  return model === 'inquiry' ? 'inquiry' : 'fixed';
+};
+
+export const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, fallbackProfile = null) => {
+  const sellerName =
+    sellerRow?.display_name ||
+    sellerRow?.search_meta?.name ||
+    workerProfile?.fullName ||
+    fallbackProfile?.fullName ||
+    'Service Provider';
+  const serviceType =
+    workerProfile?.serviceType ||
+    workerProfile?.customServiceType ||
+    sellerRow?.headline ||
+    sellerRow?.search_meta?.service_type ||
+    fallbackProfile?.serviceType ||
+    'Service Type';
+  const location = {
+    address: workerProfile?.address || sellerRow?.search_meta?.location?.address || fallbackProfile?.location?.address || '',
+    barangay: workerProfile?.barangay || sellerRow?.search_meta?.location?.barangay || fallbackProfile?.location?.barangay || '',
+    city: workerProfile?.city || sellerRow?.search_meta?.location?.city || fallbackProfile?.location?.city || '',
+    province: workerProfile?.province || sellerRow?.search_meta?.location?.province || fallbackProfile?.location?.province || '',
+  };
+
+  return {
+    fullName: sellerName,
+    serviceType,
+    description: workerProfile?.bio || sellerRow?.about || sellerRow?.tagline || fallbackProfile?.bio || '',
+    pricingModel: workerProfile?.pricingModel || 'fixed',
+    fixedPrice: workerProfile?.fixedPrice ?? '',
+    hourlyRate: workerProfile?.hourlyRate ?? '',
+    dailyRate: workerProfile?.dailyRate ?? '',
+    weeklyRate: workerProfile?.weeklyRate ?? '',
+    monthlyRate: workerProfile?.monthlyRate ?? '',
+    projectRate: workerProfile?.projectRate ?? '',
+    rateBasis: workerProfile?.rateBasis || 'per-project',
+    bookingMode: workerProfile?.bookingMode || sellerRow?.search_meta?.booking_mode || 'with-slots',
+    paymentAdvance: workerProfile?.paymentAdvance ?? false,
+    paymentAfterService: workerProfile?.paymentAfterService ?? true,
+    afterServicePaymentType: workerProfile?.afterServicePaymentType || 'both',
+    gcashNumber: workerProfile?.gcashNumber || sellerRow?.gcash_number || '',
+    location,
+    raw: null,
+  };
+};
+
+export const mapServiceRowToWorkerService = (service, sellerRow = null, fallbackProfile = null) => {
+  const rateBasis = normalizeRateBasis(service?.metadata?.rate_basis || service?.rate_basis || service?.price_type) || 'per-project';
+  const sellerDisplayName =
+    sellerRow?.display_name ||
+    sellerRow?.search_meta?.name ||
+    fallbackProfile?.fullName ||
+    fallbackProfile?.full_name ||
+    service?.title ||
+    'Service';
+
+  return {
+    fullName: sellerDisplayName,
+    serviceType: service?.title || service?.metadata?.service_type || 'Service',
+    description: service?.short_description || service?.description || '',
+    pricingModel: getPricingModelFromService(service),
+    fixedPrice: service?.base_price || '',
+    rateBasis,
+    hourlyRate: rateBasis === 'per-hour' ? (service?.base_price || '') : '',
+    dailyRate: rateBasis === 'per-day' ? (service?.base_price || '') : '',
+    weeklyRate: rateBasis === 'per-week' ? (service?.base_price || '') : '',
+    monthlyRate: rateBasis === 'per-month' ? (service?.base_price || '') : '',
+    projectRate: rateBasis === 'per-project' ? (service?.base_price || '') : '',
+    paymentAdvance: sellerRow?.payment_advance ?? false,
+    paymentAfterService: sellerRow?.payment_after_service ?? true,
+    afterServicePaymentType: sellerRow?.after_service_payment_type || 'both',
+    gcashNumber: sellerRow?.gcash_number || '',
+    bookingMode: service?.metadata?.booking_mode || sellerRow?.booking_mode || sellerRow?.search_meta?.booking_mode || 'with-slots',
+    location: {
+      barangay: sellerRow?.search_meta?.location?.barangay || sellerRow?.location?.barangay || '',
+      city: sellerRow?.search_meta?.location?.city || sellerRow?.location?.city || '',
+      province: sellerRow?.search_meta?.location?.province || sellerRow?.location?.province || '',
     },
-  },
-  {
-    id: 'svc-002',
-    title: 'Science Tutoring - All Levels',
-    shortDescription: 'Physics, Chemistry, and Biology tutoring',
-    description: 'Expert science tutoring for all academic levels',
-    category: 'Education',
-    basePrice: 600,
-    priceType: 'fixed',
-    rateBasis: 'per-hour',
-    bookingMode: 'with-slots',
-    currency: 'PHP',
-    durationMinutes: 60,
-    createdAt: '2024-03-15T08:00:00Z',
-    updatedAt: '2026-05-10T10:00:00Z',
-    metadata: {
-      pricing_model: 'fixed',
-      rate_basis: 'per-hour',
-      booking_mode: 'with-slots',
-    },
-  },
-];
-
-// Mock inquiries data
-const getMockInquiries = () => [
-  {
-    id: 'inq-001',
-    clientName: 'Maria Garcia',
-    clientPhoto: 'https://api.placeholder.com/photo/maria.jpg',
-    clientRating: 4.8,
-    clientReviewCount: 12,
-    serviceType: 'Math Tutoring - High School',
-    description: 'Need help with trigonometry for my college entrance exam',
-    requestDate: '2026-05-08T14:30:00Z',
-    status: 'pending', // pending | negotiating | quoted | accepted | completed
-    quoteAmount: 500,
-    quotedAt: null,
-    acceptedAt: null,
-  },
-  {
-    id: 'inq-002',
-    clientName: 'Juan Dela Cruz',
-    clientPhoto: 'https://api.placeholder.com/photo/juan.jpg',
-    clientRating: 5.0,
-    clientReviewCount: 8,
-    serviceType: 'Science Tutoring - All Levels',
-    description: 'Looking for chemistry help for my daughter, weekly sessions preferred',
-    requestDate: '2026-05-09T09:15:00Z',
-    status: 'negotiating',
-    quoteAmount: null,
-    quotedAt: null,
-    acceptedAt: null,
-  },
-  {
-    id: 'inq-003',
-    clientName: 'Ana Santos',
-    clientPhoto: 'https://api.placeholder.com/photo/ana.jpg',
-    clientRating: 4.5,
-    clientReviewCount: 15,
-    serviceType: 'Math Tutoring - High School',
-    description: 'Monthly tutoring package for my son',
-    requestDate: '2026-05-06T16:45:00Z',
-    status: 'quoted',
-    quoteAmount: 12000,
-    quotedAt: '2026-05-07T10:00:00Z',
-    acceptedAt: null,
-  },
-];
-
-/**
- * Get worker profile
- */
-export const getWorkerProfile = () => {
-  try {
-    // In production: fetch from Supabase
-    // const { data, error } = await supabase.from('worker_profiles').select('*').single();
-    return getMockWorkerProfile();
-  } catch (error) {
-    console.error('Error fetching worker profile:', error);
-    return getMockWorkerProfile();
-  }
+    raw: service,
+  };
 };
 
-/**
- * Update worker profile
- */
-export const updateWorkerProfile = (profileData) => {
-  try {
-    // In production: update in Supabase
-    // const { data, error } = await supabase.from('worker_profiles').update(profileData).eq('user_id', userId);
-    const updated = { ...getMockWorkerProfile(), ...profileData };
-    return updated;
-  } catch (error) {
-    console.error('Error updating worker profile:', error);
-    return null;
-  }
+export const getAuthenticatedWorkUser = async () => {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data?.user || null;
 };
 
-/**
- * Get worker services
- */
-export const getWorkerServices = () => {
-  try {
-    // In production: fetch from Supabase
-    // const { data, error } = await supabase.from('services').select('*').eq('worker_id', userId);
-    return getMockWorkerServices();
-  } catch (error) {
-    console.error('Error fetching worker services:', error);
-    return getMockWorkerServices();
-  }
-};
-
-/**
- * Create new service
- */
-export const createService = (serviceData) => {
-  try {
-    // In production: insert into Supabase
-    // const { data, error } = await supabase.from('services').insert([serviceData]);
-    const newService = {
-      id: `svc-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      ...serviceData,
+export const loadWorkerProfileServices = async ({ userId, fallbackProfile = null } = {}) => {
+  if (!userId) {
+    return {
+      sellerData: null,
+      workerProfileBundle: null,
+      sellerDbServices: [],
+      workerServices: [],
+      sellerUiProfile: null,
+      sellerId: null,
     };
-    return newService;
-  } catch (error) {
-    console.error('Error creating service:', error);
-    return null;
   }
-};
 
-/**
- * Update service
- */
-export const updateService = (serviceId, updates) => {
-  try {
-    // In production: update in Supabase
-    const services = getMockWorkerServices();
-    const service = services.find((s) => s.id === serviceId);
-    if (service) {
-      return { ...service, ...updates, updatedAt: new Date().toISOString() };
-    }
-    return null;
-  } catch (error) {
-    console.error('Error updating service:', error);
-    return null;
+  const [seller, workerBundle] = await Promise.all([
+    fetchSellerProfile(userId),
+    fetchUserProfileBundle(userId),
+  ]);
+
+  if (!seller) {
+    return {
+      sellerData: null,
+      workerProfileBundle: workerBundle || null,
+      sellerDbServices: [],
+      workerServices: [],
+      sellerUiProfile: mapSellerRowToUiProfile(null, workerBundle, fallbackProfile),
+      sellerId: userId,
+    };
   }
+
+  const sellerId = seller.id || seller.user_id || userId;
+  const services = await fetchSellerServices(sellerId);
+  const sellerUiProfile = mapSellerRowToUiProfile(seller, workerBundle, fallbackProfile);
+  const workerServices = (services || []).map((service) =>
+    mapServiceRowToWorkerService(service, seller, sellerUiProfile || fallbackProfile)
+  );
+
+  return {
+    sellerData: seller,
+    workerProfileBundle: workerBundle || null,
+    sellerDbServices: services || [],
+    workerServices,
+    sellerUiProfile,
+    sellerId,
+  };
 };
 
-/**
- * Get inquiries
- */
-export const getInquiries = () => {
-  try {
-    // In production: fetch from Supabase
-    // const { data, error } = await supabase.from('inquiries').select('*').eq('worker_id', userId);
-    return getMockInquiries();
-  } catch (error) {
-    console.error('Error fetching inquiries:', error);
-    return getMockInquiries();
-  }
+export const createWorkerService = async ({ sellerId, serviceData, sellerData, fallbackProfile }) => {
+  const created = await createSellerService(sellerId, serviceData);
+  return {
+    raw: created,
+    mapped: mapServiceRowToWorkerService(created, sellerData, fallbackProfile),
+  };
 };
 
-/**
- * Update inquiry status
- */
-export const updateInquiryStatus = (inquiryId, status, quoteAmount = null) => {
-  try {
-    // In production: update in Supabase
-    const inquiry = getMockInquiries().find((i) => i.id === inquiryId);
-    if (inquiry) {
-      return {
-        ...inquiry,
-        status,
-        quoteAmount: quoteAmount ?? inquiry.quoteAmount,
-        quotedAt: status === 'quoted' ? new Date().toISOString() : inquiry.quotedAt,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Error updating inquiry:', error);
-    return null;
-  }
+export const updateWorkerProfile = async ({ userId, profileData }) => {
+  if (!userId) throw new Error('Missing authenticated user.');
+  return syncWorkerSetup(userId, profileData);
 };
 
-/**
- * Send quote for inquiry
- */
-export const sendQuote = (inquiryId, quoteAmount) => {
-  return updateInquiryStatus(inquiryId, 'quoted', quoteAmount);
+export const subscribeToWorkProfileChanges = ({ sellerId, onSellerChange, onServiceChange }) => {
+  if (!sellerId) return () => {};
+
+  const serviceChannel = supabase
+    .channel(`seller-services-${sellerId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'services', filter: `seller_id=eq.${sellerId}` },
+      (payload) => {
+        if (typeof onServiceChange === 'function') onServiceChange(payload);
+      }
+    )
+    .subscribe();
+
+  const sellerChannel = supabase
+    .channel(`seller-row-${sellerId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'sellers', filter: `user_id=eq.${sellerId}` },
+      (payload) => {
+        if (typeof onSellerChange === 'function') onSellerChange(payload);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    try { supabase.removeChannel(serviceChannel); } catch (error) { /* ignore cleanup */ }
+    try { supabase.removeChannel(sellerChannel); } catch (error) { /* ignore cleanup */ }
+  };
 };
 
-/**
- * Accept inquiry (mark as accepted)
- */
-export const acceptInquiry = (inquiryId) => {
-  return updateInquiryStatus(inquiryId, 'accepted');
-};
-
-/**
- * Reject inquiry
- */
-export const rejectInquiry = (inquiryId) => {
-  return updateInquiryStatus(inquiryId, 'rejected');
-};
-
-/**
- * Get inquiry details
- */
-export const getInquiryDetails = (inquiryId) => {
-  const inquiries = getMockInquiries();
-  return inquiries.find((i) => i.id === inquiryId) || null;
-};
-
-/**
- * Mark inquiry as completed/done
- */
-export const completeInquiry = (inquiryId) => {
-  return updateInquiryStatus(inquiryId, 'completed');
-};
-
-export default {
-  getWorkerProfile,
+const workerService = {
+  createWorkerService,
+  getAuthenticatedWorkUser,
+  getPricingModelFromService,
+  loadWorkerProfileServices,
+  mapSellerRowToUiProfile,
+  mapServiceRowToWorkerService,
+  subscribeToWorkProfileChanges,
   updateWorkerProfile,
-  getWorkerServices,
-  createService,
-  updateService,
-  getInquiries,
-  updateInquiryStatus,
-  sendQuote,
-  acceptInquiry,
-  rejectInquiry,
-  getInquiryDetails,
-  completeInquiry,
 };
+
+export default workerService;

@@ -1,40 +1,30 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
-import SimulatedChat from '../components/SimulatedChat';
+import InquiryChatModal from '../components/InquiryChatModal';
 import SlotEditModal from '../components/SlotEditModal';
 import ProfileEditModal from '../components/ProfileEditModal';
 import ConfirmActionModal from '../components/modals/ConfirmActionModal';
 import QrPreviewModal from '../components/modals/QrPreviewModal';
-import { fetchSellerProfile, fetchSellerServices, fetchUserProfileBundle, createSellerService, createOrUpdateSeller, syncWorkerSetup } from '../../../shared/services/authService';
-import { useAppNavigation } from '../../navigation/useAppNavigation';
+import CreateServiceModal from '../components/CreateServiceModal';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
 import ErrorNotification from '../../../shared/components/ErrorNotification';
-import { supabase } from '../../../shared/services/supabaseClient';
-const formatDateLabel = (date) =>
-  date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+import { updateBookingWorkflow } from '../../bookings/services/bookingService';
+import { useWorkPayments, useWorkProfileServices, useWorkSchedule } from '../hooks';
+import {
+  CalendarDays,
+  ChevronDown,
+  Loader2,
+  MapPin,
+  MessageSquareText,
+  Pencil,
+  Star,
+  Trash2,
+  UserRound,
+  WalletCards,
+} from 'lucide-react';
 
 const formatDateLong = (date) =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-const CASH_CONFIRMATION_REQUESTS_KEY = 'giglink_cash_confirmation_requests';
-const REFUND_REQUESTS_KEY = 'giglink_refund_requests';
-const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
-
-const addDays = (date, days) => {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-};
-
-const getMonday = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
 
 const normalizeRateBasis = (value) => {
   const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
@@ -45,23 +35,6 @@ const normalizeRateBasis = (value) => {
   if (raw === 'per-project' || raw === 'project' || raw === 'package' || raw === 'fixed' || raw === 'custom') return 'per-project';
   return '';
 };
-
-const getPricingModelFromService = (svc) => {
-  const model = String(
-    svc?.metadata?.pricing_model || svc?.metadata?.pricingModel || svc?.pricing_model || ''
-  )
-    .trim()
-    .toLowerCase();
-  return model === 'inquiry' ? 'inquiry' : 'fixed';
-};
-
-const INITIAL_WEEKLY_SCHEDULE = {
-  Mon: [], Tue: [], Wed: [], Thu: [], Fri: [],
-};
-
-const INITIAL_CALENDAR_AVAILABILITY = [];
-
-const INITIAL_TRANSACTIONS = [];
 
 const classStyles = {
   'my-work-page': { minHeight: '100vh', background: '#f9f9f9', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflowX: 'hidden' },
@@ -187,73 +160,21 @@ const classStyles = {
 };
 
 const hoverStyles = {
-  backButton: { background: '#f9f9f9', borderColor: '#2563eb', color: '#2563eb' },
-  logoutButton: { background: '#fee', borderColor: '#e74c3c' },
+  backButton: { background: '#f9f9f9', border: '1px solid #2563eb', color: '#2563eb' },
+  logoutButton: { background: '#fee', border: '1px solid #e74c3c' },
   profileName: { color: '#1d4ed8', textDecoration: 'underline' },
   inquiryCard: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', border: '1px solid #2563eb', transform: 'translateY(-2px)' },
   respondButton: { background: '#1d4ed8', transform: 'translateY(-1px)' },
-  weekNav: { background: '#eef2ff', borderColor: '#818cf8' },
-  gcashButton: { background: '#dbeafe', borderColor: '#93c5fd' },
+  weekNav: { background: '#eef2ff', border: '1px solid #818cf8' },
+  gcashButton: { background: '#dbeafe', border: '1px solid #93c5fd' },
   markDone: { background: '#219653' },
-  addSlot: { background: '#eff6ff', borderColor: '#1d4ed8', color: '#1d4ed8' },
-  editAction: { background: '#dbeafe', borderColor: '#2563eb' },
-  deleteAction: { background: '#fecaca', borderColor: '#e74c3c' },
+  addSlot: { background: '#eff6ff', border: '2px dashed #1d4ed8', color: '#1d4ed8' },
+  editAction: { background: '#dbeafe', border: '1px solid #2563eb' },
+  deleteAction: { background: '#fecaca', border: '1px solid #e74c3c' },
   deleteConfirm: { background: '#b91c1c' },
   approveCash: { background: '#15803d' },
   denyCash: { background: '#b91c1c' },
   approveRefund: { background: '#4338ca' },
-};
-
-const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, fallbackProfile = null) => {
-  const sellerName = sellerRow?.display_name || sellerRow?.search_meta?.name || workerProfile?.fullName || fallbackProfile?.fullName || 'Service Provider';
-  const serviceType = workerProfile?.serviceType || workerProfile?.customServiceType || sellerRow?.headline || sellerRow?.search_meta?.service_type || fallbackProfile?.serviceType || 'Service Type';
-  const location = {
-    address: workerProfile?.address || sellerRow?.search_meta?.location?.address || fallbackProfile?.location?.address || '',
-    barangay: workerProfile?.barangay || sellerRow?.search_meta?.location?.barangay || fallbackProfile?.location?.barangay || '',
-    city: workerProfile?.city || sellerRow?.search_meta?.location?.city || fallbackProfile?.location?.city || '',
-    province: workerProfile?.province || sellerRow?.search_meta?.location?.province || fallbackProfile?.location?.province || '',
-  };
-  const bookingMode = workerProfile?.bookingMode || sellerRow?.search_meta?.booking_mode || fallbackProfile?.bookingMode || 'with-slots';
-  const fixedPrice = workerProfile?.fixedPrice ?? '';
-  const hourlyRate = workerProfile?.hourlyRate ?? '';
-  const dailyRate = workerProfile?.dailyRate ?? '';
-  const weeklyRate = workerProfile?.weeklyRate ?? '';
-  const monthlyRate = workerProfile?.monthlyRate ?? '';
-  const projectRate = workerProfile?.projectRate ?? '';
-  const pricingModel = workerProfile?.pricingModel || 'fixed';
-
-  return {
-    userId: sellerRow?.user_id || workerProfile?.userId || fallbackProfile?.userId || null,
-    fullName: sellerName,
-    serviceType,
-    customServiceType: workerProfile?.customServiceType || '',
-    location,
-    bookingMode,
-    pricingModel,
-    rateBasis: workerProfile?.rateBasis || '',
-    fixedPrice,
-    hourlyRate,
-    dailyRate,
-    weeklyRate,
-    monthlyRate,
-    projectRate,
-    paymentAdvance: workerProfile?.paymentAdvance ?? false,
-    paymentAfterService: workerProfile?.paymentAfterService ?? true,
-    afterServicePaymentType: workerProfile?.afterServicePaymentType || 'both',
-    gcashNumber: sellerRow?.gcash_number || workerProfile?.gcashNumber || '',
-    raw: {
-      ...(sellerRow || {}),
-      base_price: fixedPrice || hourlyRate || dailyRate || weeklyRate || monthlyRate || projectRate || sellerRow?.base_price || null,
-      price_type: workerProfile?.pricingModel || sellerRow?.price_type || 'fixed',
-      rate_basis: workerProfile?.rateBasis || sellerRow?.rate_basis || '',
-      metadata: {
-        ...(sellerRow?.metadata || {}),
-        rate_basis: workerProfile?.rateBasis || sellerRow?.search_meta?.rate_basis || '',
-        booking_mode: bookingMode,
-        pricing_model: workerProfile?.pricingModel || 'fixed',
-      },
-    },
-  };
 };
 
 /**
@@ -269,268 +190,85 @@ const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, fallbac
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
  */
-const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
+const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
   // ============ STATE MANAGEMENT ============
-  
-  const [workerServices, setWorkerServices] = useState([]);
-  const [activeServiceIndex] = useState(0);
+
   const [selectedChatId, setSelectedChatId] = useState(null);
-  const [weeklySchedule, setWeeklySchedule] = useState(INITIAL_WEEKLY_SCHEDULE);
-  const [calendarAvailability, setCalendarAvailability] = useState(INITIAL_CALENDAR_AVAILABILITY);
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-  const [weekOffset, setWeekOffset] = useState(0);
   const [doneConfirmTarget, setDoneConfirmTarget] = useState(null);
-  const [editSlotModalOpen, setEditSlotModalOpen] = useState(false);
-  const [editSlotData, setEditSlotData] = useState(null);
-  const [editSlotDayKey, setEditSlotDayKey] = useState(null);
-  const [editSlotId, setEditSlotId] = useState(null);
-  const [slotModalType, setSlotModalType] = useState('edit');
   const [profileEditModalOpen, setProfileEditModalOpen] = useState(false);
   const [isGcashPreviewOpen, setIsGcashPreviewOpen] = useState(false);
   const [isCashQrPreviewOpen, setIsCashQrPreviewOpen] = useState(false);
-  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState(null);
-  const [cashDecisionTarget, setCashDecisionTarget] = useState(null);
   const [hoverKey, setHoverKey] = useState('');
-  const [cashPaymentView, setCashPaymentView] = useState('pending'); // 'pending' or 'history'
   const [workSectionFilter, setWorkSectionFilter] = useState('all'); // all | inquiries | cash-approvals | refunds | cancelled
   const [isWorkNavDropdownOpen, setIsWorkNavDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
 
-  // Database-backed seller data (inside component)
-  const { authUser } = useAppNavigation();
-  const [sellerData, setSellerData] = useState(null);
-  const [workerProfileBundle, setWorkerProfileBundle] = useState(null);
-  const [sellerDbServices, setSellerDbServices] = useState([]);
-  const [isLoadingSellerData, setIsLoadingSellerData] = useState(true);
-  const [sellerDataError, setSellerDataError] = useState(null);
-  const sellerDataRef = useRef(null);
-  const sellerId = sellerData?.user_id || sellerData?.id || authUser?.id || null;
-  const [successMessage, setSuccessMessage] = useState('');
-  const sellerUiProfile = mapSellerRowToUiProfile(sellerData, workerProfileBundle, sellerProfile);
-  const currentProfile = workerServices[activeServiceIndex] || sellerUiProfile || sellerProfile || {
-    fullName: sellerProfile?.fullName || 'Service Provider',
-    serviceType: sellerProfile?.serviceType || 'Service',
-    location: sellerProfile?.location || { barangay: '', city: '', province: '' },
-    bookingMode: sellerProfile?.bookingMode || 'with-slots',
-  };
-  // Create-service UI state
-  const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
-  const [newService, setNewService] = useState({ title: '', shortDescription: '', basePrice: '', priceType: 'fixed', rateBasis: 'per-project', bookingMode: 'with-slots', currency: 'PHP', durationMinutes: '' });
-  useEffect(() => {
-    if (!authUser?.id) return undefined;
+  const {
+    closeCreateService,
+    currentProfile,
+    handleCreateServiceChange,
+    handleCreateServiceSubmit,
+    handleSaveProfileEdit,
+    hasSellerRecord,
+    isCreateServiceOpen,
+    isLoadingSellerData,
+    newService,
+    sellerData,
+    sellerDataError,
+    sellerDbServices,
+    sellerId,
+    setIsCreateServiceOpen,
+    setSellerDataError,
+    setSuccessMessage,
+    showSetupBanner,
+    successMessage,
+  } = useWorkProfileServices({ sellerProfile });
 
-    let mounted = true;
+  const {
+    calendarAvailability,
+    closeSlotModal,
+    currentWeekMonday,
+    currentWeekSunday,
+    dayKeys,
+    deleteConfirmTarget,
+    editSlotData,
+    editSlotDayKey,
+    editSlotModalOpen,
+    handleAddSlot,
+    handleConfirmDelete,
+    handleDeleteSlot,
+    handleEditSlot,
+    handleSaveSlotEdit,
+    scheduleMode,
+    setDeleteConfirmTarget,
+    setWeekOffset,
+    slotModalType,
+    weekDateByDay,
+    weekOffset,
+    weekRangeLabel,
+    weeklySchedule,
+  } = useWorkSchedule({ sellerId, currentProfile });
 
-    const loadSellerData = async () => {
-      try {
-        setIsLoadingSellerData(true);
-        setSellerDataError(null);
-
-        const seller = await fetchSellerProfile(authUser.id);
-        if (!mounted) return;
-
-        const workerBundle = await fetchUserProfileBundle(authUser.id);
-        if (!mounted) return;
-
-        if (!seller) {
-          setSellerData(null);
-          setWorkerProfileBundle(workerBundle || null);
-          sellerDataRef.current = null;
-          setSellerDbServices([]);
-          setWorkerServices([]);
-          return;
-        }
-
-        const resolvedSellerId = seller.id || seller.user_id || authUser.id;
-        const resolvedSellerDisplayName = seller?.display_name || seller?.search_meta?.name || sellerProfile?.fullName || sellerProfile?.full_name || '';
-
-        setSellerData(seller);
-    setWorkerProfileBundle(workerBundle || null);
-    sellerDataRef.current = seller;
-
-    const mergedSellerProfile = mapSellerRowToUiProfile(seller, workerBundle, sellerProfile);
-    setWorkerProfileBundle(workerBundle || null);
-
-        const services = await fetchSellerServices(resolvedSellerId);
-        if (!mounted) return;
-        setSellerDbServices(services || []);
-
-        try {
-          const { data: slotsRows, error: slotsErr } = await supabase
-            .from('service_slots')
-            .select('*')
-            .eq('seller_id', resolvedSellerId)
-            .order('start_ts', { ascending: true });
-
-          if (!mounted) return;
-          if (!slotsErr && slotsRows) {
-            const dateMap = {};
-            const weekly = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [] };
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const pad = (n) => String(n).padStart(2, '0');
-
-            (slotsRows || []).forEach((s) => {
-              const start = new Date(s.start_ts);
-              const end = new Date(s.end_ts);
-              const dateKey = (s.start_ts || '').slice(0, 10);
-              const dayName = dayNames[start.getDay()];
-
-              if (!dateMap[dateKey]) {
-                dateMap[dateKey] = { id: `date-${dateKey}`, date: dateKey, maxBookings: 0, booked: 0, note: '', raw: [] };
-              }
-              dateMap[dateKey].maxBookings += (s.capacity || 1);
-              dateMap[dateKey].booked += s.status === 'booked' ? (s.capacity || 1) : 0;
-              dateMap[dateKey].raw.push(s);
-
-              if (weekly[dayName]) {
-                weekly[dayName].push({
-                  id: s.id,
-                  startTime: `${pad(start.getHours())}:${pad(start.getMinutes())}`,
-                  endTime: `${pad(end.getHours())}:${pad(end.getMinutes())}`,
-                  capacity: s.capacity || 1,
-                  slotsLeft: s.status === 'available' ? (s.capacity || 1) : 0,
-                  bookings: [],
-                  raw: s,
-                });
-              }
-            });
-
-            const calendarRows = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
-            if (calendarRows.length > 0) setCalendarAvailability(calendarRows);
-            setWeeklySchedule((prev) => ({ ...prev, ...weekly }));
-          }
-        } catch (e) {
-          console.warn('Failed to load seller slots', e);
-        }
-
-        if (services && services.length > 0) {
-          const mapped = services.map((s) => ({
-            fullName: mergedSellerProfile?.fullName || resolvedSellerDisplayName || s.title || 'Service',
-            serviceType: s.title || s.metadata?.service_type || 'Service',
-            description: s.short_description || s.description || '',
-            pricingModel: getPricingModelFromService(s),
-            fixedPrice: s.base_price || s.price || s.basePrice || '',
-            rateBasis: (s.metadata && (s.metadata.rate_basis || s.metadata.rateBasis)) || s.rate_basis || s.price_type || '',
-            hourlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-hour' ? (s.base_price || '') : '',
-            dailyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-day' ? (s.base_price || '') : '',
-            weeklyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-week' ? (s.base_price || '') : '',
-            monthlyRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-month' ? (s.base_price || '') : '',
-            projectRate: normalizeRateBasis(s.metadata?.rate_basis || s.rate_basis) === 'per-project' ? (s.base_price || '') : '',
-            paymentAdvance: seller?.payment_advance ?? false,
-            paymentAfterService: seller?.payment_after_service ?? true,
-            afterServicePaymentType: seller?.after_service_payment_type || 'both',
-            gcashNumber: seller?.gcash_number || '',
-            bookingMode: s.metadata?.booking_mode || seller?.booking_mode || 'with-slots',
-            location: {
-              barangay: seller?.search_meta?.location?.barangay || seller?.location?.barangay || '',
-              city: seller?.search_meta?.location?.city || seller?.location?.city || '',
-              province: seller?.search_meta?.location?.province || seller?.location?.province || '',
-            },
-            raw: s,
-          }));
-          setWorkerServices(mapped);
-        } else {
-          setWorkerServices([]);
-        }
-      } catch (err) {
-        if (!mounted) return;
-        console.error('Failed to load seller data:', err);
-        setSellerDataError(err?.message || 'Failed to load seller profile');
-      } finally {
-        if (mounted) setIsLoadingSellerData(false);
-      }
-    };
-
-    loadSellerData();
-    return () => { mounted = false; };
-  }, [authUser?.id, sellerProfile?.fullName, sellerProfile?.serviceType, sellerProfile?.customServiceType, sellerProfile?.bio, sellerProfile?.city, sellerProfile?.province, sellerProfile?.location?.city, sellerProfile?.location?.province]);
-
-  // Subscribe to seller & services realtime updates (lightweight, filtered)
-  useEffect(() => {
-    if (!sellerId) return undefined;
-
-    let isMounted = true;
-    const svcChannel = supabase
-      .channel(`seller-services-${sellerId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'services', filter: `seller_id=eq.${sellerId}` },
-        (payload) => {
-          if (!isMounted) return;
-          const ev = payload.eventType || payload.event || payload.type || '';
-          const rec = payload.new || payload.record || null;
-          const old = payload.old || null;
-
-          if ((ev === 'INSERT' || ev === 'UPDATE') && rec) {
-            setSellerDbServices((prev) => {
-              const others = (prev || []).filter((x) => x.id !== rec.id);
-              return [rec, ...others];
-            });
-            setWorkerServices((prev) => {
-              const recRateBasis = normalizeRateBasis(rec.metadata?.rate_basis || rec.rate_basis || rec.price_type);
-              const sellerSnapshot = sellerDataRef.current || {};
-              const sellerDisplayName = sellerSnapshot?.display_name || sellerSnapshot?.search_meta?.name || sellerProfile?.fullName || sellerProfile?.full_name || '';
-              const mapped = {
-                fullName: sellerDisplayName || rec.title || 'Service',
-                serviceType: rec.title || rec.metadata?.service_type || 'Service',
-                description: rec.short_description || rec.description || '',
-                pricingModel: getPricingModelFromService(rec),
-                fixedPrice: rec.base_price || '',
-                rateBasis: recRateBasis || 'per-project',
-                hourlyRate: recRateBasis === 'per-hour' ? (rec.base_price || '') : '',
-                dailyRate: recRateBasis === 'per-day' ? (rec.base_price || '') : '',
-                weeklyRate: recRateBasis === 'per-week' ? (rec.base_price || '') : '',
-                monthlyRate: recRateBasis === 'per-month' ? (rec.base_price || '') : '',
-                projectRate: recRateBasis === 'per-project' ? (rec.base_price || '') : '',
-                paymentAdvance: sellerSnapshot?.payment_advance ?? false,
-                paymentAfterService: sellerSnapshot?.payment_after_service ?? true,
-                afterServicePaymentType: sellerSnapshot?.after_service_payment_type || 'both',
-                gcashNumber: sellerSnapshot?.gcash_number || '',
-                bookingMode: rec.metadata?.booking_mode || sellerSnapshot?.booking_mode || 'with-slots',
-                location: {
-                  barangay: sellerSnapshot?.search_meta?.location?.barangay || sellerSnapshot?.location?.barangay || '',
-                  city: sellerSnapshot?.search_meta?.location?.city || sellerSnapshot?.location?.city || '',
-                  province: sellerSnapshot?.search_meta?.location?.province || sellerSnapshot?.location?.province || '',
-                },
-                raw: rec,
-              };
-              const others = (prev || []).filter((x) => x.raw?.id !== rec.id);
-              return [mapped, ...others];
-            });
-          }
-
-          if (ev === 'DELETE') {
-            const idToRemove = old?.id || payload.record?.id;
-            setSellerDbServices((prev) => (prev || []).filter((x) => x.id !== idToRemove));
-            setWorkerServices((prev) => (prev || []).filter((x) => x.raw?.id !== idToRemove));
-          }
-        }
-      )
-      .subscribe();
-
-    const sellerChannel = supabase
-      .channel(`seller-row-${sellerId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'sellers', filter: `user_id=eq.${sellerId}` },
-        (payload) => {
-          const rec = payload.new || payload.record || null;
-          if (rec) {
-            setSellerData(rec);
-            sellerDataRef.current = rec;
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      try { supabase.removeChannel(svcChannel); } catch (e) { /* ignore */ }
-      try { supabase.removeChannel(sellerChannel); } catch (e) { /* ignore */ }
-    };
-  }, [sellerId]);
+  const {
+    cancelledCashTransactions,
+    cashConfirmationNotifications,
+    cashDecisionTarget,
+    cashPaymentView,
+    handleApproveRefund,
+    handleCloseCashDecisionModal,
+    handleConfirmCashDecision,
+    handleRequestCashConfirmationReview,
+    paymentError,
+    refundTransactions,
+    refreshSellerTransactions,
+    setCashPaymentView,
+    setPaymentError,
+    setTransactions,
+    transactions,
+    weekTransactions,
+  } = useWorkPayments({ sellerId, weekOffset });
 
   useEffect(() => {
     const handleResize = () => {
@@ -542,210 +280,21 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    const syncCashConfirmationRequests = () => {
-      const requests = readCashConfirmationRequests();
-      const mappedRequests = requests.map(mapCashRequestToTransaction);
-
-      setTransactions((prev) => {
-        const preservedTransactions = prev.filter((txn) => !txn.sourceRequestId);
-        const next = [...preservedTransactions, ...mappedRequests];
-        return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
-      });
-    };
-
-    syncCashConfirmationRequests();
-
-    const interval = window.setInterval(syncCashConfirmationRequests, 2500);
-    const handleStorage = (event) => {
-      if (event.key === CASH_CONFIRMATION_REQUESTS_KEY) {
-        syncCashConfirmationRequests();
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, []);
-
-  // Create-service modal handlers
-  const closeCreateService = () => setIsCreateServiceOpen(false);
-  const handleCreateServiceChange = (field, value) => setNewService((p) => ({ ...p, [field]: value }));
-
-  const handleCreateServiceSubmit = async () => {
-    if (!sellerId) {
-      setSellerDataError('Seller record missing. Complete onboarding first.');
-          setWorkerProfileBundle(null);
-      return;
-    }
-
-    try {
-      const payload = {
-        title: newService.title,
-        shortDescription: newService.shortDescription,
-        basePrice: Number(newService.basePrice) || null,
-        priceType: newService.priceType,
-        currency: newService.currency || 'PHP',
-        durationMinutes: newService.durationMinutes ? Number(newService.durationMinutes) : null,
-        metadata: {
-          createdVia: 'ui',
-          rate_basis: newService.rateBasis || 'per-project',
-          booking_mode: newService.bookingMode || 'with-slots',
-        },
-      };
-
-      const created = await createSellerService(sellerId, payload);
-      setSellerDbServices((prev) => [created, ...(prev || [])]);
-      const sellerDisplayName = sellerData?.display_name || sellerData?.search_meta?.name || sellerProfile?.fullName || sellerProfile?.full_name || '';
-      const mapped = {
-        fullName: sellerDisplayName || created.title || 'Service',
-        serviceType: created.title || created.metadata?.service_type || 'Service',
-        description: created.short_description || created.description || '',
-        pricingModel: getPricingModelFromService(created),
-        fixedPrice: created.base_price || '',
-        rateBasis: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) || 'per-project',
-        hourlyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-hour' ? (created.base_price || '') : '',
-        dailyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-day' ? (created.base_price || '') : '',
-        weeklyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-week' ? (created.base_price || '') : '',
-        monthlyRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-month' ? (created.base_price || '') : '',
-        projectRate: normalizeRateBasis(created.metadata?.rate_basis || created.rate_basis || created.price_type) === 'per-project' ? (created.base_price || '') : '',
-        paymentAdvance: sellerData?.payment_advance ?? false,
-        paymentAfterService: sellerData?.payment_after_service ?? true,
-        afterServicePaymentType: sellerData?.after_service_payment_type || 'both',
-        gcashNumber: sellerData?.gcash_number || '',
-        bookingMode: created.metadata?.booking_mode || sellerData?.booking_mode || 'with-slots',
-        location: {
-          barangay: sellerData?.search_meta?.location?.barangay || sellerData?.location?.barangay || '',
-          city: sellerData?.search_meta?.location?.city || sellerData?.location?.city || '',
-          province: sellerData?.search_meta?.location?.province || sellerData?.location?.province || '',
-        },
-        raw: created,
-      };
-
-      setWorkerServices((prev) => [mapped, ...(prev || [])]);
-      setNewService({ title: '', shortDescription: '', basePrice: '', priceType: 'fixed', rateBasis: 'per-project', bookingMode: 'with-slots', currency: 'PHP', durationMinutes: '' });
-      setSuccessMessage('Service created successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
-      closeCreateService();
-    } catch (err) {
-      console.error('Create service failed:', err);
-      setSellerDataError(err?.message || 'Failed to create service');
-    }
-  };
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    const syncRefundRequests = () => {
-      const requests = readRefundRequests();
-      const mappedRequests = requests.map(mapRefundRequestToTransaction);
-
-      setTransactions((prev) => {
-        const preservedTransactions = prev.filter((txn) => !txn.sourceRefundRequestId);
-        const next = [...preservedTransactions, ...mappedRequests];
-        return JSON.stringify(next) === JSON.stringify(prev) ? prev : next;
-      });
-    };
-
-    syncRefundRequests();
-
-    const interval = window.setInterval(syncRefundRequests, 2500);
-    const handleStorage = (event) => {
-      if (event.key === REFUND_REQUESTS_KEY) {
-        syncRefundRequests();
-      }
-    };
-
-    window.addEventListener('storage', handleStorage);
-
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener('storage', handleStorage);
-    };
-  }, []);
-  
-  const scheduleMode = (currentProfile?.bookingMode || sellerData?.booking_mode || 'with-slots').toLowerCase() === 'calendar-only'
-    ? 'calendar-only'
-    : 'with-slots';
-
-  const hasSellerRecord = Boolean(sellerData?.user_id || sellerData?.display_name || sellerProfile?.isWorker || sellerProfile?.role === 'worker' || sellerProfile?.role === 'admin');
-  const hasService = (workerServices || []).length > 0;
-  const showSetupBanner = !isLoadingSellerData && !hasSellerRecord;
-  
-  // ============ DUMMY DATA ARRAYS (Simulates Database) ============
-  
-  /**
-   * DUMMY INQUIRIES
-   * Simulates client inquiries for this seller's services.
-   * Each inquiry can be responded to via chat.
-   */
-  const dummyInquiries = [
-    {
-      id: 101,
-      clientName: 'Juan Dela Cruz',
-      clientPhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
-      clientRating: 4.7,
-      service: 'Math Tutoring - High School',
-      description: 'Looking for help with Algebra and Calculus',
-      status: 'Pending Response',
-      requestDate: '2026-03-20',
-      proposedBudget: '₱800/hour',
+  const activeInquiries = transactions
+    .filter((txn) => !['Completed Service', 'Refunded', 'Cancelled (Cash)'].includes(txn.bookingStatus))
+    .map((txn) => ({
+      id: txn.sourceBookingId || txn.id,
+      clientName: txn.clientName,
+      clientPhoto: '',
+      clientRating: null,
+      service: txn.service,
+      description: txn.rawBooking?.description || 'Service booking request',
+      status: txn.bookingStatus || 'Service Scheduled',
+      requestDate: txn.rawBooking?.requestDate || '',
+      proposedBudget: txn.expectedCashAmount ? `PHP ${txn.expectedCashAmount}` : 'See booking',
       messages: 0,
-    },
-    {
-      id: 102,
-      clientName: 'Maria Clara Santos',
-      clientPhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
-      clientRating: 4.9,
-      service: 'Laptop Repair',
-      description: 'Laptop not turning on - need diagnostics',
-      status: 'Waiting for Reply',
-      requestDate: '2026-03-19',
-      proposedBudget: 'Call or estimate',
-      messages: 1,
-    },
-    {
-      id: 103,
-      clientName: 'Roberto Cruz',
-      clientPhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
-      clientRating: 4.8,
-      service: 'House Cleaning',
-      description: '3-bedroom house, full cleaning service needed',
-      status: 'Negotiating Price',
-      requestDate: '2026-03-18',
-      proposedBudget: '₱2,500 negotiable',
-      messages: 3,
-    },
-  ];
-  
-  /**
-   * DUMMY SCHEDULE
-   * Simulates the seller's weekly slot availability (Mon-Fri)
-   * Each day has time blocks with capacity and filled slots
-   */
-  const dayKeys = DAY_ORDER;
-  const currentWeekMonday = addDays(getMonday(new Date()), weekOffset * 7);
-  const currentWeekSunday = addDays(currentWeekMonday, 6);
-  const weekRangeLabel = `${formatDateLabel(currentWeekMonday)} - ${formatDateLabel(currentWeekSunday)}`;
-  const formatDateForDay = (dayKey) => {
-    const index = DAY_INDEX[dayKey] ?? 0;
-    const date = addDays(currentWeekMonday, index);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  const weekDateByDay = dayKeys.reduce((acc, day) => {
-    acc[day] = addDays(currentWeekMonday, DAY_INDEX[day]);
-    return acc;
-  }, {});
-  const weekTransactions = transactions.filter((txn) => txn.weekOffset === weekOffset);
-
+      booking: txn.rawBooking,
+    }));  
   const getTransactionForBooking = (scheduleRef, clientName) => {
     const matches = weekTransactions.filter(
       (txn) => txn.scheduleRef === scheduleRef && txn.clientName === clientName
@@ -800,14 +349,6 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     return !txn.isDone;
   };
 
-  const closeSlotModal = () => {
-    setEditSlotModalOpen(false);
-    setEditSlotData(null);
-    setEditSlotDayKey(null);
-    setEditSlotId(null);
-    setSlotModalType('edit');
-  };
-  
   // ============ EVENT HANDLERS ============
   
   /**
@@ -826,382 +367,18 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     setSelectedChatId(null);
   };
   
-  /**
-   * handleEditSlot(dayKey, slotId)
-   * Opens the edit modal for a time slot or calendar date
-   */
-  const handleEditSlot = (dayKey, slotId) => {
-    setSlotModalType('edit');
-    if (scheduleMode === 'calendar-only') {
-      const entry = calendarAvailability.find((item) => item.id === slotId);
-      if (!entry) return;
-      setEditSlotData(entry);
-      setEditSlotDayKey(null);
-      setEditSlotId(slotId);
-      setEditSlotModalOpen(true);
-    } else {
-      const block = (weeklySchedule[dayKey] || []).find((item) => item.id === slotId);
-      if (!block) return;
-      setEditSlotData(block);
-      setEditSlotDayKey(dayKey);
-      setEditSlotId(slotId);
-      setEditSlotModalOpen(true);
-    }
-  };
-
-  const handleSaveSlotEdit = (updatedData) => {
-    const currentService = currentProfile?.raw || null;
-
-    if (scheduleMode === 'calendar-only') {
-      // Persist to DB when possible
-      if (slotModalType === 'add') {
-        if (currentService && sellerId) {
-          // insert into service_slots
-          (async () => {
-            try {
-              const startTs = `${updatedData.date}T00:00:00+08`;
-              const endTs = `${updatedData.date}T23:59:59+08`;
-              const payload = {
-                service_id: currentService.id,
-                seller_id: sellerId,
-                start_ts: startTs,
-                end_ts: endTs,
-                capacity: updatedData.maxBookings || 1,
-                status: 'available',
-              };
-              const { data: inserted, error: insertErr } = await supabase.from('service_slots').insert([payload]).select().single();
-              if (insertErr) throw insertErr;
-              setCalendarAvailability((prev) => [
-                ...prev,
-                {
-                  id: inserted.id,
-                  date: (inserted.start_ts || '').slice(0, 10),
-                  maxBookings: inserted.capacity || 1,
-                  booked: inserted.status === 'booked' ? (inserted.capacity || 0) : 0,
-                  note: inserted.note || '',
-                  raw: inserted,
-                },
-              ]);
-            } catch (e) {
-              console.error('Failed to create service_slot', e);
-              // fallback to local-only
-              setCalendarAvailability((prev) => [
-                ...prev,
-                {
-                  id: `cal-${Date.now()}`,
-                  date: updatedData.date,
-                  maxBookings: updatedData.maxBookings,
-                  booked: 0,
-                  note: updatedData.note || '',
-                },
-              ]);
-            }
-          })();
-        } else {
-          setCalendarAvailability((prev) => [
-            ...prev,
-            {
-              id: `cal-${Date.now()}`,
-              date: updatedData.date,
-              maxBookings: updatedData.maxBookings,
-              booked: 0,
-              note: updatedData.note || '',
-            },
-          ]);
-        }
-      } else {
-        // edit existing
-        if (editSlotId && typeof editSlotId === 'number') {
-          (async () => {
-            try {
-              const startTs = `${updatedData.date}T00:00:00+08`;
-              const endTs = `${updatedData.date}T23:59:59+08`;
-              const { data: updatedRow, error: updErr } = await supabase
-                .from('service_slots')
-                .update({ start_ts: startTs, end_ts: endTs, capacity: updatedData.maxBookings })
-                .eq('id', editSlotId)
-                .select()
-                .single();
-              if (updErr) throw updErr;
-              setCalendarAvailability((prev) => prev.map((item) =>
-                item.id === editSlotId
-                  ? { ...item, date: (updatedRow.start_ts || '').slice(0, 10), maxBookings: updatedRow.capacity || 1, booked: updatedRow.status === 'booked' ? (updatedRow.capacity || 0) : 0, note: updatedRow.note || '' }
-                  : item
-              ));
-            } catch (e) {
-              console.error('Failed to update service_slot', e);
-              setCalendarAvailability((prev) =>
-                prev.map((item) =>
-                  item.id === editSlotId
-                    ? {
-                        ...item,
-                        date: updatedData.date,
-                        maxBookings: updatedData.maxBookings,
-                        booked: Math.min(item.booked, updatedData.maxBookings),
-                        note: updatedData.note,
-                      }
-                    : item
-                )
-              );
-            }
-          })();
-        } else {
-          setCalendarAvailability((prev) =>
-            prev.map((item) =>
-              item.id === editSlotId
-                ? {
-                    ...item,
-                    date: updatedData.date,
-                    maxBookings: updatedData.maxBookings,
-                    booked: Math.min(item.booked, updatedData.maxBookings),
-                    note: updatedData.note,
-                  }
-                : item
-            )
-          );
-        }
-      }
-    } else {
-      if (editSlotId && typeof editSlotId === 'number') {
-        (async () => {
-          try {
-            const sourceBlock = (weeklySchedule[editSlotDayKey] || []).find((item) => item.id === editSlotId);
-            const sourceDate = sourceBlock?.raw?.start_ts ? String(sourceBlock.raw.start_ts).slice(0, 10) : null;
-            const slotDate = sourceDate || formatDateForDay(editSlotDayKey);
-            const startTs = `${slotDate}T${updatedData.startTime}:00+08`;
-            const endTs = `${slotDate}T${updatedData.endTime}:00+08`;
-
-            const { data: updatedRow, error: updErr } = await supabase
-              .from('service_slots')
-              .update({ start_ts: startTs, end_ts: endTs, capacity: updatedData.capacity })
-              .eq('id', editSlotId)
-              .select()
-              .single();
-            if (updErr) throw updErr;
-
-            setWeeklySchedule((prev) => ({
-              ...prev,
-              [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
-                item.id === editSlotId
-                  ? {
-                      ...item,
-                      startTime: updatedData.startTime,
-                      endTime: updatedData.endTime,
-                      capacity: updatedRow.capacity || updatedData.capacity,
-                      slotsLeft: updatedRow.status === 'available'
-                        ? (updatedRow.capacity || updatedData.capacity)
-                        : Math.max(0, (updatedRow.capacity || updatedData.capacity) - (item.bookings || []).length),
-                      raw: updatedRow,
-                    }
-                  : item
-              ),
-            }));
-          } catch (e) {
-            console.error('Failed to update with-slots service_slot', e);
-            setWeeklySchedule((prev) => ({
-              ...prev,
-              [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
-                item.id === editSlotId
-                  ? {
-                      ...item,
-                      startTime: updatedData.startTime,
-                      endTime: updatedData.endTime,
-                      capacity: updatedData.capacity,
-                      slotsLeft: Math.max(0, updatedData.capacity - item.bookings.length),
-                    }
-                  : item
-              ),
-            }));
-          }
-        })();
-      } else {
-        setWeeklySchedule((prev) => ({
-          ...prev,
-          [editSlotDayKey]: (prev[editSlotDayKey] || []).map((item) =>
-            item.id === editSlotId
-              ? {
-                  ...item,
-                  startTime: updatedData.startTime,
-                  endTime: updatedData.endTime,
-                  capacity: updatedData.capacity,
-                  slotsLeft: Math.max(0, updatedData.capacity - item.bookings.length),
-                }
-              : item
-          ),
-        }));
-      }
-    }
-    closeSlotModal();
-  };
-  
-  /**
-   * handleDeleteSlot(dayKey, slotId)
-   * Simulated delete action for a time slot
-   */
-  const handleDeleteSlot = (dayKey, slotId) => {
-    if (scheduleMode === 'calendar-only') {
-      const entry = calendarAvailability.find((item) => item.id === slotId);
-      if (!entry) return;
-
-      setDeleteConfirmTarget({
-        mode: 'calendar-only',
-        slotId,
-        dayKey: null,
-        label: `available date ${entry.date}`,
-      });
-      return;
-    }
-
-    const block = (weeklySchedule[dayKey] || []).find((item) => item.id === slotId);
-    if (!block) return;
-
-    setDeleteConfirmTarget({
-      mode: 'with-slots',
-      slotId,
-      dayKey,
-      label: `time slot ${dayKey} ${block.startTime}-${block.endTime}`,
-    });
-  };
-
-  const handleConfirmDelete = () => {
-    if (!deleteConfirmTarget) return;
-
-    if (deleteConfirmTarget.mode === 'calendar-only') {
-      const idToDelete = deleteConfirmTarget.slotId;
-      if (typeof idToDelete === 'number') {
-        (async () => {
-          try {
-            const { error } = await supabase.from('service_slots').delete().eq('id', idToDelete);
-            if (error) throw error;
-            setCalendarAvailability((prev) => prev.filter((item) => item.id !== idToDelete));
-          } catch (e) {
-            console.error('Failed to delete service_slot', e);
-            // fallback: remove locally
-            setCalendarAvailability((prev) => prev.filter((item) => item.id !== idToDelete));
-          }
-        })();
-      } else {
-        setCalendarAvailability((prev) => prev.filter((item) => item.id !== idToDelete));
-      }
-    } else {
-      const idToDelete = deleteConfirmTarget.slotId;
-      if (typeof idToDelete === 'number') {
-        (async () => {
-          try {
-            const { error } = await supabase.from('service_slots').delete().eq('id', idToDelete);
-            if (error) throw error;
-            setWeeklySchedule((prev) => ({
-              ...prev,
-              [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
-                (item) => item.id !== idToDelete
-              ),
-            }));
-          } catch (e) {
-            console.error('Failed to delete with-slots service_slot', e);
-            setWeeklySchedule((prev) => ({
-              ...prev,
-              [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
-                (item) => item.id !== idToDelete
-              ),
-            }));
-          }
-        })();
-      } else {
-        setWeeklySchedule((prev) => ({
-          ...prev,
-          [deleteConfirmTarget.dayKey]: (prev[deleteConfirmTarget.dayKey] || []).filter(
-            (item) => item.id !== idToDelete
-          ),
-        }));
-      }
-    }
-
-    setDeleteConfirmTarget(null);
-  };
-
-  const handleAddSlot = (dayKey) => {
-    if (scheduleMode === 'calendar-only') {
-      setSlotModalType('add');
-      setEditSlotDayKey(null);
-      setEditSlotId(null);
-      setEditSlotData({
-        date: '',
-        maxBookings: 3,
-        note: '',
-      });
-      setEditSlotModalOpen(true);
-      return;
-    }
-
-    const startTime = window.prompt(`New slot start time for ${dayKey} (HH:MM):`, '09:00');
-    if (!startTime) return;
-    const endTime = window.prompt(`New slot end time for ${dayKey} (HH:MM):`, '11:00');
-    if (!endTime) return;
-    const capacity = window.prompt('Slot capacity:', '3');
-    if (!capacity || Number(capacity) < 1) return;
-
-    const newBlock = {
-      id: `${dayKey.toLowerCase()}-${Date.now()}`,
-      startTime,
-      endTime,
-      capacity: Number(capacity),
-      slotsLeft: Number(capacity),
-      bookings: [],
-    };
-
-    const currentService = currentProfile?.raw || null;
-    if (currentService && sellerId) {
-      (async () => {
-        try {
-          const slotDate = formatDateForDay(dayKey);
-          const startTs = `${slotDate}T${startTime}:00+08`;
-          const endTs = `${slotDate}T${endTime}:00+08`;
-          const payload = {
-            service_id: currentService.id,
-            seller_id: sellerId,
-            start_ts: startTs,
-            end_ts: endTs,
-            capacity: Number(capacity),
-            status: 'available',
-          };
-          const { data: inserted, error: insertErr } = await supabase.from('service_slots').insert([payload]).select().single();
-          if (insertErr) throw insertErr;
-
-          setWeeklySchedule((prev) => ({
-            ...prev,
-            [dayKey]: [
-              ...(prev[dayKey] || []),
-              {
-                id: inserted.id,
-                startTime,
-                endTime,
-                capacity: inserted.capacity || Number(capacity),
-                slotsLeft: inserted.status === 'available' ? (inserted.capacity || Number(capacity)) : 0,
-                bookings: [],
-                raw: inserted,
-              },
-            ],
-          }));
-        } catch (e) {
-          console.error('Failed to add with-slots service_slot', e);
-          setWeeklySchedule((prev) => ({
-            ...prev,
-            [dayKey]: [...(prev[dayKey] || []), newBlock],
-          }));
-        }
-      })();
-      return;
-    }
-
-    setWeeklySchedule((prev) => ({
-      ...prev,
-      [dayKey]: [...(prev[dayKey] || []), newBlock],
-    }));
-  };
-
   const handleTogglePaid = (transactionId) => {
     const target = transactions.find((txn) => txn.id === transactionId);
     if (!target) return;
+    const persistPaidState = (nextPaid) => {
+      if (!target.sourceBookingId) return;
+      updateBookingWorkflow(target.sourceBookingId, {
+        paymentProofSubmitted: nextPaid,
+        paymentReference: nextPaid ? (target.transactionId || `MANUAL-${String(target.id).slice(0, 8).toUpperCase()}`) : '',
+      }).catch((error) => {
+        setPaymentError(error?.message || 'Unable to update payment status.');
+      });
+    };
 
     // Monthly recurring rules:
     // 1) Advance: first paid marks whole cycle paid + locks paid toggle.
@@ -1217,6 +394,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
               : txn
           )
         );
+        persistPaidState(true);
         return;
       }
 
@@ -1228,16 +406,19 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
               : txn
           )
         );
+        persistPaidState(true);
         return;
       }
     }
 
+    const nextPaid = !target.isPaid;
     setTransactions((prev) =>
       prev.map((txn) => {
         if (txn.id !== transactionId) return txn;
-        return { ...txn, isPaid: !txn.isPaid };
+        return { ...txn, isPaid: nextPaid };
       })
     );
+    persistPaidState(nextPaid);
   };
 
   const handleOpenDoneModal = (transaction) => {
@@ -1246,6 +427,18 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
   const handleConfirmDone = () => {
     if (!doneConfirmTarget) return;
+    const persistDoneState = () => {
+      if (!doneConfirmTarget.sourceBookingId) return;
+      updateBookingWorkflow(doneConfirmTarget.sourceBookingId, {
+        status: 'Completed Service',
+        canRate: true,
+        paymentProofSubmitted: doneConfirmTarget.isPaid || doneConfirmTarget.paymentMode === 'Advance',
+        paymentReference: doneConfirmTarget.transactionId || undefined,
+        dbStatus: 'completed',
+      }).catch((error) => {
+        setPaymentError(error?.message || 'Unable to update service completion.');
+      });
+    };
 
     // Monthly after-service rule: if final cycle entry is marked done,
     // mark whole cycle paid and lock the paid state.
@@ -1271,6 +464,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
           return txn;
         })
       );
+      persistDoneState();
       setDoneConfirmTarget(null);
       return;
     }
@@ -1286,6 +480,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
           : txn
       )
     );
+    persistDoneState();
     setDoneConfirmTarget(null);
   };
 
@@ -1293,32 +488,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     setProfileEditModalOpen(true);
   };
 
-  const handleSaveProfileEdit = async (updatedData) => {
-    // Persist changes to worker/profile tables and sellers via syncWorkerSetup
-    try {
-      const merged = await syncWorkerSetup(authUser?.id, updatedData);
-      // Update local sellerProfile and workerServices to reflect persisted changes
-      if (merged) {
-        setWorkerProfileBundle(merged);
-      }
-
-      setWorkerServices((prev) => {
-        const next = [...(prev || [])];
-        next[activeServiceIndex] = {
-          ...next[activeServiceIndex],
-          ...updatedData,
-        };
-        return next;
-      });
-
-      setSuccessMessage('Profile updated');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err) {
-      console.error('Failed to save profile edit:', err);
-      setSellerDataError(err?.message || 'Failed to update profile');
-    } finally {
-      setProfileEditModalOpen(false);
-    }
+  const handleProfileEditSave = async (updatedData) => {
+    await handleSaveProfileEdit(updatedData);
+    setProfileEditModalOpen(false);
   };
 
   const handleOpenGcashPreview = () => {
@@ -1335,182 +507,6 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
   const handleCloseCashQrPreview = () => {
     setIsCashQrPreviewOpen(false);
-  };
-
-  const buildCashTransactionId = (transactionId) => {
-    const now = new Date();
-    const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = String(Math.floor(Math.random() * 9000) + 1000);
-    return `CASH-TRX-${dateStamp}-${transactionId.toUpperCase()}-${suffix}`;
-  };
-
-  const readCashConfirmationRequests = () => {
-    if (typeof window === 'undefined') return [];
-
-    try {
-      const raw = window.localStorage.getItem(CASH_CONFIRMATION_REQUESTS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const writeCashConfirmationRequests = (requests) => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(CASH_CONFIRMATION_REQUESTS_KEY, JSON.stringify(requests));
-  };
-
-  const mapCashRequestToTransaction = (request) => ({
-    id: request.id,
-    clientName: request.clientName || 'Client',
-    service: request.serviceType || 'Cash Confirmation',
-    scheduleRef: request.scheduleRef || `booking-${request.bookingId}`,
-    paymentMode: 'After Service',
-    paymentChannel: 'cash',
-    isPaid: request.status === 'approved',
-    isDone: request.status === 'approved',
-    weekOffset: 0,
-    expectedCashAmount: request.expectedCashAmount || 0,
-    submittedCashAmount: request.submittedCashAmount || 0,
-    cashConfirmationStatus: request.status,
-    cashConfirmationQrId: request.cashConfirmationQrId || `CASHQR-REQUEST-${request.bookingId}`,
-    transactionId: request.transactionId || '',
-    sourceBookingId: request.bookingId,
-    sourceRequestId: request.id,
-  });
-
-  const readRefundRequests = () => {
-    if (typeof window === 'undefined') return [];
-
-    try {
-      const raw = window.localStorage.getItem(REFUND_REQUESTS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const writeRefundRequests = (requests) => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(REFUND_REQUESTS_KEY, JSON.stringify(requests));
-  };
-
-  const mapRefundRequestToTransaction = (request) => ({
-    id: request.id,
-    clientName: request.clientName || 'Client',
-    service: request.serviceType || 'Refund Request',
-    scheduleRef: request.scheduleRef || `booking-${request.bookingId}`,
-    paymentMode: 'Advance',
-    paymentChannel: 'gcash',
-    isPaid: true,
-    isDone: false,
-    weekOffset: 0,
-    transactionId: request.transactionId || '',
-    refundStatus: request.status,
-    refundAmount: request.refundAmount || 0,
-    refundReason: request.refundReason || 'Client requested a refund.',
-    refundReference: request.refundReference || `REFUND-REQ-${request.bookingId}`,
-    sourceRefundRequestId: request.id,
-    sourceBookingId: request.bookingId,
-  });
-
-  const handleReviewCashConfirmation = (transactionId, decision) => {
-    setTransactions((prev) =>
-      prev.map((txn) => {
-        if (txn.id !== transactionId) return txn;
-
-        if (decision === 'approve') {
-          return {
-            ...txn,
-            cashConfirmationStatus: 'approved',
-            isPaid: true,
-            isDone: true,
-            transactionId: txn.transactionId || buildCashTransactionId(transactionId),
-          };
-        }
-
-        return {
-          ...txn,
-          cashConfirmationStatus: 'denied',
-          isPaid: false,
-          transactionId: '',
-        };
-      })
-    );
-
-    const updatedRequests = readCashConfirmationRequests().map((request) => {
-      if (request.id !== transactionId) return request;
-
-      if (decision === 'approve') {
-        const approvedTransactionId = request.transactionId || buildCashTransactionId(transactionId);
-        return {
-          ...request,
-          status: 'approved',
-          transactionId: approvedTransactionId,
-        };
-      }
-
-      return {
-        ...request,
-        status: 'denied',
-        transactionId: '',
-      };
-    });
-
-    writeCashConfirmationRequests(updatedRequests);
-  };
-
-  const handleRequestCashConfirmationReview = (transaction, decision) => {
-    setCashDecisionTarget({
-      transactionId: transaction.id,
-      clientName: transaction.clientName,
-      service: transaction.service,
-      submittedCashAmount: transaction.submittedCashAmount || 0,
-      expectedCashAmount: transaction.expectedCashAmount || 0,
-      decision,
-    });
-  };
-
-  const handleCloseCashDecisionModal = () => {
-    setCashDecisionTarget(null);
-  };
-
-  const handleConfirmCashDecision = () => {
-    if (!cashDecisionTarget) return;
-
-    handleReviewCashConfirmation(cashDecisionTarget.transactionId, cashDecisionTarget.decision);
-    setCashDecisionTarget(null);
-  };
-
-  const handleApproveRefund = (transactionId) => {
-    setTransactions((prev) =>
-      prev.map((txn) => {
-        if (txn.id !== transactionId) return txn;
-        if (txn.refundStatus !== 'requested') return txn;
-
-        const now = new Date();
-        const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-        return {
-          ...txn,
-          refundStatus: 'approved-awaiting-client-confirmation',
-          refundReference: `REFUND-APR-${String(transactionId).toUpperCase()}-${dateStamp}`,
-        };
-      })
-    );
-
-    const nextRequests = readRefundRequests().map((request) => {
-      if (request.id !== transactionId) return request;
-
-      const now = new Date();
-      const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-      return {
-        ...request,
-        status: 'approved-awaiting-client-confirmation',
-        refundReference: request.refundReference || `REFUND-APR-${String(transactionId).toUpperCase()}-${dateStamp}`,
-      };
-    });
-
-    writeRefundRequests(nextRequests);
   };
 
   const responsiveClassStyles = isMobile
@@ -1597,17 +593,6 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
   const cashConfirmQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`CASH-CONFIRM-${currentProfile?.fullName || 'Worker'}-${gcashNumber}`)}`;
   
-  const allCashTransactions = weekTransactions.filter((txn) => txn.paymentChannel === 'cash');
-  const cashConfirmationNotifications = 
-    cashPaymentView === 'pending'
-      ? allCashTransactions.filter((txn) => txn.cashConfirmationStatus === 'pending-worker-review')
-      : allCashTransactions.filter((txn) => txn.cashConfirmationStatus === 'approved' || txn.cashConfirmationStatus === 'denied');
-
-  const refundTransactions = weekTransactions.filter((txn) => Boolean(txn.refundStatus));
-  const cancelledCashTransactions = weekTransactions.filter(
-    (txn) => txn.bookingStatus === 'cancelled' && txn.paymentChannel === 'cash'
-  );
-
   const showInquiriesSection = workSectionFilter === 'all' || workSectionFilter === 'inquiries';
   const showCashApprovalSection = workSectionFilter === 'all' || workSectionFilter === 'cash-approvals';
   const showRefundSection = workSectionFilter === 'all' || workSectionFilter === 'refunds';
@@ -1629,7 +614,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
    * getInquiryById(id)
    * Retrieves inquiry data for a specific ID
    */
-  const getInquiryById = (id) => dummyInquiries.find(inq => inq.id === id);
+  const getInquiryById = (id) => activeInquiries.find(inq => inq.id === id);
   
   /**
    * getSlotStatusColor(slotsLeft, capacity)
@@ -1660,7 +645,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
   // ============ RENDER ============
   
   return (
-    <div style={sx('my-work-page')}>
+    <div style={sx('my-work-page')} data-testid="my-work-page">
       <DashboardNavigation
         appTheme={appTheme}
         currentView={currentView}
@@ -1675,6 +660,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        onOpenBrowseServices={onOpenBrowseServices}
         isAdminView={false}
         onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
@@ -1689,18 +675,21 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             onClose={() => setSuccessMessage('')}
           />
         )}
-        {sellerDataError && (
+        {(sellerDataError || paymentError) && (
           <ErrorNotification
-            message={sellerDataError}
-            isVisible={Boolean(sellerDataError)}
-            onClose={() => setSellerDataError(null)}
+            message={sellerDataError || paymentError}
+            isVisible={Boolean(sellerDataError || paymentError)}
+            onClose={() => {
+              setSellerDataError(null);
+              setPaymentError('');
+            }}
           />
         )}
 
         {/* Loading state while fetching seller data */}
         {isLoadingSellerData && (
           <div style={{ textAlign: 'center', padding: '48px 0', color: '#6b7280' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
+            <Loader2 size={30} className="gl-spin" aria-hidden="true" style={{ marginBottom: '12px' }} />
             <p style={{ fontSize: '16px', fontWeight: 500 }}>Loading your seller profile…</p>
           </div>
         )}
@@ -1756,8 +745,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#475569', fontWeight: 600 }}>
                     {currentPriceLabel}
                   </p>
-                  <p style={sx('location')}>
-                    📍 {currentProfile?.location?.address || currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
+                  <p style={sx('location')} className="gl-inline-icon-line">
+                    <MapPin size={14} aria-hidden="true" />
+                    {currentProfile?.location?.address || currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
                   </p>
                   <p style={sx('service-mode-tag')}>
                     Scheduling: {scheduleMode === 'calendar-only' ? 'Calendar Only' : 'With Slots'}
@@ -1782,7 +772,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
               </div>
               <div style={sx('profile-stats')}>
                 <div style={sx('stat')}>
-                  <span style={sx('stat-number')}>{dummyInquiries.length}</span>
+                  <span style={sx('stat-number')}>{activeInquiries.length}</span>
                   <span style={sx('stat-label')}>Active Inquiries</span>
                 </div>
                 <div style={sx('stat')}>
@@ -1819,7 +809,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   onClick={() => setIsWorkNavDropdownOpen((prev) => !prev)}
                 >
                   <span>Navigate Work Sections</span>
-                  <span style={{ color: '#2563eb', fontSize: '12px' }}>{activeWorkSectionLabel} ▼</span>
+                  <span style={{ color: '#2563eb', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    {activeWorkSectionLabel}
+                    <ChevronDown size={14} aria-hidden="true" />
+                  </span>
                 </button>
 
                 {isWorkNavDropdownOpen && (
@@ -1866,14 +859,14 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
               </div>
             </div>
             
-            {showInquiriesSection && <section style={sx('inquiries-section')}>
+            {showInquiriesSection && <section style={sx('inquiries-section')} data-testid="work-inquiries-section">
               <div style={sx('section-header')}>
-                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Active Inquiries ({dummyInquiries.length})</h2>
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Active Inquiries ({activeInquiries.length})</h2>
                 <p style={sx('section-subtitle')}>Clients waiting for your response</p>
               </div>
               
               <div style={sx('inquiries-grid')}>
-                {dummyInquiries.map(inquiry => (
+                {activeInquiries.map(inquiry => (
                   <div
                     key={inquiry.id}
                     style={{ ...sx('inquiry-card'), ...(isHovered(`inquiry-${inquiry.id}`) ? hoverStyles.inquiryCard : {}) }}
@@ -1889,8 +882,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                         />
                         <div>
                           <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#2c3e50', margin: 0 }}>{inquiry.clientName}</h3>
-                          <p style={sx('client-rating')}>
-                            ⭐ {inquiry.clientRating} rating
+                          <p style={sx('client-rating')} className="gl-inline-icon-line">
+                            <Star size={13} fill="currentColor" aria-hidden="true" />
+                            {inquiry.clientRating} rating
                           </p>
                         </div>
                       </div>
@@ -1903,8 +897,8 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                       <p style={sx('inquiry-service')}>{inquiry.service}</p>
                       <p style={sx('inquiry-description')}>{inquiry.description}</p>
                       <div style={sx('inquiry-meta')}>
-                        <span>💰 {inquiry.proposedBudget}</span>
-                        <span>📅 {inquiry.requestDate}</span>
+                        <span className="gl-inline-icon-line"><WalletCards size={13} aria-hidden="true" /> {inquiry.proposedBudget}</span>
+                        <span className="gl-inline-icon-line"><CalendarDays size={13} aria-hidden="true" /> {inquiry.requestDate}</span>
                       </div>
                     </div>
                     
@@ -1915,7 +909,8 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                         onMouseLeave={() => setHoverKey('')}
                         onClick={() => handleRespondClick(inquiry.id)}
                       >
-                        💬 Respond {inquiry.messages > 0 && `(${inquiry.messages})`}
+                        <MessageSquareText size={16} aria-hidden="true" />
+                        Respond {inquiry.messages > 0 && `(${inquiry.messages})`}
                       </button>
                     </div>
                   </div>
@@ -1923,7 +918,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
               </div>
             </section>}
 
-            {showCashApprovalSection && <section style={sx('payment-confirm-section')}>
+            {showCashApprovalSection && <section style={sx('payment-confirm-section')} data-testid="work-cash-section">
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Payment Confirmations (Cash)</h2>
                 <p style={sx('section-subtitle')}>Worker review queue for face-to-face cash confirmations scanned via Cash QR.</p>
@@ -1976,7 +971,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                           : sx('confirm-status-pill', 'confirm-status-pending');
 
                     return (
-                      <div key={`confirm-${txn.id}`} style={sx('payment-confirm-card')}>
+                      <div key={`confirm-${txn.id}`} style={sx('payment-confirm-card')} data-testid={`cash-confirmation-${txn.id}`}>
                         <div style={sx('payment-confirm-meta')}>
                           <strong>{txn.clientName}</strong>
                           <span style={statusStyle}>
@@ -2000,6 +995,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                         {cashPaymentView === 'pending' && (
                           <div style={sx('payment-confirm-actions')}>
                             <button
+                              data-testid={`cash-approve-${txn.id}`}
                               style={{ ...sx('btn-approve-cash'), ...(isHovered(`approve-cash-${txn.id}`) ? hoverStyles.approveCash : {}) }}
                               onMouseEnter={() => setHoverKey(`approve-cash-${txn.id}`)}
                               onMouseLeave={() => setHoverKey('')}
@@ -2009,6 +1005,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                               Approve
                             </button>
                             <button
+                              data-testid={`cash-deny-${txn.id}`}
                               style={{ ...sx('btn-deny-cash'), ...(isHovered(`deny-cash-${txn.id}`) ? hoverStyles.denyCash : {}) }}
                               onMouseEnter={() => setHoverKey(`deny-cash-${txn.id}`)}
                               onMouseLeave={() => setHoverKey('')}
@@ -2027,7 +1024,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             </section>}
             
             {showRefundSection && (
-              <section style={sx('refund-section')}>
+              <section style={sx('refund-section')} data-testid="work-refund-section">
                 <div style={sx('section-header')}>
                   <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Refund Queue (GCash)</h2>
                   <p style={sx('section-subtitle')}>Cases for GCash Advance and GCash post-service payments that need refund tracking.</p>
@@ -2039,7 +1036,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                 ) : (
                   <div style={sx('refund-grid')}>
                     {refundTransactions.map((txn) => (
-                      <div key={`refund-${txn.id}`} style={sx('refund-card')}>
+                      <div key={`refund-${txn.id}`} style={sx('refund-card')} data-testid={`refund-request-${txn.id}`}>
                         <div style={sx('payment-confirm-meta')}>
                           <strong>{txn.clientName}</strong>
                           <span
@@ -2071,6 +1068,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                         {txn.refundStatus === 'requested' && (
                           <div style={sx('refund-actions')}>
                             <button
+                              data-testid={`refund-approve-${txn.id}`}
                               style={{ ...sx('btn-approve-refund'), ...(isHovered(`approve-refund-${txn.id}`) ? hoverStyles.approveRefund : {}) }}
                               onMouseEnter={() => setHoverKey(`approve-refund-${txn.id}`)}
                               onMouseLeave={() => setHoverKey('')}
@@ -2088,7 +1086,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             )}
 
             {showCancelledSection && (
-              <section style={sx('cancelled-section')}>
+              <section style={sx('cancelled-section')} data-testid="work-cancelled-section">
                 <div style={sx('section-header')}>
                   <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Cancelled Bookings (Cash Only)</h2>
                   <p style={sx('section-subtitle')}>Cash-based bookings that were cancelled and should not enter GCash refund flow.</p>
@@ -2116,7 +1114,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
               </section>
             )}
 
-            {showScheduleSection && <section style={sx('schedule-section')}>
+            {showScheduleSection && <section style={sx('schedule-section')} data-testid="work-schedule-section">
               <div style={sx('section-header')}>
                 <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
                 <p style={sx('section-subtitle')}>
@@ -2133,7 +1131,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   onMouseLeave={() => setHoverKey('')}
                   onClick={() => setWeekOffset((prev) => prev - 1)}
                 >
-                  ← Previous Week
+                  Previous Week
                 </button>
                 <div style={sx('week-range')}>
                   <strong>{weekRangeLabel}</strong>
@@ -2145,7 +1143,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   onMouseLeave={() => setHoverKey('')}
                   onClick={() => setWeekOffset((prev) => prev + 1)}
                 >
-                  Next Week →
+                  Next Week
                 </button>
               </div>
 
@@ -2160,7 +1158,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                       const entryTransactions = weekTransactions.filter((txn) => txn.scheduleRef === entry.id);
                       return (
                         <div key={entry.id} style={sx('calendar-day-card')}>
-                          <h3 style={sx('calendar-date')}>📅 {entry.date}</h3>
+                          <h3 style={sx('calendar-date')} className="gl-inline-icon-line">
+                            <CalendarDays size={16} aria-hidden="true" />
+                            {entry.date}
+                          </h3>
                           <p style={sx('calendar-booked')}>Booked: {entry.booked}/{entry.maxBookings}</p>
                           <p style={sx('calendar-note')}>{entry.note || 'No notes added'}</p>
 
@@ -2168,7 +1169,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                             <div style={sx('calendar-bookings-list')}>
                               {entryTransactions.map((txn) => (
                                 <div key={txn.id} style={sx('booking-item')}>
-                                  <span style={sx('booking-name')}>👤 {txn.clientName}</span>
+                                  <span style={sx('booking-name')} className="gl-inline-icon-line">
+                                    <UserRound size={13} aria-hidden="true" />
+                                    {txn.clientName}
+                                  </span>
                                   {isMonthlyRecurringTxn(txn) && (
                                     <span style={sx('recurring-cycle-pill')}>
                                       Monthly {txn.cycleOrder}/4 ({txn.cycleStart} to {txn.cycleEnd})
@@ -2183,13 +1187,13 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                         onChange={() => handleTogglePaid(txn.id)}
                                         style={{ margin: 0, padding: 0 }}
                                       />
-                                      <span>{txn.isPaid ? '✅ Paid' : '⬜ Paid'}</span>
+                                      <span>{txn.isPaid ? 'Paid' : 'Mark paid'}</span>
                                     </label>
                                     {isMonthlyRecurringTxn(txn) && !canTogglePaid(txn) && (
-                                      <span style={sx('lock-hint')}>🔒 Locked for monthly cycle</span>
+                                      <span style={sx('lock-hint')}>Locked for monthly cycle</span>
                                     )}
                                     {txn.isDone ? (
-                                      <span style={sx('done-pill')}>✅ Done</span>
+                                      <span style={sx('done-pill')}>Done</span>
                                     ) : (
                                       <button
                                         style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${txn.id}`) ? hoverStyles.markDone : {}), ...( !canMarkDone(txn) ? { background: '#9ca3af', cursor: 'not-allowed' } : {}) }}
@@ -2218,16 +1222,17 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                               title="Edit date"
                               onClick={() => handleEditSlot(null, entry.id)}
                             >
-                              ✏️
+                              <Pencil size={14} aria-hidden="true" />
                             </button>
                             <button
                               style={{ ...sx('action-btn'), ...(isHovered(`cal-delete-${entry.id}`) ? hoverStyles.deleteAction : {}) }}
                               onMouseEnter={() => setHoverKey(`cal-delete-${entry.id}`)}
                               onMouseLeave={() => setHoverKey('')}
                               title="Delete date"
+                              aria-label="Remove date"
                               onClick={() => handleDeleteSlot(null, entry.id)}
                             >
-                              🗑️
+                              <Trash2 size={14} aria-hidden="true" />
                             </button>
                           </div>
                         </div>
@@ -2285,7 +1290,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                       const bookingTxn = getTransactionForBooking(block.id, booking.clientName);
                                       return (
                                         <div key={idx} style={sx('booking-item')}>
-                                          <span style={sx('booking-name')}>👤 {booking.clientName}</span>
+                                          <span style={sx('booking-name')} className="gl-inline-icon-line">
+                                            <UserRound size={13} aria-hidden="true" />
+                                            {booking.clientName}
+                                          </span>
                                           {bookingTxn ? (
                                             <div style={sx('booking-inline-actions')}>
                                               {isMonthlyRecurringTxn(bookingTxn) && (
@@ -2301,13 +1309,13 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                                   onChange={() => handleTogglePaid(bookingTxn.id)}
                                                   style={{ margin: 0, padding: 0 }}
                                                 />
-                                                <span>{bookingTxn.isPaid ? '✅ Paid' : '⬜ Paid'}</span>
+                                                <span>{bookingTxn.isPaid ? 'Paid' : 'Mark paid'}</span>
                                               </label>
                                               {isMonthlyRecurringTxn(bookingTxn) && !canTogglePaid(bookingTxn) && (
-                                                <span style={sx('lock-hint')}>🔒 Locked for monthly cycle</span>
+                                                <span style={sx('lock-hint')}>Locked for monthly cycle</span>
                                               )}
                                               {bookingTxn.isDone ? (
-                                                <span style={sx('done-pill')}>✅ Done</span>
+                                                <span style={sx('done-pill')}>Done</span>
                                               ) : (
                                                 <button
                                                   style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${bookingTxn.id}`) ? hoverStyles.markDone : {}), ...(!canMarkDone(bookingTxn) ? { background: '#9ca3af', cursor: 'not-allowed' } : {}) }}
@@ -2340,16 +1348,17 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                     title="Edit slot"
                                     onClick={() => handleEditSlot(dayKey, block.id)}
                                   >
-                                    ✏️
+                                    <Pencil size={14} aria-hidden="true" />
                                   </button>
                                   <button
                                     style={{ ...sx('action-btn'), ...(isHovered(`slot-delete-${block.id}`) ? hoverStyles.deleteAction : {}) }}
                                     onMouseEnter={() => setHoverKey(`slot-delete-${block.id}`)}
                                     onMouseLeave={() => setHoverKey('')}
                                     title="Delete slot"
+                                    aria-label="Remove slot"
                                     onClick={() => handleDeleteSlot(dayKey, block.id)}
                                   >
-                                    🗑️
+                                    <Trash2 size={14} aria-hidden="true" />
                                   </button>
                                 </div>
                               </div>
@@ -2505,9 +1514,11 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
       
       {/* CHAT MODAL */}
       {selectedChatId && selectedInquiry && (
-        <SimulatedChat
+        <InquiryChatModal
           inquiry={selectedInquiry}
           onClose={handleCloseChat}
+          onBookingUpdated={() => refreshSellerTransactions()}
+          onError={setPaymentError}
         />
       )}
 
@@ -2529,44 +1540,13 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         onClose={closeSlotModal}
       />
 
-      {/* CREATE SERVICE MODAL */}
-      {isCreateServiceOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
-          <div style={{ width: 'min(760px, 92vw)', background: 'white', borderRadius: 12, padding: 18 }}>
-            <h3 style={{ margin: 0, marginBottom: 8 }}>Add New Service</h3>
-            <div style={{ display: 'grid', gap: 8 }}>
-              <input placeholder="Title" value={newService.title} onChange={(e) => handleCreateServiceChange('title', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }} />
-              <input placeholder="Short description" value={newService.shortDescription} onChange={(e) => handleCreateServiceChange('shortDescription', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input placeholder="Price" type="number" value={newService.basePrice} onChange={(e) => handleCreateServiceChange('basePrice', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd', flex: 1 }} />
-                <select value={newService.priceType} onChange={(e) => handleCreateServiceChange('priceType', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}>
-                  <option value="fixed">Fixed</option>
-                  <option value="hourly">Hourly</option>
-                  <option value="package">Package</option>
-                  <option value="custom">Custom</option>
-                  <option value="inquiry">Inquiry</option>
-                </select>
-                <select value={newService.rateBasis} onChange={(e) => handleCreateServiceChange('rateBasis', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}>
-                  <option value="per-hour">Per hour</option>
-                  <option value="per-day">Per day</option>
-                  <option value="per-week">Per week</option>
-                  <option value="per-month">Per month</option>
-                  <option value="per-project">Per project</option>
-                </select>
-                <select value={newService.bookingMode} onChange={(e) => handleCreateServiceChange('bookingMode', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd' }}>
-                  <option value="with-slots">Book with slots</option>
-                  <option value="calendar-only">Book by day (calendar)</option>
-                </select>
-                <input placeholder="Duration (min)" type="number" value={newService.durationMinutes} onChange={(e) => handleCreateServiceChange('durationMinutes', e.target.value)} style={{ padding: 8, borderRadius: 8, border: '1px solid #ddd', width: 140 }} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-              <button type="button" onClick={closeCreateService} style={{ padding: '8px 12px', borderRadius: 8, background: '#eee', border: 'none' }}>Cancel</button>
-              <button type="button" onClick={handleCreateServiceSubmit} style={{ padding: '8px 12px', borderRadius: 8, background: '#1d4ed8', color: '#fff', border: 'none' }}>Create</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateServiceModal
+        isOpen={isCreateServiceOpen}
+        newService={newService}
+        onChange={handleCreateServiceChange}
+        onClose={closeCreateService}
+        onSubmit={handleCreateServiceSubmit}
+      />
 
       {/* Floating Add Service button (visible when seller exists) */}
       {sellerData && (
@@ -2577,7 +1557,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
       <ProfileEditModal
         isOpen={profileEditModalOpen}
         profileData={currentProfile}
-        onSave={handleSaveProfileEdit}
+        onSave={handleProfileEditSave}
         onClose={() => setProfileEditModalOpen(false)}
       />
 

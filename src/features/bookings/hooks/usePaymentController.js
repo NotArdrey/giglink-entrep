@@ -56,7 +56,7 @@ export function usePaymentController(onPaymentProofSubmit, onPaymentMethodSelect
    * Validates that at least proof file or reference number is provided
    * Updates booking with payment reference and status
    */
-  const handleSubmitPaymentProof = useCallback((booking, isRecurringBilling) => {
+  const handleSubmitPaymentProof = useCallback(async (booking, isRecurringBilling) => {
     // Validation
     if (!proofFileName && !referenceNo.trim()) {
       setPaymentProofError('Please upload proof of transaction or enter a reference number.');
@@ -72,7 +72,7 @@ export function usePaymentController(onPaymentProofSubmit, onPaymentMethodSelect
       newStatus = 'Active Service';
       // Calculate next charge date
       const chargeDate = booking.nextChargeDate || new Date().toISOString().slice(0, 10);
-      updateBooking(booking.id, {
+      await updateBooking(booking.id, {
         paymentProofSubmitted: true,
         paymentReference: referenceNo.trim(),
         status: newStatus,
@@ -80,7 +80,7 @@ export function usePaymentController(onPaymentProofSubmit, onPaymentMethodSelect
         lastChargeDate: chargeDate,
       });
     } else {
-      updateBooking(booking.id, {
+      await updateBooking(booking.id, {
         paymentProofSubmitted: true,
         paymentReference: referenceNo.trim(),
         status: newStatus,
@@ -107,7 +107,7 @@ export function usePaymentController(onPaymentProofSubmit, onPaymentMethodSelect
    * Updates booking with selected payment method and status
    * For cash payments, sets up cash confirmation QR
    */
-  const handleSelectPaymentMethod = useCallback((booking, paymentMethod) => {
+  const handleSelectPaymentMethod = useCallback(async (booking, paymentMethod) => {
     const updates = {
       paymentMethod,
       status: paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled',
@@ -120,7 +120,7 @@ export function usePaymentController(onPaymentProofSubmit, onPaymentMethodSelect
       updates.submittedCashAmount = null;
     }
 
-    updateBooking(booking.id, updates);
+    await updateBooking(booking.id, updates);
 
     // Notify parent
     onPaymentMethodSelect?.(booking.id, paymentMethod);

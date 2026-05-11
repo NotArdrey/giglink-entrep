@@ -1,52 +1,132 @@
-// ============================================================================
-// useBookingListController.js - Booking List & Filtering Controller Hook
-// ============================================================================
-// Purpose: Manages booking list state, filtering, and quote/service operations
-// Responsibilities:
-//   - Manage bookings array state
-//   - Handle activeFilter and displayFilter states
-//   - Provide filtering logic for displaying bookings
-//   - Handle quote approval/rejection
-//   - Handle service stop requests
-// 
-// Returns: Object with bookings, filteredBookings, filters, and handlers
-// ============================================================================
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  fetchClientBookings,
+  submitBookingReview,
+  updateBookingWorkflow,
+} from '../services/bookingService';
 
-import { useState, useCallback, useMemo } from 'react';
-import { bookingService } from '../services/bookingService';
+const TERMINAL_STATUSES = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refunded'];
 
-export function useBookingListController(initialBookings) {
-  // ========================================================================
-  // STATE MANAGEMENT
-  // ========================================================================
-  
-  // Core bookings data
-  const [bookings, setBookings] = useState(initialBookings || []);
-
-  // Filter states
+export function useBookingListController(initialBookings = [], options = {}) {
+  const { autoLoad = true } = options;
+  const [bookings, setBookings] = useState(Array.isArray(initialBookings) ? initialBookings : []);
   const [activeFilter, setActiveFilter] = useState('all');
   const [displayFilter, setDisplayFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(Boolean(autoLoad));
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  // ========================================================================
-  // FILTERING LOGIC - Compute filtered bookings based on filters
-  // ========================================================================
-  
-  const terminalStatuses = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refunded'];
+  const refreshBookings = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError('');
+      const rows = await fetchClientBookings();
+      setBookings(rows);
+      return rows;
+    } catch (error) {
+      setLoadError(error?.message || 'Unable to load bookings.');
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const statusFilteredBookings = useMemo(() => {
-    return bookings.filter((booking) => {
+  useEffect(() => {
+    if (!autoLoad) return undefined;
+    let isMounted = true;
+
+    const load = async () => {
+      const rows = await refreshBookings();
+      if (!isMounted) return;
+      setBookings(rows);
+    };
+
+    load();
+    return () => {
+      isMounted = false;
+    };
+  }, [autoLoad, refreshBookings]);
+
+  const replaceBooking = useCallback((updatedBooking) => {
+    if (!updatedBooking?.id) return;
+    setBookings((prevBookings) => {
+      const exists = prevBookings.some((booking) => booking.id === updatedBooking.id);
+      if (!exists) return [updatedBooking, ...prevBookings];
+      return prevBookings.map((booking) => (
+        booking.id === updatedBooking.id ? updatedBooking : booking
+      ));
+    });
+  }, []);
+
+  const getBooking = useCallback((bookingId) => (
+    bookings.find((booking) => String(booking.id) === String(bookingId)) || null
+  ), [bookings]);
+
+  const persistBookingUpdate = useCallback(async (bookingId, updates) => {
+    const current = getBooking(bookingId);
+    if (!current) return null;
+
+    try {
+      setActionError('');
+      const updated = updates.rating !== undefined
+        ? await submitBookingReview(current, updates.rating, updates.review || '')
+        : await updateBookingWorkflow(current, updates);
+      replaceBooking(updated);
+      return updated;
+    } catch (error) {
+      setActionError(error?.message || 'Unable to update booking.');
+      throw error;
+    }
+  }, [getBooking, replaceBooking]);
+
+  const handleApproveQuote = useCallback((bookingId) => (
+    persistBookingUpdate(bookingId, {
+      quoteApproved: true,
+      quoteRejectionReason: null,
+      status: 'Awaiting Slot Selection',
+      dbStatus: 'pending',
+    })
+  ), [persistBookingUpdate]);
+
+  const handleRejectQuote = useCallback((bookingId, reason) => (
+    persistBookingUpdate(bookingId, {
+      quoteApproved: false,
+      quoteRejectionReason: reason,
+      status: 'Quote Rejected',
+      dbStatus: 'pending',
+    })
+  ), [persistBookingUpdate]);
+
+  const handleStopServiceAccepted = useCallback((bookingId) => (
+    persistBookingUpdate(bookingId, {
+      status: 'Service Stopped',
+      serviceActive: false,
+      stopRequested: true,
+      workerStopApproved: true,
+      canRate: true,
+      nextChargeDate: null,
+      dbStatus: 'completed',
+    })
+  ), [persistBookingUpdate]);
+
+  const updateBooking = useCallback((bookingId, updates) => (
+    persistBookingUpdate(bookingId, updates)
+  ), [persistBookingUpdate]);
+
+  const statusFilteredBookings = useMemo(() => (
+    bookings.filter((booking) => {
       if (activeFilter === 'completed') {
-        return terminalStatuses.includes(booking.status) || booking.status === 'Refund Processing';
+        return TERMINAL_STATUSES.includes(booking.status) || booking.status === 'Refund Processing';
       }
       if (activeFilter === 'active') {
-        return !terminalStatuses.includes(booking.status);
+        return !TERMINAL_STATUSES.includes(booking.status);
       }
       return true;
-    });
-  }, [bookings, activeFilter]);
+    })
+  ), [bookings, activeFilter]);
 
-  const filteredBookings = useMemo(() => {
-    return statusFilteredBookings.filter((booking) => {
+  const filteredBookings = useMemo(() => (
+    statusFilteredBookings.filter((booking) => {
       if (displayFilter === 'cash-approvals') {
         return booking.paymentMethod === 'after-service-cash';
       }
@@ -57,109 +137,28 @@ export function useBookingListController(initialBookings) {
         return booking.status === 'Cancelled (Cash)' && booking.paymentMethod === 'after-service-cash';
       }
       return true;
-    });
-  }, [statusFilteredBookings, displayFilter]);
+    })
+  ), [statusFilteredBookings, displayFilter]);
 
-  // ========================================================================
-  // HANDLER FUNCTIONS - Quote & Service Operations
-  // ========================================================================
-
-  /**
-   * Approve a quote
-   * Updates booking status to "Awaiting Slot Selection" and sets quoteApproved = true
-   */
-  const handleApproveQuote = useCallback((bookingId) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) =>
-        booking.id === bookingId
-          ? { ...booking, quoteApproved: true, status: 'Awaiting Slot Selection', quoteRejectionReason: null }
-          : booking
-      )
-    );
-  }, []);
-
-  /**
-   * Reject a quote
-   * Updates booking status to "Quote Rejected" and stores rejection reason
-   */
-  const handleRejectQuote = useCallback((bookingId, reason) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) =>
-        booking.id === bookingId
-          ? {
-              ...booking,
-              quoteApproved: false,
-              status: 'Quote Rejected',
-              quoteRejectionReason: reason,
-            }
-          : booking
-      )
-    );
-  }, []);
-
-  /**
-   * Stop a recurring service
-   * Updates booking to mark service as stopped and allows rating
-   */
-  const handleStopServiceAccepted = useCallback((bookingId) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) =>
-        booking.id === bookingId
-          ? {
-              ...booking,
-              status: 'Service Stopped',
-              serviceActive: false,
-              stopRequested: true,
-              workerStopApproved: true,
-              canRate: true,
-              nextChargeDate: null,
-            }
-          : booking
-      )
-    );
-  }, []);
-
-  /**
-   * Update booking with new data (used by other controllers)
-   * Generic update function for merged state changes
-   */
-  const updateBooking = useCallback((bookingId, updates) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) =>
-        booking.id === bookingId
-          ? { ...booking, ...updates }
-          : booking
-      )
-    );
-  }, []);
-
-  /**
-   * Get a single booking by ID
-   */
-  const getBooking = useCallback((bookingId) => {
-    return bookings.find((b) => b.id === bookingId) || null;
-  }, [bookings]);
-
-  // ========================================================================
-  // RETURN OBJECT - Exposed state and handlers
-  // ========================================================================
-  
   return {
-    // Data
+    actionError,
+    activeFilter,
     bookings,
+    displayFilter,
     filteredBookings,
     getBooking,
-    updateBooking,
-
-    // Filter state & setters
-    activeFilter,
-    setActiveFilter,
-    displayFilter,
-    setDisplayFilter,
-
-    // Handlers
     handleApproveQuote,
     handleRejectQuote,
     handleStopServiceAccepted,
+    isLoading,
+    loadError,
+    refreshBookings,
+    replaceBooking,
+    setActionError,
+    setActiveFilter,
+    setDisplayFilter,
+    setLoadError,
+    updateBooking,
   };
 }
+

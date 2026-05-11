@@ -1,16 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LogIn, Search } from 'lucide-react';
 
-function Navigation({ onLoginClick }) {
+function Navigation({ onLoginClick, onBrowseServices }) {
   const [isLoginHovered, setIsLoginHovered] = useState(false);
-  const [isNavLinkHovered, setIsNavLinkHovered] = useState(false);
+  const [isBrowseHovered, setIsBrowseHovered] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isDesktop = windowWidth > 768;
 
   const styles = {
     navigation: {
       position: 'fixed',
       top: 0,
       width: '100%',
-      backgroundColor: 'var(--bg-surface)',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      background: 'color-mix(in srgb, var(--gl-surface) 94%, transparent)',
+      borderBottom: '1px solid var(--gl-border)',
+      boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+      backdropFilter: 'blur(16px)',
       zIndex: 100,
       padding: 0,
     },
@@ -20,55 +36,77 @@ function Navigation({ onLoginClick }) {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '1rem 2rem',
+      padding: isDesktop ? '0.8rem 1.25rem' : '0.8rem 1rem',
+      gap: '1rem',
     },
     navLogo: {
       h1: {
-        fontSize: '1.8rem',
+        fontSize: '1.45rem',
         color: '#2563eb',
         margin: 0,
-        fontWeight: 700,
-        fontFamily: "'Times New Roman', Georgia, serif",
+        fontWeight: 850,
+        letterSpacing: 0,
       },
     },
     navLinksDesktop: {
       display: 'flex',
-      gap: '2rem',
+      gap: '0.65rem',
       alignItems: 'center',
     },
     navLink: {
-      color: isNavLinkHovered ? '#2563eb' : 'var(--text-primary)',
-      textDecoration: 'none',
+      height: 40,
+      minHeight: 40,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      borderRadius: 8,
+      border: isBrowseHovered ? '1px solid rgba(37, 99, 235, 0.32)' : '1px solid var(--gl-border)',
+      background: isBrowseHovered ? 'rgba(37, 99, 235, 0.08)' : 'var(--gl-surface)',
+      color: isBrowseHovered ? '#2563eb' : 'var(--gl-text)',
+      padding: '0 12px',
       fontWeight: 500,
+      lineHeight: 1,
+      boxSizing: 'border-box',
+      whiteSpace: 'nowrap',
       cursor: 'pointer',
-      transition: 'color 0.3s ease',
+      transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
     },
     navButtonsLogin: {
       backgroundColor: isLoginHovered ? '#1d4ed8' : '#2563eb',
       color: '#ffffff',
       border: 'none',
-      padding: '0.6rem 1.2rem',
-      borderRadius: '0.4rem',
+      height: 40,
+      minHeight: 40,
+      padding: '0 14px',
+      borderRadius: 8,
       cursor: 'pointer',
-      fontWeight: 600,
+      fontWeight: 800,
+      lineHeight: 1,
+      boxSizing: 'border-box',
+      whiteSpace: 'nowrap',
       transition: 'background-color 0.3s ease',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
     },
     mobileHeaderActions: {
       display: 'flex',
       alignItems: 'center',
-      gap: 0,
+      gap: 8,
       marginLeft: 'auto',
       justifyContent: 'flex-end',
     },
     mobileLoginIconBtn: {
-      width: '42px',
-      height: '36px',
+      width: '40px',
+      height: '40px',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#2563eb',
-      color: '#ffffff',
-      border: 'none',
+      backgroundColor: 'var(--gl-surface)',
+      color: '#2563eb',
+      border: '1px solid var(--gl-border)',
       borderRadius: '0.45rem',
       cursor: 'pointer',
     },
@@ -79,12 +117,9 @@ function Navigation({ onLoginClick }) {
     },
   };
 
-  // Apply responsive styles based on viewport (simulated for inline)
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth > 768;
-
   return (
     <nav style={styles.navigation}>
-      <div style={isDesktop ? styles.navContainer : { ...styles.navContainer, padding: '1rem 1.25rem' }}>
+      <div style={styles.navContainer}>
         {/* Logo */}
         <div>
           <h1 style={styles.navLogo.h1}>GigLink</h1>
@@ -92,32 +127,34 @@ function Navigation({ onLoginClick }) {
 
         {/* Desktop Navigation Links */}
         <div style={isDesktop ? styles.navLinksDesktop : { display: 'none' }}>
-          <a
-            href="#browse"
+          <button
+            type="button"
             style={styles.navLink}
-            onMouseEnter={() => setIsNavLinkHovered(true)}
-            onMouseLeave={() => setIsNavLinkHovered(false)}
+            onClick={onBrowseServices}
+            onMouseEnter={() => setIsBrowseHovered(true)}
+            onMouseLeave={() => setIsBrowseHovered(false)}
           >
+            <Search size={16} aria-hidden="true" />
             Browse Services
-          </a>
+          </button>
           <button
             onClick={onLoginClick}
             style={styles.navButtonsLogin}
             onMouseEnter={() => setIsLoginHovered(true)}
             onMouseLeave={() => setIsLoginHovered(false)}
           >
+            <LogIn size={16} aria-hidden="true" />
             Login
           </button>
         </div>
 
         {!isDesktop && (
           <div style={styles.mobileHeaderActions}>
+            <button onClick={onBrowseServices} style={styles.mobileLoginIconBtn} aria-label="Browse services">
+              <Search size={18} aria-hidden="true" />
+            </button>
             <button onClick={onLoginClick} style={styles.mobileLoginIconBtn} aria-label="Login">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.mobileLoginIcon}>
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                <path d="M10 17l5-5-5-5" />
-                <path d="M15 12H3" />
-              </svg>
+              <LogIn style={styles.mobileLoginIcon} aria-hidden="true" />
             </button>
           </div>
         )}

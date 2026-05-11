@@ -43,11 +43,11 @@ export function useRatingController(updateBooking, pushNotification) {
    * Submit a rating and review
    * Updates booking with rating and review, marks as rated
    */
-  const handleSubmitRating = useCallback((booking) => {
+  const handleSubmitRating = useCallback(async (booking) => {
     if (!ratingTargetId) return;
 
     // Update booking with rating and review
-    updateBooking(booking.id, {
+    await updateBooking(booking.id, {
       rating: ratingValue,
       review: ratingComment.trim(),
       canRate: false,
@@ -71,10 +71,10 @@ export function useRatingController(updateBooking, pushNotification) {
    * Handle rating submitted via alternate flow (from ChatWindow, etc)
    * Updates booking directly with rating payload
    */
-  const handleLeaveRating = useCallback((payload) => {
+  const handleLeaveRating = useCallback(async (payload) => {
     if (!payload || !payload.bookingId) return;
 
-    updateBooking(payload.bookingId, {
+    await updateBooking(payload.bookingId, {
       rating: payload.rating,
       review: payload.comment || '',
       canRate: false,

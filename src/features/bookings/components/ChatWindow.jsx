@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
+import { fetchBookingMessages, sendBookingMessage } from '../services/bookingService';
 
 const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived, onLeaveRating }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [messageError, setMessageError] = useState('');
   const [isApproveHovered, setIsApproveHovered] = useState(false);
   const [isSendHovered, setIsSendHovered] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -15,7 +17,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   const [refundReason, setRefundReason] = useState('');
   const [showRejectQuoteModal, setShowRejectQuoteModal] = useState(false);
   const [rejectQuoteReason, setRejectQuoteReason] = useState('');
-  const [mockRating, setMockRating] = useState(booking?.rating || 0);
+  const [draftRating, setDraftRating] = useState(booking?.rating || 0);
   const [ratingComment, setRatingComment] = useState(booking?.ratingComment || '');
   const [ratingSubmitted, setRatingSubmitted] = useState(!!booking?.rating);
 
@@ -50,83 +52,87 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // sync rating state when booking changes
-    setMockRating(booking?.rating || 0);
+    setDraftRating(booking?.rating || 0);
     setRatingComment(booking?.review || booking?.ratingComment || '');
     setRatingSubmitted(!!booking?.rating);
 
-    setTimeout(() => {
-      setMessages([
+    const loadMessages = async () => {
+      if (!booking?.id) return;
+      setIsLoading(true);
+      setMessageError('');
+
+      try {
+        const dbMessages = await fetchBookingMessages(booking);
+        if (!mounted) return;
+        setMessages(dbMessages.length > 0 ? dbMessages : [
         {
-          id: 1,
+          id: `quote-intro-${booking.id}`,
           sender: 'worker',
           type: 'text',
           content: `Hi! I've reviewed your request for ${booking.serviceType.toLowerCase()}. I can help you with that.`,
-          timestamp: '10:15 AM',
+          timestamp: '',
         },
         {
-          id: 2,
+          id: `quote-summary-${booking.id}`,
           sender: 'worker',
           type: 'text',
           content: "Based on the scope of work you described, here's my quote:",
-          timestamp: '10:16 AM',
+          timestamp: '',
         },
         {
-          id: 3,
+          id: `quote-${booking.id}`,
           sender: 'worker',
           type: 'quote',
           content: {
             amount: booking.quoteAmount,
             description: booking.description,
-            deliveryTime: '2-3 days',
-            note: 'Price includes materials and labor',
+            deliveryTime: '',
+            note: 'Quote details come from the booking record.',
           },
-          timestamp: '10:16 AM',
+          timestamp: '',
         },
       ]);
-      setIsLoading(false);
-    }, 500);
-  }, [booking]);
-
-  const handleSendMessage = () => {
-    if (!clientMessage.trim()) return;
-
-    const newMessage = {
-      id: messages.length + 1,
-      sender: 'client',
-      type: 'text',
-      content: clientMessage,
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      } catch (error) {
+        if (!mounted) return;
+        setMessageError(error?.message || 'Unable to load conversation messages.');
+        setMessages([]);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
     };
 
-    setMessages([...messages, newMessage]);
-    setClientMessage('');
+    loadMessages();
+    return () => {
+      mounted = false;
+    };
+  }, [booking]);
 
-    setTimeout(() => {
-      const workerResponse = {
-        id: messages.length + 2,
-        sender: 'worker',
-        type: 'text',
-        content: "Thanks for your message. I'm confident I can deliver quality work at the quoted price. Feel free to approve the quote when ready!",
-        timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prevMessages) => [...prevMessages, workerResponse]);
-    }, 1000);
+  const handleSendMessage = async () => {
+    if (!clientMessage.trim()) return;
+
+    try {
+      const savedMessage = await sendBookingMessage(booking, clientMessage);
+      setMessages((prevMessages) => [...prevMessages, savedMessage]);
+      setClientMessage('');
+      setMessageError('');
+    } catch (error) {
+      setMessageError(error?.message || 'Unable to send message.');
+    }
   };
 
-  const handleApproveQuoteClick = () => {
+  const handleApproveQuoteClick = async () => {
     const approvalMessage = {
-      id: messages.length + 1,
+      id: `approval-${Date.now()}`,
       sender: 'system',
       type: 'text',
       content: 'You approved the quote. Proceeding to calendar/slot selection...',
       timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     };
     setMessages([...messages, approvalMessage]);
-
-    setTimeout(() => {
-      onApproveQuote();
-    }, 800);
+    await onApproveQuote();
   };
 
   const handleSubmitRefundRequest = () => {
@@ -278,19 +284,18 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   };
 
   const handleStarClick = (value) => {
-    setMockRating(value);
+    setDraftRating(value);
   };
 
   const handleSubmitRating = () => {
-    if (mockRating < 1) return;
+    if (draftRating < 1) return;
     const payload = {
       bookingId: booking.id,
-      rating: mockRating,
+      rating: draftRating,
       comment: ratingComment,
       createdAt: new Date().toISOString(),
     };
 
-    // For now: mock save and mark submitted. In future this should call an API prop like `onLeaveRating`.
     if (typeof onLeaveRating === 'function') {
       try { onLeaveRating(payload); } catch (e) { /* ignore */ }
     }
@@ -298,10 +303,10 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   };
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.mainContainer}>
+    <div className="booking-workspace" style={styles.pageContainer}>
+      <div className="booking-workspace-grid" style={styles.mainContainer}>
         {/* LEFT COLUMN: Chat List */}
-        <div style={styles.chatList}>
+        <div className="booking-chat-list" style={styles.chatList}>
           <div style={styles.chatListHeader}>
             <h3 style={styles.chatListTitle}>Your Chats</h3>
           </div>
@@ -333,7 +338,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
         </div>
 
         {/* CENTER COLUMN: Chat Messages */}
-        <div style={styles.chatContainer}>
+        <div className="booking-chat-thread" style={styles.chatContainer}>
           <div style={styles.header}>
             <div style={styles.workerInfo}>
               <div style={styles.workerAvatar}>{booking.workerName.charAt(0)}</div>
@@ -352,6 +357,11 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
           </div>
 
           <div style={styles.messages}>
+            {messageError && (
+              <div style={{ marginBottom: '8px', color: themeTokens.danger, fontSize: '13px', fontWeight: 700 }}>
+                {messageError}
+              </div>
+            )}
             {isLoading ? (
               <div style={styles.loadingState}>
                 <div style={{ ...styles.loadingBubble, width: '65%', alignSelf: 'flex-start' }} />
@@ -399,7 +409,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
             <div style={styles.quoteActionBar}>
               <div style={styles.actionContent}>
                 <p style={styles.actionPrompt}>Review this quote and choose what to do next.</p>
-                <div style={styles.quoteDecisionActions}>
+                <div className="booking-quote-actions" style={styles.quoteDecisionActions}>
                   <button
                     style={styles.approveBtn}
                     onMouseEnter={() => setIsApproveHovered(true)}
@@ -439,7 +449,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
           )}
 
           {booking.status !== 'Cancelled (Cash)' && (
-            <div style={styles.inputArea}>
+            <div className="booking-input-area" style={styles.inputArea}>
               <input
                 type="text"
                 placeholder="Ask a question or discuss the quote..."
@@ -464,7 +474,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
         </div>
 
         {/* RIGHT COLUMN: Service Details & Actions */}
-        <div style={styles.rightSidebar}>
+        <div className="booking-detail-sidebar" style={styles.rightSidebar}>
           <div style={styles.rightHeader}>
             <h3 style={styles.rightTitle}>Service Details</h3>
           </div>
@@ -524,10 +534,10 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
                         <span
                           key={n}
                           onClick={() => handleStarClick(n)}
-                          style={{ ...styles.starBtn, ...(mockRating >= n ? styles.starActive : {}) }}
+                          style={{ ...styles.starBtn, ...(draftRating >= n ? styles.starActive : {}) }}
                           title={`${n} star${n>1 ? 's' : ''}`}
                         >
-                          {mockRating >= n ? '★' : '☆'}
+                          {draftRating >= n ? '★' : '☆'}
                         </span>
                       ))}
                     </div>
@@ -541,8 +551,8 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
                   </>
                 ) : (
                   <div>
-                    <p style={styles.ratingSavedText}>Thank you — your rating has been recorded (mock).</p>
-                    <p style={{ margin: '6px 0 0', color: chatTheme.textSecondary }}>Rating: {mockRating} / 5</p>
+                    <p style={styles.ratingSavedText}>Thank you — your rating has been recorded.</p>
+                    <p style={{ margin: '6px 0 0', color: chatTheme.textSecondary }}>Rating: {draftRating} / 5</p>
                     {ratingComment && <p style={{ margin: '6px 0 0', color: chatTheme.textSecondary }}>{ratingComment}</p>}
                   </div>
                 )}

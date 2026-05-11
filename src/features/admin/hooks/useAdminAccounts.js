@@ -14,39 +14,16 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../../../shared/services/supabaseClient';
 import AdminAccountService from '../services/AdminAccountService';
 
-// Mock data for fallback
-const INITIAL_ACCOUNTS = [
-  { id: 1, name: 'Arian Cortez', email: 'arian@example.com', role: 'client', status: 'active', lastSeen: 'Today, 9:12 AM' },
-  { id: 2, name: 'Mika Santos', email: 'mika@example.com', role: 'worker', status: 'active', lastSeen: 'Today, 8:41 AM' },
-  { id: 3, name: 'Daryl Ng', email: 'daryl@example.com', role: 'worker', status: 'disabled', lastSeen: 'Yesterday, 6:23 PM' },
-  { id: 4, name: 'Jenna Lim', email: 'jenna@example.com', role: 'client', status: 'active', lastSeen: 'Today, 10:05 AM' },
-  { id: 5, name: 'Admin One', email: 'admin@example.com', role: 'admin', status: 'active', lastSeen: 'Now' },
-];
-
-const INITIAL_COMMENTS = [
-  { id: 1, worker: 'Mika Santos', client: 'Arian Cortez', rating: 5, comment: 'Fast and professional. Great communication.', status: 'published' },
-  { id: 2, worker: 'Daryl Ng', client: 'Jenna Lim', rating: 1, comment: 'This is a scam!!!', status: 'flagged' },
-  { id: 3, worker: 'Arian Cortez', client: 'Paolo Diaz', rating: 4, comment: 'Helpful and on time.', status: 'published' },
-  { id: 4, worker: 'Mika Santos', client: 'Trina Lopez', rating: 2, comment: 'Needs improvement on response time.', status: 'review' },
-];
-
-const INITIAL_LOGS = [
-  { id: 1, actor: 'Admin One', action: 'Disabled account', target: 'Daryl Ng', timestamp: '2026-05-08 08:12', severity: 'medium' },
-  { id: 2, actor: 'System', action: 'Worker profile updated', target: 'Mika Santos', timestamp: '2026-05-08 07:44', severity: 'low' },
-  { id: 3, actor: 'Admin One', action: 'Review comment removed', target: 'Spam review #419', timestamp: '2026-05-08 07:01', severity: 'high' },
-  { id: 4, actor: 'Arian Cortez', action: 'Logged in', target: 'Dashboard', timestamp: '2026-05-08 06:58', severity: 'low' },
-  { id: 5, actor: 'System', action: 'New signup', target: 'Jenna Lim', timestamp: '2026-05-08 06:21', severity: 'low' },
-];
-
 /**
  * Custom hook for managing admin accounts
  * Returns all state and handlers needed by the UI
  */
 export function useAdminAccounts() {
   // Account data state
-  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS);
+  const [accounts, setAccounts] = useState([]);
   const [isAccountsLoading, setIsAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState('');
+  const [commentsError, setCommentsError] = useState('');
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,7 +31,7 @@ export function useAdminAccounts() {
   const [roleSavingId, setRoleSavingId] = useState(null);
 
   // Comments state
-  const [comments, setComments] = useState(INITIAL_COMMENTS);
+  const [comments, setComments] = useState([]);
 
   // Access action modal state
   const [accessActionTarget, setAccessActionTarget] = useState(null);
@@ -82,10 +59,7 @@ export function useAdminAccounts() {
         if (!isMounted) return;
         console.error('Unable to load admin accounts:', error);
         setAccountsError(error?.message || 'Unable to load accounts from the database right now.');
-        setAccounts(INITIAL_ACCOUNTS.map((account) => ({
-          ...account,
-          accountStatus: account.status === 'disabled' ? 'disabled' : 'active',
-        })));
+        setAccounts([]);
       } finally {
         if (isMounted) setIsAccountsLoading(false);
       }
@@ -93,6 +67,28 @@ export function useAdminAccounts() {
 
     loadAccounts();
 
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadComments = async () => {
+      try {
+        setCommentsError('');
+        const dbComments = await AdminAccountService.fetchComments();
+        if (isMounted) setComments(dbComments);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Unable to load admin comments:', error);
+        setCommentsError(error?.message || 'Unable to load review comments from the database right now.');
+        setComments([]);
+      }
+    };
+
+    loadComments();
     return () => {
       isMounted = false;
     };
@@ -257,9 +253,16 @@ export function useAdminAccounts() {
   }, []);
 
   // Handler: Delete comment
-  const handleDeleteComment = useCallback((commentId) => {
-    setComments((prev) => prev.filter((comment) => comment.id !== commentId));
-    setCommentDeleteTarget(null);
+  const handleDeleteComment = useCallback(async (commentId) => {
+    try {
+      await AdminAccountService.deleteComment(commentId);
+      setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+      setCommentDeleteTarget(null);
+      setCommentsError('');
+    } catch (error) {
+      console.error('Unable to delete comment:', error);
+      setCommentsError(error?.message || 'Unable to delete comment right now.');
+    }
   }, []);
 
   // Return all state and handlers for use by UI components
@@ -270,6 +273,7 @@ export function useAdminAccounts() {
     filteredAccounts,
     isAccountsLoading,
     accountsError,
+    commentsError,
     stats,
 
     // Search & filter
@@ -306,7 +310,7 @@ export function useAdminAccounts() {
     setCommentDeleteTarget,
 
     // Static data
-    logs: INITIAL_LOGS,
+    logs: [],
   };
 }
 

@@ -1,5 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getThemeTokens } from '../styles/themeTokens';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Bell,
+  BriefcaseBusiness,
+  Home,
+  LogOut,
+  MessageCircle,
+  Search,
+  Settings,
+  Shield,
+  Store,
+  UserRound,
+} from 'lucide-react';
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 
 function DashboardNavigation({
@@ -15,55 +26,33 @@ function DashboardNavigation({
   onOpenSettings,
   currentView,
   onOpenDashboard,
-  appTheme = 'light',
+  onOpenBrowseServices,
   onToggleAdminView,
   isAdminView = false,
 }) {
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [notifications, setNotifications] = useState([
-    { id: 'n1', title: 'Booking Update', message: 'Your latest booking has a new message.', isRead: false },
-    { id: 'n2', title: 'Reminder', message: 'You have an upcoming schedule today.', isRead: false },
+    { id: 'n1', title: 'Booking update', message: 'Your latest booking has a new message.', isRead: false },
+    { id: 'n2', title: 'Schedule reminder', message: 'You have an upcoming schedule today.', isRead: false },
   ]);
+
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
-  // Map currentView to active navigation item
-  const getActiveFromView = (view) => {
-    const viewMap = {
-      'client-dashboard': 'home',
-      'my-bookings': 'bookings',
-      'my-work': 'my-work',
-      'profile': 'profile',
-      'account-settings': 'profile', // Account settings shows profile icon as active
-      'settings': 'settings',
-      'worker-dashboard': 'home',
-    };
-    return viewMap[view] || 'home';
-  };
-
-  const activeIcon = getActiveFromView(currentView);
-
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    document.body.classList.add('gl-app-shell-active');
+    return () => document.body.classList.remove('gl-app-shell-active');
   }, []);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
-      const clickedInNotification = notificationRef.current && notificationRef.current.contains(event.target);
-      const clickedInProfile = profileRef.current && profileRef.current.contains(event.target);
-
-      if (!clickedInNotification) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
       }
-
-      if (!clickedInProfile) {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
       }
     };
@@ -72,212 +61,42 @@ function DashboardNavigation({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const isDesktop = windowWidth > 600;
-  const themeTokens = getThemeTokens(appTheme);
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const activeKey = {
+    'client-dashboard': 'home',
+    'browse-services': 'browse',
+    'my-bookings': 'bookings',
+    'my-work': 'work',
+    'worker-dashboard': 'work',
+    profile: 'profile',
+    'account-settings': 'profile',
+    settings: 'settings',
+  }[currentView] || 'home';
 
-  const styles = {
-    nav: {
-      position: 'sticky',
-      top: 0,
-      zIndex: 120,
-      background: themeTokens.navBg,
-      borderBottom: `1px solid ${themeTokens.navBorder}`,
-      padding: isDesktop ? '0.45rem 1rem' : '0.45rem 0.75rem',
-    },
-    container: isDesktop
-      ? {
-          width: '100%',
-          display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 1fr) minmax(360px, 560px) minmax(220px, 1fr)',
-          alignItems: 'center',
-          columnGap: '0.8rem',
-        }
-      : {
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '0.35rem',
-        },
-    left: { display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0 },
-    logo: {
-      color: themeTokens.accent,
-      fontWeight: 800,
-      fontSize: isDesktop ? '1.85rem' : '1.25rem',
-      margin: 0,
-      lineHeight: 1,
-      fontFamily: "'Times New Roman', Georgia, serif",
-      whiteSpace: 'nowrap',
-    },
-    smallIconBtn: {
-      width: '36px',
-      height: '36px',
-      borderRadius: '999px',
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      background: 'transparent',
-      border: `1px solid transparent`,
-      transition: 'all 0.2s ease',
-    },
-    smallIconBtnActive: {
-      backgroundColor: themeTokens.badgeBg,
-      border: `1px solid ${themeTokens.accent}`,
-      boxShadow: `0 0 0 4px ${appTheme === 'dark' ? 'rgba(37, 99, 235, 0.22)' : 'rgba(37, 99, 235, 0.14)'}`,
-      color: themeTokens.accent,
-    },
-    search: { flex: 1, minWidth: 0 },
-    searchInput: { width: '100%', height: '44px', borderRadius: '999px', border: `1px solid ${themeTokens.inputBorder}`, padding: '0 1rem', fontSize: '1.08rem', backgroundColor: themeTokens.inputBg, color: themeTokens.inputText },
-    center: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: isDesktop ? '1.15rem' : '0.2rem',
-      justifyContent: 'center',
-      flex: isDesktop ? 'none' : 1,
-      minWidth: 0,
-    },
-    navItem: {
-      cursor: 'pointer',
-      width: isDesktop ? '52px' : '40px',
-      height: isDesktop ? '48px' : '40px',
-      borderRadius: '999px',
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '0.5rem',
-      fontWeight: 700,
-      color: themeTokens.textPrimary,
-      background: 'transparent',
-      border: 'none',
-      flexShrink: 0,
-    },
-    navItemActive: { borderBottom: `3px solid ${themeTokens.accent}`, paddingBottom: '6px' },
-    myWorkWrap: {
-      width: isDesktop ? '58px' : '44px',
-      height: isDesktop ? '58px' : '44px',
-      borderRadius: '999px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: themeTokens.surface,
-      boxShadow: themeTokens.shadowSoft,
-      cursor: 'pointer',
-      border: `1px solid ${themeTokens.border}`,
-      flexShrink: 0,
-    },
-    right: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.35rem', flexShrink: 0 },
-    rightItemWrap: { position: 'relative' },
-    roundIconBtn: {
-      width: isDesktop ? '42px' : '36px',
-      height: isDesktop ? '42px' : '36px',
-      borderRadius: '999px',
-      border: `1px solid ${themeTokens.border}`,
-      backgroundColor: themeTokens.surfaceAlt,
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      cursor: 'pointer',
-      color: themeTokens.textPrimary,
-      flexShrink: 0,
-    },
-    avatar: {
-      width: isDesktop ? '42px' : '36px',
-      height: isDesktop ? '42px' : '36px',
-      borderRadius: '999px',
-      background: themeTokens.surfaceSoft,
-      border: `1px solid ${themeTokens.border}`,
-      cursor: 'pointer',
-      flexShrink: 0,
-    },
-    dropdown: {
-      position: 'absolute',
-      top: '52px',
-      right: 0,
-      width: '300px',
-      maxWidth: '90vw',
-      backgroundColor: themeTokens.surface,
-      border: `1px solid ${themeTokens.border}`,
-      borderRadius: '0.65rem',
-      boxShadow: '0 14px 30px rgba(15, 23, 42, 0.2)',
-      padding: '0.65rem',
-      zIndex: 200,
-    },
-    dropdownHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' },
-    dropdownTitle: { margin: 0, fontWeight: 700, color: themeTokens.textPrimary },
-    textButton: { border: 'none', background: 'transparent', color: themeTokens.accent, cursor: 'pointer', fontWeight: 600 },
-    notificationItem: {
-      width: '100%',
-      textAlign: 'left',
-      border: `1px solid ${themeTokens.border}`,
-      borderRadius: '0.5rem',
-      backgroundColor: themeTokens.surface,
-      padding: '0.5rem',
-      marginBottom: '0.4rem',
-      cursor: 'pointer',
-    },
-    notificationUnread: { backgroundColor: themeTokens.badgeBg, border: `1px solid ${themeTokens.accent}` },
-    profileMenu: {
-      position: 'absolute',
-      top: '52px',
-      right: 0,
-      minWidth: '160px',
-      backgroundColor: themeTokens.surface,
-      border: `1px solid ${themeTokens.border}`,
-      borderRadius: '0.65rem',
-      boxShadow: '0 14px 30px rgba(15, 23, 42, 0.2)',
-      padding: '0.35rem',
-      zIndex: 200,
-    },
-    profileItem: {
-      width: '100%',
-      border: 'none',
-      backgroundColor: themeTokens.surface,
-      textAlign: 'left',
-      padding: '0.5rem 0.6rem',
-      borderRadius: '0.45rem',
-      cursor: 'pointer',
-      color: themeTokens.textPrimary,
-      fontWeight: 600,
-    },
-    profileDanger: {
-      color: themeTokens.danger,
-    },
-  };
-
-  const Icon = ({ name, size = 18 }) => {
-    if (name === 'apps') return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 3h4v4H3zM10 3h4v4h-4zM17 3h4v4h-4zM3 10h4v4H3zM10 10h4v4h-4zM17 10h4v4h-4zM3 17h4v4H3zM10 17h4v4h-4zM17 17h4v4h-4z"/></svg>);
-    if (name === 'bell') return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0 1 18 14.158V11a6 6 0 0 0-5-5.917V4a2 2 0 1 0-4 0v1.083A6 6 0 0 0 4 11v3.159c0 .538-.214 1.055-.595 1.436L2 17h5"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>);
-    if (name === 'home') return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z"/></svg>);
-    if (name === 'chat') return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>);
-    if (name === 'work') return (<svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.6"><path d="M3 7h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>);
-    if (name === 'profile') return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
-    if (name === 'settings') return (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V22a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V2a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H22a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>);
-    return null;
-  };
-
-  const unreadCount = notifications.filter((item) => !item.isRead).length;
-  const profileAvatarSrc = sellerProfile?.profilePhoto || '';
-  const firstInitial = String(sellerProfile?.firstName || '').trim().charAt(0).toUpperCase();
-  const lastInitial = String(sellerProfile?.lastName || '').trim().charAt(0).toUpperCase();
-  const fullNameInitials = String(sellerProfile?.fullName || '')
+  const fullName = sellerProfile?.fullName || sellerProfile?.full_name || sellerProfile?.email || 'GigLink User';
+  const profileInitials = String(fullName)
     .trim()
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((segment) => segment.charAt(0).toUpperCase())
-    .join('');
-  const profileInitials = (firstInitial + lastInitial || fullNameInitials || 'U').slice(0, 2);
+    .join('') || 'U';
+  const unreadCount = notifications.filter((item) => !item.isRead).length;
 
-  const toggleNotifications = () => {
-    setIsProfileMenuOpen(false);
-    setIsNotificationOpen((prev) => !prev);
-  };
-
-  const toggleProfileMenu = () => {
-    setIsNotificationOpen(false);
-    setIsProfileMenuOpen((prev) => !prev);
+  const navItems = [
+    { key: 'home', label: 'Home', icon: Home, onClick: onOpenDashboard },
+    { key: 'browse', label: 'Browse', icon: Store, onClick: onOpenBrowseServices || onOpenDashboard },
+    { key: 'bookings', label: 'Bookings', icon: MessageCircle, onClick: onOpenMyBookings },
+    { key: 'work', label: 'My Work', icon: BriefcaseBusiness, onClick: onOpenMyWork || onOpenSellerSetup },
+    { key: 'profile', label: 'Profile', icon: UserRound, onClick: onOpenProfile },
+    { key: 'settings', label: 'Settings', icon: Settings, onClick: onOpenSettings },
+  ];
+  const mobileNavLabels = {
+    home: 'Mobile home tab',
+    browse: 'Mobile browse tab',
+    bookings: 'Mobile bookings tab',
+    work: 'Mobile work tab',
+    profile: 'Mobile profile tab',
+    settings: 'Mobile settings tab',
   };
 
   const markAllNotificationsRead = () => {
@@ -287,196 +106,165 @@ function DashboardNavigation({
   const handleNotificationClick = (id) => {
     setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true } : item)));
     setIsNotificationOpen(false);
-    if (onOpenMyBookings) onOpenMyBookings();
+    onOpenMyBookings?.();
   };
 
+  const renderNavButtons = (variant = 'desktop') => (
+    <nav className="gl-app-nav-list" aria-label={variant === 'mobile' ? 'Mobile dashboard navigation' : 'Dashboard navigation'}>
+      {navItems.map(({ key, label, icon: Icon, onClick }) => (
+        <button
+          key={key}
+          type="button"
+          className={`gl-app-nav-item ${activeKey === key ? 'active' : ''}`}
+          aria-label={variant === 'mobile' ? mobileNavLabels[key] : label}
+          title={label}
+          onClick={() => onClick?.()}
+        >
+          <Icon size={18} aria-hidden="true" />
+          <span>{label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+
   return (
-    <div style={styles.nav}>
-      <div style={styles.container}>
-        <div style={styles.left}>
-          <h1 style={styles.logo}>GigLink</h1>
-          {isDesktop ? (
-            <div style={styles.search}>
-              <input
-                value={searchQuery}
-                onChange={(e) => onSearchChange && onSearchChange(e)}
-                placeholder="Search service (e.g., Math Tutor, Aircon Cleaning)"
-                style={styles.searchInput}
-              />
-            </div>
-          ) : (
-            <button
-              aria-label="Open search"
-              aria-pressed={showMobileSearch}
-              onClick={() => setShowMobileSearch((s) => !s)}
-              style={{
-                ...styles.smallIconBtn,
-                ...(showMobileSearch ? styles.smallIconBtnActive : {}),
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="11" cy="11" r="6"/><path d="M21 21l-4.35-4.35"/></svg>
-            </button>
-          )}
+    <>
+      <aside className="gl-app-sidebar">
+        <button type="button" className="gl-app-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
+          <span className="gl-app-brand-mark">G</span>
+          <span>
+            <strong>GigLink</strong>
+            <small>Marketplace OS</small>
+          </span>
+        </button>
+
+        <div className="gl-app-sidebar-search">
+          <Search size={17} aria-hidden="true" />
+          <input
+            value={searchQuery || ''}
+            onChange={(event) => onSearchChange?.(event)}
+            placeholder="Search"
+          />
         </div>
 
-        <div style={styles.center}>
-          <button
-            aria-label="Home"
-            style={{ ...styles.navItem, ...(activeIcon === 'home' ? styles.navItemActive : {}) }}
-            onClick={() => { onOpenDashboard && onOpenDashboard(); }}
-          >
-            <Icon name="home" size={22} />
-          </button>
+        {renderNavButtons()}
 
-          <button
-            aria-label="My Chats"
-            style={{ ...styles.navItem, ...(activeIcon === 'bookings' ? styles.navItemActive : {}) }}
-            onClick={() => { onOpenMyBookings && onOpenMyBookings(); }}
-          >
-            <Icon name="chat" size={22} />
-          </button>
-
-          <button
-            aria-label="My Work"
-            style={styles.myWorkWrap}
-            onClick={() => { onOpenMyWork && onOpenMyWork(); }}
-            title="My Work"
-          >
-            <Icon name="work" />
-          </button>
-
-          <button
-            aria-label="Account"
-            style={{ ...styles.navItem, ...(activeIcon === 'profile' ? styles.navItemActive : {}) }}
-            onClick={() => { onOpenProfile && onOpenProfile(); }}
-          >
-            <Icon name="profile" size={22} />
-          </button>
-
-          <button
-            aria-label="Settings"
-            style={{ ...styles.navItem, ...(activeIcon === 'settings' ? styles.navItemActive : {}) }}
-            onClick={() => { onOpenSettings && onOpenSettings(); }}
-          >
-            <Icon name="settings" size={21} />
+        <div className="gl-app-sidebar-footer">
+          <button type="button" className="gl-app-user-row" onClick={() => onOpenProfile?.()}>
+            <span className="gl-app-avatar">{profileInitials}</span>
+            <span>
+              <strong>{fullName}</strong>
+              <small>{sellerProfile?.role || 'client'}</small>
+            </span>
           </button>
         </div>
+      </aside>
 
-        <div style={styles.right}>
-          <div style={styles.rightItemWrap} ref={notificationRef}>
-            <button aria-label="Notifications" style={styles.roundIconBtn} onClick={toggleNotifications}>
-              <Icon name="bell" />
-              {unreadCount > 0 && (
-                <span style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', top: -6, right: -6, width: 10, height: 10, borderRadius: 999, background: '#ef4444', border: '2px solid #ffffff' }} />
-                </span>
-              )}
+      <header className="gl-app-topbar">
+        <button type="button" className="gl-app-mobile-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
+          <span className="gl-app-brand-mark">G</span>
+          <strong>GigLink</strong>
+        </button>
+
+        <div className="gl-app-topbar-search">
+          <Search size={17} aria-hidden="true" />
+          <input
+            value={searchQuery || ''}
+            onChange={(event) => onSearchChange?.(event)}
+            placeholder="Search services, providers, locations"
+          />
+        </div>
+
+        <div className="gl-app-topbar-actions">
+          <button
+            type="button"
+            className="gl-app-icon-btn mobile-only"
+            aria-label="Open search"
+            aria-pressed={showMobileSearch}
+            onClick={() => setShowMobileSearch((value) => !value)}
+          >
+            <Search size={18} aria-hidden="true" />
+          </button>
+
+          <div ref={notificationRef} className="gl-app-menu-anchor">
+            <button type="button" className="gl-app-icon-btn" aria-label="Notifications" onClick={() => setIsNotificationOpen((value) => !value)}>
+              <Bell size={18} aria-hidden="true" />
+              {unreadCount > 0 && <span className="gl-app-dot" />}
             </button>
 
             {isNotificationOpen && (
-              <div style={styles.dropdown}>
-                <div style={styles.dropdownHeader}>
-                  <p style={styles.dropdownTitle}>Notifications</p>
-                  <button type="button" style={styles.textButton} onClick={markAllNotificationsRead}>Mark all read</button>
+              <div className="gl-app-dropdown">
+                <div className="gl-app-dropdown-head">
+                  <p>Notifications</p>
+                  <button type="button" onClick={markAllNotificationsRead}>Mark all read</button>
                 </div>
-
-                {notifications.length === 0 ? (
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>No notifications yet.</p>
-                ) : (
-                  notifications.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      style={{ ...styles.notificationItem, ...(!item.isRead ? styles.notificationUnread : {}) }}
-                      onClick={() => handleNotificationClick(item.id)}
-                    >
-                      <strong style={{ display: 'block', marginBottom: '0.15rem' }}>{item.title}</strong>
-                      <span style={{ color: '#334155', fontSize: '0.86rem' }}>{item.message}</span>
-                    </button>
-                  ))
-                )}
+                {notifications.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`gl-app-notification ${item.isRead ? '' : 'unread'}`}
+                    onClick={() => handleNotificationClick(item.id)}
+                  >
+                    <strong>{item.title}</strong>
+                    <span>{item.message}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
 
-          <div style={styles.rightItemWrap} ref={profileRef}>
-            <button
-              style={{
-                ...styles.avatar,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 700,
-                color: themeTokens.textPrimary,
-                background: themeTokens.surfaceAlt,
-                overflow: 'hidden',
-                padding: 0,
-              }}
-              onClick={toggleProfileMenu}
-              aria-label="Profile"
-            >
-              {profileAvatarSrc ? (
-                <img
-                  src={profileAvatarSrc}
-                  alt="Profile"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
+          <div ref={profileRef} className="gl-app-menu-anchor">
+            <button type="button" className="gl-app-icon-btn avatar" aria-label="Profile menu" onClick={() => setIsProfileMenuOpen((value) => !value)}>
+              {sellerProfile?.profilePhoto ? (
+                <img src={sellerProfile.profilePhoto} alt="Profile" />
               ) : (
-                profileInitials
+                <span>{profileInitials}</span>
               )}
             </button>
 
             {isProfileMenuOpen && (
-              <div style={styles.profileMenu}>
+              <div className="gl-app-dropdown">
+                <button type="button" className="gl-app-menu-button" onClick={() => { setIsProfileMenuOpen(false); onOpenProfile?.(); }}>
+                  <UserRound size={16} aria-hidden="true" /> Profile
+                </button>
+                <button type="button" className="gl-app-menu-button" onClick={() => { setIsProfileMenuOpen(false); (onOpenAccountSettings || onOpenProfile)?.(); }}>
+                  <Shield size={16} aria-hidden="true" /> Account & Privacy
+                </button>
                 {sellerProfile?.role === 'admin' && (
-                  <button
-                    type="button"
-                    style={styles.profileItem}
-                    onClick={() => {
-                      setIsProfileMenuOpen(false);
-                      if (typeof onToggleAdminView === 'function') onToggleAdminView();
-                    }}
-                  >
-                    {isAdminView ? 'Switch to Client View' : 'Switch to Admin View'}
+                  <button type="button" className="gl-app-menu-button" onClick={() => { setIsProfileMenuOpen(false); onToggleAdminView?.(); }}>
+                    <Shield size={16} aria-hidden="true" /> {isAdminView ? 'Switch to Client View' : 'Switch to Admin View'}
                   </button>
                 )}
-                <button
-                  type="button"
-                  style={{ ...styles.profileItem, ...styles.profileDanger }}
-                  onClick={() => {
-                    setIsProfileMenuOpen(false);
-                    setIsLogoutModalOpen(true);
-                  }}
-                >
-                  Logout
+                <button type="button" className="gl-app-menu-button danger" onClick={() => { setIsProfileMenuOpen(false); setIsLogoutModalOpen(true); }}>
+                  <LogOut size={16} aria-hidden="true" /> Logout
                 </button>
               </div>
             )}
           </div>
         </div>
-      </div>
-      {/* Mobile search expansion shown below nav when toggled */}
-      {!isDesktop && showMobileSearch && (
-        <div style={{ padding: '0.6rem', borderTop: `1px solid ${themeTokens.navBorder}`, background: themeTokens.navBg }}>
+
+        <div className={`gl-app-mobile-search ${showMobileSearch ? 'open' : ''}`}>
           <input
-            value={searchQuery}
-            onChange={(e) => onSearchChange && onSearchChange(e)}
-            placeholder="Search service (e.g., Math Tutor, Aircon Cleaning)"
-            style={{ ...styles.searchInput, width: '100%', height: '44px' }}
+            value={searchQuery || ''}
+            onChange={(event) => onSearchChange?.(event)}
+            placeholder="Search services, providers, locations"
           />
         </div>
-      )}
+      </header>
 
-      <LogoutConfirmModal 
-        isOpen={isLogoutModalOpen} 
-        onCancel={() => setIsLogoutModalOpen(false)} 
+      <div className="gl-app-mobile-nav">
+        {renderNavButtons('mobile')}
+      </div>
+
+      <LogoutConfirmModal
+        isOpen={isLogoutModalOpen}
+        onCancel={() => setIsLogoutModalOpen(false)}
         onConfirm={() => {
           setIsLogoutModalOpen(false);
-          if (onLogout) onLogout();
-        }} 
+          onLogout?.();
+        }}
       />
-    </div>
+    </>
   );
 }
 

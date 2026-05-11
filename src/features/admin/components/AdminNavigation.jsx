@@ -96,14 +96,14 @@ function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSec
   };
 
   return (
-    <nav style={styles.nav}>
-      <div style={styles.inner}>
-        <div style={styles.brandWrap}>
+    <nav className="gl-admin-nav" style={styles.nav}>
+      <div className="gl-admin-nav-inner" style={styles.inner}>
+        <div className="gl-admin-nav-brand" style={styles.brandWrap}>
           <h1 style={styles.brand}>GigLink</h1>
           <span style={styles.badge}>Admin</span>
         </div>
 
-        <div style={styles.tabs}>
+        <div className="gl-admin-nav-tabs" style={styles.tabs}>
           {sections.map((section) => (
             <button
               key={section.key}
@@ -116,7 +116,7 @@ function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSec
           ))}
         </div>
 
-        <div style={styles.actions}>
+        <div className="gl-admin-nav-actions" style={styles.actions}>
           <button type="button" style={styles.actionButton} onClick={onOpenDashboard}>
             Back to App
           </button>

@@ -9,16 +9,22 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
     "jspdf": "^4.2.1",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "ai:stitch:mcp": "node scripts/ai-ui-agent/stitch-mcp-bridge.mjs",
+    "ai:stitch:redesign": "node scripts/ai-ui-agent/stitch-redesign.mjs",
     "dev": "react-scripts start",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "test:e2e": "playwright test",
+    "test:e2e:ai-redesign": "playwright test tests/e2e/ai-redesign-smoke.e2e.spec.js",
+    "test:e2e:headed": "playwright test --headed",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -38,5 +44,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
   }
 }

@@ -15,12 +15,15 @@ function AdminLogsSection({ logs, styles }) {
           <div style={styles.panelTitleWrap}>
             <h2 style={styles.panelTitle}>Audit Logs</h2>
             <p style={styles.panelDesc}>
-              Track user-wide activities in a readable log layout. This is static UI for now and can later consume real audit events.
+              Track user-wide activities in a readable log layout when audit events are available.
             </p>
           </div>
         </div>
 
-        <div style={styles.activityList}>
+        {logs.length === 0 ? (
+          <div style={styles.emptyState}>No audit logs are available from the database yet.</div>
+        ) : (
+          <div style={styles.activityList}>
           {logs.map((log) => (
             <div key={log.id} style={styles.activityItem}>
               <div style={styles.activityTop}>
@@ -44,7 +47,8 @@ function AdminLogsSection({ logs, styles }) {
               <p style={styles.activityMeta}>{log.timestamp}</p>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </article>
     </section>
   );

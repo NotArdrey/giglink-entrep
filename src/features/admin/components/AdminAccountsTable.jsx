@@ -23,8 +23,8 @@ function AdminAccountsTable({
   styles,
 }) {
   return (
-    <section style={{ ...styles.contentGrid, gridTemplateColumns: '1fr' }}>
-      <article style={styles.panel}>
+    <section className="gl-admin-content-grid" style={{ ...styles.contentGrid, gridTemplateColumns: '1fr' }}>
+      <article className="gl-admin-panel" style={styles.panel}>
         <div style={styles.panelHeader}>
           <div style={styles.panelTitleWrap}>
             <h2 style={styles.panelTitle}>Account Management</h2>
@@ -32,7 +32,7 @@ function AdminAccountsTable({
               View all accounts from the database, update roles for client/admin users, and apply soft disables or timed suspensions.
             </p>
           </div>
-          <div style={styles.filterBar}>
+          <div className="gl-admin-filter-bar" style={styles.filterBar}>
             <input
               value={searchQuery}
               onChange={(event) => onSearchChange(event.target.value)}

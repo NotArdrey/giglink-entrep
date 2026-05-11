@@ -6,6 +6,23 @@
  */
 
 import { fetchAdminAccounts, updateAdminAccountRole, updateAdminAccountStatus } from '../../../shared/services/authService';
+import { supabase } from '../../../shared/services/supabaseClient';
+
+const formatReviewComment = (review = {}, profilesById = {}, sellersById = {}) => {
+  const reviewer = profilesById[review.reviewer_id] || {};
+  const seller = sellersById[review.seller_id] || {};
+
+  return {
+    id: review.id,
+    worker: seller.display_name || seller.search_meta?.name || 'Service Provider',
+    client: reviewer.full_name || reviewer.fullName || reviewer.email || 'Client',
+    rating: review.rating,
+    comment: review.body || review.title || '',
+    status: review.published === false ? 'review' : 'published',
+    createdAt: review.created_at,
+    raw: review,
+  };
+};
 
 /**
  * Fetch all admin accounts from the database
@@ -74,6 +91,49 @@ export const AdminAccountService = {
       console.error(`Failed to update status for user ${userId}:`, error);
       throw error;
     }
+  },
+
+  async fetchComments() {
+    const { data: reviews, error } = await supabase
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    if (!reviews?.length) return [];
+
+    const reviewerIds = [...new Set(reviews.map((review) => review.reviewer_id).filter(Boolean))];
+    const sellerIds = [...new Set(reviews.map((review) => review.seller_id).filter(Boolean))];
+
+    const [profilesResult, sellersResult] = await Promise.all([
+      reviewerIds.length
+        ? supabase.from('profiles').select('*').in('user_id', reviewerIds)
+        : Promise.resolve({ data: [], error: null }),
+      sellerIds.length
+        ? supabase.from('sellers').select('*').in('user_id', sellerIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (profilesResult.error) throw profilesResult.error;
+    if (sellersResult.error) throw sellersResult.error;
+
+    const profilesById = Object.fromEntries((profilesResult.data || []).map((profile) => [profile.user_id, profile]));
+    const sellersById = Object.fromEntries((sellersResult.data || []).map((seller) => [seller.user_id, seller]));
+
+    return reviews.map((review) => formatReviewComment(review, profilesById, sellersById));
+  },
+
+  async deleteComment(commentId) {
+    if (!commentId) throw new Error('Comment ID is required');
+
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) throw error;
+    return { success: true };
   },
 
   /**

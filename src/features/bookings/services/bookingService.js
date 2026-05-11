@@ -1,538 +1,768 @@
-// ============================================================================
-// BOOKING SERVICE - Data and Operation Layer
-// ============================================================================
-// Purpose: Centralized booking data management and API operations
-// Pattern: Service layer for MVC architecture - handles all data operations
-// 
-// Exports:
-// - getMockBookings(): Initial booking data
-// - Booking operation functions (approve, reject, payment, refund, rating, etc.)
-// ============================================================================
+import { supabase } from '../../../shared/services/supabaseClient';
 
-// Mock Bookings Data - Extracted from MyBookings.jsx initial state
-export const getMockBookings = () => [
-  {
-    id: 1,
-    workerId: 101,
-    workerName: 'Maria Santos',
-    serviceType: 'House Cleaning',
-    status: 'Negotiating',
-    requestDate: '2026-03-20',
-    description: 'Full house cleaning (3 bedrooms)',
-    quoteAmount: 2500,
-    quoteApproved: false,
-    selectedSlot: null,
-    paymentMethod: null,
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'both',
-  },
-  {
-    id: 2,
-    workerId: 102,
-    workerName: 'Juan dela Cruz',
-    serviceType: 'Tutoring',
-    status: 'Active Service',
-    requestDate: '2026-03-19',
-    description: 'Math tutoring - High School Level (recurring weekly sessions)',
-    quoteAmount: 3200,
-    quoteApproved: true,
-    selectedSlot: null,
-    paymentMethod: 'after-service-gcash',
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'both',
-    gcashNumber: '09054891105',
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
-    billingCycle: 'weekly',
-    serviceActive: true,
-    lastChargeDate: '2026-03-14',
-    nextChargeDate: '2026-03-21',
-    stopRequested: false,
-    workerStopApproved: false,
-  },
-  {
-    id: 3,
-    workerId: 103,
-    workerName: 'Ana Reyes',
-    serviceType: 'Electrical Repair',
-    status: 'Quote Sent',
-    requestDate: '2026-03-15',
-    description: 'Fix broken circuit breaker',
-    quoteAmount: 1500,
-    quoteApproved: false,
-    selectedSlot: null,
-    paymentMethod: null,
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'gcash-only',
-  },
-  {
-    id: 4,
-    workerId: 104,
-    workerName: 'Carlo Mendoza',
-    serviceType: 'Aircon Cleaning',
+const getCleanString = (value) => (typeof value === 'string' ? value.trim() : '');
+const getNullableString = (value) => {
+  const clean = getCleanString(value);
+  return clean ? clean : null;
+};
+
+const getNumberOrNull = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
+const unique = (values) => Array.from(new Set(values.filter((value) => value !== null && value !== undefined && value !== '')));
+const nowIso = () => new Date().toISOString();
+
+const maybeSingleOrNull = (error) => {
+  if (!error) return false;
+  return error.code === 'PGRST116';
+};
+
+const mapDatabaseError = (error) => {
+  if (!error) return error;
+  const message = String(error.message || '');
+
+  if (/row level security|permission denied/i.test(message)) {
+    return new Error('Database permission denied. Please sign in again or check booking RLS policies.');
+  }
+
+  if (/relation.*does not exist|Could not find the table/i.test(message)) {
+    return new Error('Database setup incomplete. The booking tables are missing or not applied to this Supabase project.');
+  }
+
+  return error;
+};
+
+const getAuthUser = async () => {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data?.user || null;
+};
+
+const getProfileNameFromUser = (user) => {
+  const metadata = user?.user_metadata || {};
+  return (
+    getCleanString(metadata.full_name)
+    || getCleanString([metadata.first_name, metadata.middle_name, metadata.last_name].filter(Boolean).join(' '))
+    || getCleanString(metadata.name)
+    || getCleanString(user?.email)
+    || 'Client'
+  );
+};
+
+const getServiceSeller = (service = {}) => service.sellers || service.seller || {};
+
+const getServiceType = (service = {}, seller = {}) =>
+  seller?.search_meta?.service_type
+  || service?.metadata?.service_type
+  || service?.metadata?.serviceType
+  || service?.title
+  || 'Service';
+
+const getSellerName = (service = {}, seller = {}) =>
+  seller?.display_name
+  || seller?.search_meta?.name
+  || service?.title
+  || 'Service Provider';
+
+const getRateAmount = (service = {}, metadata = {}) =>
+  getNumberOrNull(metadata.quote_amount)
+  ?? getNumberOrNull(metadata.quoteAmount)
+  ?? getNumberOrNull(service?.base_price)
+  ?? getNumberOrNull(service?.projectRate)
+  ?? getNumberOrNull(service?.hourlyRate)
+  ?? getNumberOrNull(service?.dailyRate)
+  ?? getNumberOrNull(service?.weeklyRate)
+  ?? getNumberOrNull(service?.monthlyRate)
+  ?? 0;
+
+const formatDate = (value) => {
+  if (!value) return '';
+  return String(value).slice(0, 10);
+};
+
+const formatTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(11, 16);
+  return date.toTimeString().slice(0, 5);
+};
+
+const buildSelectedSlot = (booking = {}, metadata = {}) => {
+  const saved = metadata.selected_slot || metadata.selectedSlot;
+  if (saved?.date) return saved;
+
+  if (!booking.start_ts && !booking.end_ts) return null;
+
+  return {
+    date: formatDate(booking.start_ts),
+    dateKey: formatDate(booking.start_ts),
+    slotId: booking.slot_id || null,
+    timeBlock: {
+      id: booking.slot_id || `booking-${booking.id}`,
+      startTime: formatTime(booking.start_ts),
+      endTime: formatTime(booking.end_ts),
+      slotsLeft: 0,
+    },
+  };
+};
+
+const uiStatusFromDb = (booking = {}, metadata = {}) => {
+  if (metadata.ui_status) return metadata.ui_status;
+  if (metadata.uiStatus) return metadata.uiStatus;
+
+  if (metadata.refund_status === 'requested' || metadata.refund_status === 'approved-awaiting-client-confirmation') {
+    return 'Refund Processing';
+  }
+
+  if (metadata.cash_confirmation_status === 'pending-worker-review') return 'Cash Verification Pending';
+  if (metadata.cash_confirmation_status === 'denied') return 'Cash Verification Denied';
+
+  switch (booking.status) {
+    case 'pending':
+      return metadata.quote_approved ? 'Awaiting Slot Selection' : 'Negotiating';
+    case 'confirmed':
+      return metadata.payment_method ? 'Service Scheduled' : 'Slot Selected - Payment Pending';
+    case 'in_progress':
+      return 'Active Service';
+    case 'completed':
+      return 'Completed Service';
+    case 'cancelled':
+      return metadata.payment_method === 'after-service-cash' ? 'Cancelled (Cash)' : 'Cancelled';
+    case 'refunded':
+      return 'Refunded';
+    default:
+      return 'Negotiating';
+  }
+};
+
+const dbStatusFromUiStatus = (status, fallback = 'pending') => {
+  switch (status) {
+    case 'Awaiting Slot Selection':
+    case 'Slot Selected - Payment Pending':
+    case 'Quote Rejected':
+    case 'Negotiating':
+      return 'pending';
+    case 'Service Scheduled':
+    case 'Payment Confirmed':
+    case 'Payment Submitted':
+    case 'Cash Verification Pending':
+    case 'Cash Verification Denied':
+    case 'Refund Processing':
+      return 'confirmed';
+    case 'Active Service':
+      return 'in_progress';
+    case 'Completed Service':
+    case 'Service Stopped':
+      return 'completed';
+    case 'Cancelled':
+    case 'Cancelled (Cash)':
+      return 'cancelled';
+    case 'Refunded':
+      return 'refunded';
+    default:
+      return fallback || 'pending';
+  }
+};
+
+const normalizeReview = (reviewRows = [], bookingId) =>
+  toArray(reviewRows).find((review) => String(review.booking_id) === String(bookingId)) || null;
+
+export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
+  const metadata = booking.metadata || {};
+  const service = context.servicesById?.[booking.service_id] || booking.services || {};
+  const seller = context.sellersById?.[booking.seller_id] || getServiceSeller(service) || {};
+  const review = normalizeReview(context.reviews || [], booking.id);
+  const selectedSlot = buildSelectedSlot(booking, metadata);
+  const paymentMethod = metadata.payment_method || metadata.paymentMethod || null;
+  const cashStatus = metadata.cash_confirmation_status || metadata.cashConfirmationStatus || null;
+  const refundStatus = metadata.refund_status || metadata.refundStatus || null;
+  const uiStatus = uiStatusFromDb(booking, metadata);
+  const totalAmount = getRateAmount(service, { ...metadata, quote_amount: booking.total_amount ?? metadata.quote_amount });
+
+  return {
+    id: booking.id,
+    serviceId: booking.service_id,
+    workerId: booking.seller_id,
+    workerName: metadata.worker_name || metadata.workerName || getSellerName(service, seller),
+    clientName: metadata.client_name || metadata.clientName || 'Client',
+    serviceType: metadata.service_type || metadata.serviceType || getServiceType(service, seller),
+    status: uiStatus,
+    requestDate: formatDate(booking.created_at) || formatDate(nowIso()),
+    description: metadata.description || service.short_description || service.description || seller.about || 'Service booking',
+    quoteAmount: totalAmount,
+    quoteApproved: metadata.quote_approved !== undefined ? Boolean(metadata.quote_approved) : booking.status !== 'pending',
+    quoteRejectionReason: metadata.quote_rejection_reason || metadata.quoteRejectionReason || null,
+    selectedSlot,
+    paymentMethod,
+    allowGcashAdvance: metadata.allow_gcash_advance !== false,
+    allowAfterService: metadata.allow_after_service !== false,
+    afterServicePaymentType: metadata.after_service_payment_type || 'both',
+    gcashNumber: metadata.gcash_number || '',
+    qrImageUrl: metadata.qr_image_url || '',
+    paymentProofSubmitted: Boolean(metadata.payment_proof_submitted || metadata.paymentProofSubmitted),
+    paymentReference: booking.payment_reference || metadata.payment_reference || '',
+    transactionId: metadata.transaction_id || booking.payment_reference || '',
+    cashConfirmationStatus: cashStatus,
+    cashVerifierQrId: metadata.cash_verifier_qr_id || metadata.cashVerifierQrId || (booking.id ? `CASHQR-${booking.id}` : ''),
+    submittedCashAmount: metadata.submitted_cash_amount ?? metadata.submittedCashAmount ?? null,
+    expectedCashAmount: metadata.expected_cash_amount ?? metadata.expectedCashAmount ?? totalAmount,
+    refundEligible: metadata.refund_eligible ?? (paymentMethod === 'gcash-advance' && booking.status === 'completed'),
+    refundStatus,
+    refundAmount: metadata.refund_amount ?? metadata.refundAmount ?? null,
+    refundReason: metadata.refund_reason || metadata.refundReason || '',
+    refundReference: metadata.refund_reference || metadata.refundReference || '',
+    canRate: metadata.can_rate !== undefined ? Boolean(metadata.can_rate) : booking.status === 'completed' && !review,
+    rating: review?.rating || metadata.rating || null,
+    review: review?.body || metadata.review || '',
+    billingCycle: metadata.billing_cycle || metadata.billingCycle || null,
+    serviceActive: metadata.service_active ?? metadata.serviceActive ?? booking.status === 'in_progress',
+    stopRequested: Boolean(metadata.stop_requested || metadata.stopRequested),
+    workerStopApproved: Boolean(metadata.worker_stop_approved || metadata.workerStopApproved),
+    raw: {
+      booking,
+      service,
+      seller,
+      review,
+      metadata,
+    },
+  };
+};
+
+const fetchRowsByIds = async (table, column, ids, select = '*') => {
+  const cleanIds = unique(ids);
+  if (cleanIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from(table)
+    .select(select)
+    .in(column, cleanIds);
+
+  if (error && !maybeSingleOrNull(error)) throw mapDatabaseError(error);
+  return data || [];
+};
+
+export const hydrateBookingRows = async (bookingRows = []) => {
+  const rows = toArray(bookingRows);
+  if (rows.length === 0) return [];
+
+  const serviceIds = unique(rows.map((row) => row.service_id));
+  const sellerIds = unique(rows.map((row) => row.seller_id));
+  const bookingIds = unique(rows.map((row) => row.id));
+
+  const [services, sellers, reviews] = await Promise.all([
+    fetchRowsByIds('services', 'id', serviceIds, '*'),
+    fetchRowsByIds('sellers', 'user_id', sellerIds, '*'),
+    fetchRowsByIds('reviews', 'booking_id', bookingIds, '*'),
+  ]);
+
+  const servicesById = Object.fromEntries(services.map((row) => [row.id, row]));
+  const sellersById = Object.fromEntries(sellers.map((row) => [row.user_id, row]));
+
+  return rows.map((row) => mapBookingRowToUiBooking(row, { servicesById, sellersById, reviews }));
+};
+
+export const fetchBookingsForUser = async ({ userId, role = 'buyer' } = {}) => {
+  if (!userId) return [];
+
+  const column = role === 'seller' ? 'seller_id' : 'buyer_id';
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq(column, userId)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw mapDatabaseError(error);
+  return hydrateBookingRows(data || []);
+};
+
+export const fetchClientBookings = async () => {
+  const user = await getAuthUser();
+  if (!user?.id) return [];
+  return fetchBookingsForUser({ userId: user.id, role: 'buyer' });
+};
+
+export const fetchSellerBookings = async (sellerId) => {
+  if (!sellerId) return [];
+  return fetchBookingsForUser({ userId: sellerId, role: 'seller' });
+};
+
+export const fetchBookingById = async (bookingId) => {
+  if (!bookingId) return null;
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('id', bookingId)
+    .maybeSingle();
+
+  if (error && !maybeSingleOrNull(error)) throw mapDatabaseError(error);
+  const [mapped] = await hydrateBookingRows(data ? [data] : []);
+  return mapped || null;
+};
+
+const getBookingParticipantIds = (booking = {}, userId = '') => {
+  const row = booking.raw?.booking || {};
+  return {
+    buyerId: row.buyer_id || booking.buyerId || userId,
+    sellerId: row.seller_id || booking.workerId,
+  };
+};
+
+const getMessageSenderRole = (message = {}, booking = {}) => {
+  const row = booking.raw?.booking || {};
+  if (message.sender_id && row.buyer_id && String(message.sender_id) === String(row.buyer_id)) return 'client';
+  if (message.sender_id && row.seller_id && String(message.sender_id) === String(row.seller_id)) return 'worker';
+  return 'system';
+};
+
+export const mapMessageRowToUiMessage = (message = {}, booking = {}) => {
+  const attachments = message.attachments || {};
+  const sender = getMessageSenderRole(message, booking);
+
+  if (attachments?.type === 'quote') {
+    return {
+      id: message.id,
+      sender,
+      type: 'quote',
+      content: {
+        amount: attachments.amount,
+        description: attachments.description || message.body || booking.description,
+        deliveryTime: attachments.deliveryTime || '',
+        note: attachments.note || '',
+      },
+      timestamp: message.created_at
+        ? new Date(message.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : '',
+      raw: message,
+    };
+  }
+
+  return {
+    id: message.id,
+    sender,
+    type: 'text',
+    content: message.body || '',
+    timestamp: message.created_at
+      ? new Date(message.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      : '',
+    raw: message,
+  };
+};
+
+export const ensureBookingConversation = async (bookingOrId) => {
+  const booking = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  if (!booking?.id) throw new Error('Missing booking for conversation.');
+
+  const user = await getAuthUser();
+  if (!user?.id) throw new Error('Please sign in to open this conversation.');
+
+  const { data: existing, error: selectError } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('booking_id', booking.id)
+    .maybeSingle();
+
+  if (selectError && !maybeSingleOrNull(selectError)) throw mapDatabaseError(selectError);
+  if (existing) return { conversation: existing, booking, user };
+
+  const { buyerId, sellerId } = getBookingParticipantIds(booking, user.id);
+  if (!buyerId || !sellerId) {
+    throw new Error('Unable to create conversation because booking participant IDs are missing.');
+  }
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert([{
+      booking_id: booking.id,
+      seller_id: sellerId,
+      buyer_id: buyerId,
+      metadata: { source: 'booking-workflow' },
+    }])
+    .select('*')
+    .single();
+
+  if (error) throw mapDatabaseError(error);
+  return { conversation: data, booking, user };
+};
+
+export const fetchBookingMessages = async (bookingOrId) => {
+  const { conversation, booking } = await ensureBookingConversation(bookingOrId);
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversation.id)
+    .order('created_at', { ascending: true });
+
+  if (error) throw mapDatabaseError(error);
+  return (data || []).map((row) => mapMessageRowToUiMessage(row, booking));
+};
+
+export const sendBookingMessage = async (bookingOrId, body, attachments = null) => {
+  const cleanBody = getNullableString(body);
+  if (!cleanBody && !attachments) throw new Error('Enter a message before sending.');
+
+  const { conversation, booking, user } = await ensureBookingConversation(bookingOrId);
+  const { data, error } = await supabase
+    .from('messages')
+    .insert([{
+      conversation_id: conversation.id,
+      sender_id: user.id,
+      body: cleanBody,
+      attachments,
+    }])
+    .select('*')
+    .single();
+
+  if (error) throw mapDatabaseError(error);
+  return mapMessageRowToUiMessage(data, booking);
+};
+
+const snakeMetadataFromUpdates = (updates = {}) => {
+  const metadata = {};
+
+  if (updates.status !== undefined) metadata.ui_status = updates.status;
+  if (updates.quoteApproved !== undefined) metadata.quote_approved = Boolean(updates.quoteApproved);
+  if (updates.quoteRejectionReason !== undefined) metadata.quote_rejection_reason = updates.quoteRejectionReason || null;
+  if (updates.selectedSlot !== undefined) metadata.selected_slot = updates.selectedSlot || null;
+  if (updates.paymentMethod !== undefined) metadata.payment_method = updates.paymentMethod || null;
+  if (updates.paymentProofSubmitted !== undefined) metadata.payment_proof_submitted = Boolean(updates.paymentProofSubmitted);
+  if (updates.canRate !== undefined) metadata.can_rate = Boolean(updates.canRate);
+  if (updates.lastChargeDate !== undefined) metadata.last_charge_date = updates.lastChargeDate || null;
+  if (updates.nextChargeDate !== undefined) metadata.next_charge_date = updates.nextChargeDate || null;
+  if (updates.cashConfirmationStatus !== undefined) metadata.cash_confirmation_status = updates.cashConfirmationStatus || null;
+  if (updates.cashVerifierQrId !== undefined) metadata.cash_verifier_qr_id = updates.cashVerifierQrId || null;
+  if (updates.submittedCashAmount !== undefined) metadata.submitted_cash_amount = getNumberOrNull(updates.submittedCashAmount);
+  if (updates.expectedCashAmount !== undefined) metadata.expected_cash_amount = getNumberOrNull(updates.expectedCashAmount);
+  if (updates.transactionId !== undefined) metadata.transaction_id = updates.transactionId || '';
+  if (updates.refundStatus !== undefined) metadata.refund_status = updates.refundStatus || null;
+  if (updates.refundReason !== undefined) metadata.refund_reason = updates.refundReason || '';
+  if (updates.refundAmount !== undefined) metadata.refund_amount = getNumberOrNull(updates.refundAmount);
+  if (updates.refundReference !== undefined) metadata.refund_reference = updates.refundReference || '';
+  if (updates.serviceActive !== undefined) metadata.service_active = Boolean(updates.serviceActive);
+  if (updates.stopRequested !== undefined) metadata.stop_requested = Boolean(updates.stopRequested);
+  if (updates.workerStopApproved !== undefined) metadata.worker_stop_approved = Boolean(updates.workerStopApproved);
+  if (updates.rating !== undefined) metadata.rating = updates.rating;
+  if (updates.review !== undefined) metadata.review = updates.review || '';
+
+  return metadata;
+};
+
+export const updateBookingWorkflow = async (bookingOrId, updates = {}) => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  if (!current?.id) throw new Error('Missing booking to update.');
+
+  const currentRow = current.raw?.booking || {};
+  const currentMetadata = current.raw?.metadata || currentRow.metadata || {};
+  const nextMetadata = {
+    ...currentMetadata,
+    ...snakeMetadataFromUpdates(updates),
+    updated_via: 'web-client',
+    updated_at: nowIso(),
+  };
+
+  const nextStatus = updates.dbStatus || (
+    updates.status !== undefined
+      ? dbStatusFromUiStatus(updates.status, currentRow.status)
+      : currentRow.status
+  );
+
+  const payload = {
+    status: nextStatus,
+    metadata: nextMetadata,
+    updated_at: nowIso(),
+  };
+
+  if (updates.paymentReference !== undefined) {
+    payload.payment_reference = updates.paymentReference || null;
+    nextMetadata.payment_reference = updates.paymentReference || '';
+  }
+
+  if (updates.totalAmount !== undefined || updates.quoteAmount !== undefined) {
+    payload.total_amount = getNumberOrNull(updates.totalAmount ?? updates.quoteAmount);
+    nextMetadata.quote_amount = payload.total_amount;
+  }
+
+  if (updates.selectedSlot?.slotId !== undefined) {
+    payload.slot_id = updates.selectedSlot.slotId || null;
+  }
+
+  if (updates.selectedSlot?.startTs || updates.startTs) {
+    payload.start_ts = updates.selectedSlot?.startTs || updates.startTs;
+  }
+
+  if (updates.selectedSlot?.endTs || updates.endTs) {
+    payload.end_ts = updates.selectedSlot?.endTs || updates.endTs;
+  }
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .update(payload)
+    .eq('id', current.id)
+    .select('*')
+    .single();
+
+  if (error) throw mapDatabaseError(error);
+  const [mapped] = await hydrateBookingRows([data]);
+  return mapped;
+};
+
+export const createClientBooking = async ({ provider, pendingBooking, paymentMethod } = {}) => {
+  const user = await getAuthUser();
+  if (!user?.id) throw new Error('Please sign in before booking a service.');
+
+  const rawService = provider?.rawService || pendingBooking?.rawService || {};
+  const seller = getServiceSeller(rawService);
+  const sellerId = rawService.seller_id || pendingBooking?.sellerId || seller.user_id;
+  const serviceId = rawService.id || pendingBooking?.serviceId;
+
+  if (!serviceId || !sellerId) {
+    throw new Error('Unable to create booking because the selected service is missing database IDs.');
+  }
+
+  const selectedSlot = pendingBooking?.selectedSlot || {};
+  const rawSlot = selectedSlot?.timeBlock?.rawSlot || selectedSlot?.rawSlot || null;
+  const slotId = rawSlot?.id || selectedSlot?.slotId || null;
+  const totalAmount = getNumberOrNull(pendingBooking?.quoteAmount) ?? getRateAmount(rawService);
+  const uiStatus = paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled';
+  const cashStatus = paymentMethod === 'after-service-cash' ? 'awaiting-client-scan' : null;
+  const metadata = {
+    ui_status: uiStatus,
+    quote_approved: true,
+    worker_name: pendingBooking?.workerName || getSellerName(rawService, seller),
+    client_name: getProfileNameFromUser(user),
+    service_type: pendingBooking?.serviceType || getServiceType(rawService, seller),
+    description: pendingBooking?.description || rawService.short_description || rawService.description || '',
+    quote_amount: totalAmount,
+    selected_slot: selectedSlot,
+    payment_method: paymentMethod,
+    cash_confirmation_status: cashStatus,
+    cash_verifier_qr_id: cashStatus ? `CASHQR-${slotId || serviceId}-${Date.now()}` : null,
+    allow_gcash_advance: pendingBooking?.allowGcashAdvance !== false,
+    allow_after_service: pendingBooking?.allowAfterService !== false,
+    after_service_payment_type: pendingBooking?.afterServicePaymentType || 'both',
+    expected_cash_amount: totalAmount,
+    refund_eligible: paymentMethod === 'gcash-advance',
+    can_rate: false,
+    created_via: 'marketplace',
+  };
+
+  const { data, error } = await supabase.rpc('create_service_booking', {
+    p_service_id: serviceId,
+    p_slot_id: slotId,
+    p_payment_method: paymentMethod,
+    p_total_amount: totalAmount,
+    p_metadata: metadata,
+  });
+
+  if (error) throw mapDatabaseError(error);
+  const [mapped] = await hydrateBookingRows([data]);
+  return mapped;
+};
+
+export const submitBookingReview = async (bookingOrId, ratingValue, ratingComment = '') => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  if (!current?.id) throw new Error('Missing booking to review.');
+
+  const user = await getAuthUser();
+  if (!user?.id) throw new Error('Please sign in before leaving a review.');
+
+  const rating = Number(ratingValue);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error('Rating must be between 1 and 5.');
+  }
+
+  const existingReview = current.raw?.review || null;
+  const payload = {
+    seller_id: current.workerId,
+    reviewer_id: user.id,
+    booking_id: current.id,
+    rating,
+    body: getNullableString(ratingComment),
+    published: true,
+    updated_at: nowIso(),
+  };
+
+  if (existingReview?.id) {
+    const { error } = await supabase
+      .from('reviews')
+      .update(payload)
+      .eq('id', existingReview.id);
+
+    if (error) throw mapDatabaseError(error);
+  } else {
+    const { error } = await supabase
+      .from('reviews')
+      .insert([{ ...payload, title: null }]);
+
+    if (error) throw mapDatabaseError(error);
+  }
+
+  return updateBookingWorkflow(current, {
+    rating,
+    review: ratingComment,
+    canRate: false,
     status: 'Completed Service',
-    requestDate: '2026-03-10',
-    description: '1.5HP split-type indoor and outdoor cleaning',
-    quoteAmount: 1800,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-12',
-      timeBlock: { id: 'morning', startTime: '09:00 AM', endTime: '11:00 AM', slotsLeft: 0 },
-    },
-    paymentMethod: 'gcash-advance',
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'both',
-    gcashNumber: '09054891105',
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
-    paymentProofSubmitted: false,
-    paymentReference: 'GCASH-TRX-20260312-4-8832',
-    transactionId: 'GCASH-TRX-20260312-4-8832',
-    canRate: false,
-    rating: null,
-    review: '',
-  },
-  {
-    id: 5,
-    workerId: 105,
-    workerName: 'Joshua Paul Santos',
-    serviceType: 'Pilot Service for Valorant',
-    status: 'Awaiting GCash Payment',
-    requestDate: '2026-03-20',
-    description: 'Rank support session - one game set',
-    quoteAmount: 200,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-22',
-      timeBlock: { id: 'night', startTime: '08:00 PM', endTime: '10:00 PM', slotsLeft: 0 },
-    },
-    paymentMethod: 'gcash-advance',
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'both',
-    gcashNumber: '09054891105',
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
-    paymentProofSubmitted: false,
-    paymentReference: '',
-    canRate: false,
-    rating: null,
-    review: '',
-  },
-  {
-    id: 6,
-    workerId: 106,
-    workerName: 'Lara De Jesus',
-    serviceType: 'Pet Grooming',
-    status: 'Service Scheduled',
-    requestDate: '2026-03-21',
-    description: 'Home service grooming for small breed dog',
-    quoteAmount: 950,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-23',
-      timeBlock: { id: 'afternoon', startTime: '02:00 PM', endTime: '04:00 PM', slotsLeft: 0 },
-    },
-    paymentMethod: 'after-service-cash',
-    allowGcashAdvance: false,
-    allowAfterService: true,
-    afterServicePaymentType: 'cash-only',
-    paymentProofSubmitted: false,
-    paymentReference: '',
+    dbStatus: 'completed',
+  });
+};
+
+export const submitCashConfirmation = async (bookingOrId, amount) => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  const parsedAmount = Number(amount);
+
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    throw new Error('Enter a valid cash amount before sending for worker review.');
+  }
+
+  return updateBookingWorkflow(current, {
+    cashConfirmationStatus: 'pending-worker-review',
+    submittedCashAmount: parsedAmount,
+    paymentProofSubmitted: true,
     transactionId: '',
-    cashConfirmationStatus: 'awaiting-client-scan',
-    cashVerifierQrId: 'CASHQR-106-20260323',
-    submittedCashAmount: null,
-    canRate: false,
-    rating: null,
-    review: '',
-  },
-  {
-    id: 7,
-    workerId: 107,
-    workerName: 'Ralph Mendoza',
-    serviceType: 'Academic Mentoring',
-    status: 'Active Service',
-    requestDate: '2026-03-01',
-    description: 'Monthly mentoring plan with weekly progress check-ins',
-    quoteAmount: 12000,
-    quoteApproved: true,
-    selectedSlot: null,
-    paymentMethod: 'after-service-gcash',
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'both',
-    gcashNumber: '09054891105',
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
-    paymentProofSubmitted: false,
     paymentReference: '',
-    canRate: false,
-    rating: null,
-    review: '',
-    billingCycle: 'monthly',
-    serviceActive: true,
-    lastChargeDate: '2026-02-21',
-    nextChargeDate: '2026-03-23',
-    stopRequested: false,
-    workerStopApproved: false,
-  },
-  {
-    id: 8,
-    workerId: 108,
-    workerName: 'Diane Flores',
-    serviceType: 'Home Plumbing Repair',
-    status: 'Completed Service',
-    requestDate: '2026-03-16',
-    description: 'Kitchen sink leak fix with valve replacement.',
-    quoteAmount: 1450,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-18',
-      timeBlock: { id: 'late-afternoon', startTime: '04:00 PM', endTime: '06:00 PM', slotsLeft: 0 },
-    },
-    paymentMethod: 'after-service-cash',
-    allowGcashAdvance: false,
-    allowAfterService: true,
-    afterServicePaymentType: 'cash-only',
-    paymentProofSubmitted: true,
-    paymentReference: 'CASH-TRX-20260318-8-4517',
-    transactionId: 'CASH-TRX-20260318-8-4517',
-    cashConfirmationStatus: 'approved',
-    cashVerifierQrId: 'CASHQR-108-20260318',
-    submittedCashAmount: 1450,
-    canRate: true,
-    rating: 5,
-    review: 'Secure and smooth payment confirmation flow.',
-  },
-  {
-    id: 9,
-    workerId: 109,
-    workerName: 'Nico Alvarez',
-    serviceType: 'Home Deep Cleaning',
-    status: 'Cancelled (Cash)',
-    requestDate: '2026-03-22',
-    description: 'Client cancelled a cash-on-service booking before meetup.',
-    quoteAmount: 2200,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-24',
-      timeBlock: { id: 'morning', startTime: '10:00 AM', endTime: '12:00 PM', slotsLeft: 0 },
-    },
-    paymentMethod: 'after-service-cash',
-    allowGcashAdvance: false,
-    allowAfterService: true,
-    afterServicePaymentType: 'cash-only',
-    cancellationReason: 'Client requested cancellation due to schedule conflict.',
-    cancelledBy: 'Client',
-    canRate: false,
-    rating: null,
-    review: '',
-  },
-  {
-    id: 10,
-    workerId: 110,
-    workerName: 'Mara Lim',
-    serviceType: 'Weekly Tutoring',
-    status: 'Refund Processing',
-    requestDate: '2026-03-17',
-    description: 'Advance payment received, then service was cancelled and refund was initiated.',
-    quoteAmount: 2800,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-19',
-      timeBlock: { id: 'night', startTime: '07:00 PM', endTime: '09:00 PM', slotsLeft: 0 },
-    },
-    paymentMethod: 'gcash-advance',
-    allowGcashAdvance: true,
-    allowAfterService: true,
-    afterServicePaymentType: 'both',
-    gcashNumber: '09054891105',
-    qrImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&format=png&data=09054891105',
-    paymentProofSubmitted: true,
-    paymentReference: 'GCASH-TRX-20260318-10-6821',
-    transactionId: 'GCASH-TRX-20260318-10-6821',
-    refundStatus: 'processing',
-    refundAmount: 2800,
-    refundReference: 'REFUND-REQ-20260324-10',
-    refundReason: 'Worker unavailable for scheduled date.',
-    canRate: false,
-    rating: null,
-    review: '',
-  },
-  {
-    id: 11,
-    workerId: 111,
-    workerName: 'Rico Santos',
-    serviceType: 'Website Design',
-    status: 'Completed Service',
-    requestDate: '2026-03-23',
-    description: 'Landing page completed, but client requested a partial refund due to missing sections.',
-    quoteAmount: 4200,
-    quoteApproved: true,
-    selectedSlot: {
-      date: '2026-03-25',
-      timeBlock: { id: 'afternoon', startTime: '01:00 PM', endTime: '03:00 PM', slotsLeft: 0 },
-    },
-    paymentMethod: 'gcash-advance',
-    allowGcashAdvance: true,
-    allowAfterService: false,
-    afterServicePaymentType: 'gcash-only',
-    paymentProofSubmitted: true,
-    paymentReference: 'GCASH-TRX-20260325-11-8841',
-    transactionId: 'GCASH-TRX-20260325-11-8841',
-    refundEligible: true,
-    refundStatus: null,
-    refundReason: 'Client requested a partial refund after delivery review.',
-    refundReference: null,
-    canRate: true,
-    rating: 4,
-    review: 'Good work, but not everything requested was included.',
-  },
-];
+    status: 'Cash Verification Pending',
+    dbStatus: 'confirmed',
+  });
+};
 
-// ============================================================================
-// BOOKING OPERATIONS - Service methods (handlers for controllers)
-// ============================================================================
-// Note: These are currently mock operations. Later connect to Supabase.
-// Each operation receives data and returns updated data structure.
+export const reviewCashConfirmation = async (bookingOrId, decision) => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  if (!current?.id) throw new Error('Missing booking for cash review.');
+
+  if (decision === 'approve') {
+    const transactionId = current.transactionId || buildTransactionId(current.id, 'cash');
+    return updateBookingWorkflow(current, {
+      cashConfirmationStatus: 'approved',
+      paymentProofSubmitted: true,
+      paymentReference: transactionId,
+      transactionId,
+      canRate: true,
+      status: 'Completed Service',
+      dbStatus: 'completed',
+    });
+  }
+
+  return updateBookingWorkflow(current, {
+    cashConfirmationStatus: 'denied',
+    transactionId: '',
+    paymentReference: '',
+    status: 'Cash Verification Denied',
+    dbStatus: 'confirmed',
+  });
+};
+
+export const requestBookingRefund = async (bookingOrId, reason) => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  const refundReference = `REFUND-REQ-${String(current.id).slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+
+  return updateBookingWorkflow(current, {
+    status: 'Refund Processing',
+    refundStatus: 'requested',
+    refundReason: reason,
+    refundReference,
+    refundAmount: current.refundAmount || current.quoteAmount,
+    dbStatus: 'confirmed',
+  });
+};
+
+export const approveBookingRefund = async (bookingOrId) => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  return updateBookingWorkflow(current, {
+    status: 'Refund Processing',
+    refundStatus: 'approved-awaiting-client-confirmation',
+    refundReference: current.refundReference || buildRefundReference(current.id),
+    refundAmount: current.refundAmount || current.quoteAmount,
+    dbStatus: 'confirmed',
+  });
+};
+
+export const confirmBookingRefundReceived = async (bookingOrId) => {
+  const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
+  return updateBookingWorkflow(current, {
+    status: 'Refunded',
+    refundStatus: 'approved',
+    refundReference: current.refundReference || buildRefundReference(current.id),
+    refundAmount: current.refundAmount || current.quoteAmount,
+    dbStatus: 'refunded',
+  });
+};
+
+export const parseDateOnly = (dateString) => {
+  const date = new Date(dateString);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+export const addDaysToDate = (dateString, days) => {
+  const date = new Date(dateString);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+export const isRecurringBilling = (booking) =>
+  booking?.billingCycle === 'weekly' || booking?.billingCycle === 'monthly';
+
+export const isBookingStopped = (booking) =>
+  booking?.status === 'Service Stopped' || booking?.serviceActive === false;
+
+export const isRecurringChargeDue = (booking) => {
+  if (!isRecurringBilling(booking) || isBookingStopped(booking) || !booking?.nextChargeDate) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return parseDateOnly(booking.nextChargeDate) <= today;
+};
+
+export const getBillingLabel = (booking) => {
+  if (booking?.billingCycle === 'weekly') return 'Weekly';
+  if (booking?.billingCycle === 'monthly') return 'Monthly';
+  return null;
+};
+
+export const buildTransactionId = (bookingId, channel) => {
+  const now = new Date();
+  const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  const suffix = String(Math.floor(Math.random() * 9000) + 1000);
+  return `${String(channel).toUpperCase()}-TRX-${dateStamp}-${String(bookingId).slice(0, 8).toUpperCase()}-${suffix}`;
+};
+
+export const buildRefundReference = (bookingId) => {
+  const now = new Date();
+  const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  return `REFUND-APR-${String(bookingId).slice(0, 8).toUpperCase()}-${dateStamp}`;
+};
 
 export const bookingService = {
-  // ========================================================================
-  // QUOTE OPERATIONS
-  // ========================================================================
-  
-  /**
-   * Approve a quote
-   * Updates booking: quoteApproved = true, status = 'Awaiting Slot Selection'
-   */
-  approveQuote: (bookingId) => {
-    // Mock implementation - would call API in production
-    return { bookingId, quoteApproved: true };
-  },
-
-  /**
-   * Reject a quote
-   * Updates booking: quoteApproved = false, status = 'Quote Rejected'
-   */
-  rejectQuote: (bookingId, reason) => {
-    // Mock implementation
-    return { bookingId, quoteApproved: false, quoteRejectionReason: reason };
-  },
-
-  // ========================================================================
-  // SLOT OPERATIONS
-  // ========================================================================
-  
-  /**
-   * Confirm slot selection
-   * Updates booking: selectedSlot, status = 'Slot Selected - Payment Pending'
-   */
-  confirmSlot: (bookingId, slotInfo) => {
-    // Mock implementation
-    return { bookingId, selectedSlot: slotInfo, status: 'Slot Selected - Payment Pending' };
-  },
-
-  // ========================================================================
-  // PAYMENT OPERATIONS
-  // ========================================================================
-  
-  /**
-   * Submit payment proof (for GCash payments)
-   * Updates booking: paymentProofSubmitted = true, paymentReference, status
-   */
-  submitPaymentProof: (bookingId, referenceNo, isRecurringBilling) => {
-    // Mock implementation
-    return {
-      bookingId,
-      paymentProofSubmitted: true,
-      paymentReference: referenceNo,
-      status: isRecurringBilling ? 'Active Service' : 'Payment Submitted',
-    };
-  },
-
-  /**
-   * Select payment method
-   * Updates booking: paymentMethod, status, cashConfirmationStatus (if cash)
-   */
-  selectPaymentMethod: (bookingId, paymentMethod) => {
-    // Mock implementation
-    const updates = {
-      bookingId,
-      paymentMethod,
-      status: paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled',
-    };
-
-    if (paymentMethod === 'after-service-cash') {
-      updates.cashConfirmationStatus = 'awaiting-client-scan';
-    }
-
-    return updates;
-  },
-
-  /**
-   * Submit cash confirmation
-   * Updates booking: cashConfirmationStatus, submittedCashAmount, status
-   */
-  submitCashConfirmation: (bookingId, amount) => {
-    // Mock implementation
-    return {
-      bookingId,
-      cashConfirmationStatus: 'pending-worker-review',
-      submittedCashAmount: amount,
-      status: 'Cash Verification Pending',
-    };
-  },
-
-  // ========================================================================
-  // REFUND OPERATIONS
-  // ========================================================================
-  
-  /**
-   * Request refund
-   * Updates booking: refundStatus, refundReason, refundAmount, status
-   */
-  requestRefund: (bookingId, reason, quoteAmount) => {
-    // Mock implementation
-    return {
-      bookingId,
-      refundStatus: 'requested',
-      refundReason: reason,
-      refundAmount: quoteAmount,
-      status: 'Refund Processing',
-    };
-  },
-
-  /**
-   * Confirm refund received
-   * Updates booking: refundStatus = 'approved', status = 'Refunded'
-   */
-  confirmRefundReceived: (bookingId) => {
-    // Mock implementation
-    return {
-      bookingId,
-      refundStatus: 'approved',
-      status: 'Refunded',
-    };
-  },
-
-  // ========================================================================
-  // RATING OPERATIONS
-  // ========================================================================
-  
-  /**
-   * Submit rating and review
-   * Updates booking: rating, review, canRate = false
-   */
-  submitRating: (bookingId, ratingValue, ratingComment) => {
-    // Mock implementation
-    return {
-      bookingId,
-      rating: ratingValue,
-      review: ratingComment,
-      canRate: false,
-    };
-  },
-
-  // ========================================================================
-  // SERVICE CONTROL OPERATIONS
-  // ========================================================================
-  
-  /**
-   * Stop service (for recurring bookings)
-   * Updates booking: status = 'Service Stopped', serviceActive = false
-   */
-  stopService: (bookingId) => {
-    // Mock implementation
-    return {
-      bookingId,
-      status: 'Service Stopped',
-      serviceActive: false,
-      stopRequested: true,
-      workerStopApproved: true,
-      canRate: true,
-      nextChargeDate: null,
-    };
-  },
-
-  // ========================================================================
-  // UTILITY FUNCTIONS - Used by controllers for data manipulation
-  // ========================================================================
-  
-  /**
-   * Parse date (helper for date calculations)
-   */
-  parseDateOnly: (dateString) => {
-    const date = new Date(dateString);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  },
-
-  /**
-   * Add days to date (helper for recurring billing)
-   */
-  addDaysToDate: (dateString, days) => {
-    const date = new Date(dateString);
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + days);
-    return date.toISOString().slice(0, 10);
-  },
-
-  /**
-   * Check if booking uses recurring billing
-   */
-  isRecurringBilling: (booking) =>
-    booking.billingCycle === 'weekly' || booking.billingCycle === 'monthly',
-
-  /**
-   * Check if booking service is stopped
-   */
-  isBookingStopped: (booking) =>
-    booking.status === 'Service Stopped' || booking.serviceActive === false,
-
-  /**
-   * Check if recurring charge is due
-   */
-  isRecurringChargeDue: (booking) => {
-    if (!bookingService.isRecurringBilling(booking) || bookingService.isBookingStopped(booking)) {
-      return false;
-    }
-    if (!booking.nextChargeDate) return false;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return bookingService.parseDateOnly(booking.nextChargeDate) <= today;
-  },
-
-  /**
-   * Get next charge date for recurring billing
-   */
-  getNextChargeDate: (booking, fromDate) => {
-    if (booking.billingCycle === 'weekly') {
-      return bookingService.addDaysToDate(fromDate, 7);
-    }
-    if (booking.billingCycle === 'monthly') {
-      return bookingService.addDaysToDate(fromDate, 30);
-    }
-    return null;
-  },
-
-  /**
-   * Get billing label for display
-   */
-  getBillingLabel: (booking) => {
-    if (booking.billingCycle === 'weekly') return 'Weekly';
-    if (booking.billingCycle === 'monthly') return 'Monthly';
-    return null;
-  },
-
-  /**
-   * Build mock transaction ID
-   */
-  buildMockTransactionId: (bookingId, channel) => {
-    const now = new Date();
-    const dateStamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = String(Math.floor(Math.random() * 9000) + 1000);
-    return `${channel.toUpperCase()}-TRX-${dateStamp}-${bookingId}-${suffix}`;
-  },
+  addDaysToDate,
+  approveBookingRefund,
+  buildTransactionId,
+  buildRefundReference,
+  confirmBookingRefundReceived,
+  createClientBooking,
+  fetchBookingById,
+  fetchBookingMessages,
+  fetchClientBookings,
+  fetchSellerBookings,
+  getBillingLabel,
+  hydrateBookingRows,
+  isBookingStopped,
+  isRecurringBilling,
+  isRecurringChargeDue,
+  mapBookingRowToUiBooking,
+  mapMessageRowToUiMessage,
+  parseDateOnly,
+  requestBookingRefund,
+  reviewCashConfirmation,
+  sendBookingMessage,
+  submitBookingReview,
+  submitCashConfirmation,
+  updateBookingWorkflow,
 };
+
+export default bookingService;

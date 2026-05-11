@@ -14,6 +14,7 @@ const Settings = ({
   onOpenAccountSettings,
   onOpenSettings,
   onOpenDashboard,
+  onOpenBrowseServices,
   onOpenAdminDashboard,
   onBack,
   appTheme = 'light',
@@ -29,7 +30,7 @@ const Settings = ({
   const [smsAlerts, setSmsAlerts] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isBackHovered, setIsBackHovered] = useState(false);
+  const isBackHovered = false;
   const [isLangHovered, setIsLangHovered] = useState(false);
   const [isLangFocused, setIsLangFocused] = useState(false);
   const [isSystemHovered, setIsSystemHovered] = useState(false);
@@ -473,7 +474,7 @@ const Settings = ({
   };
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} data-testid="settings-page">
       <DashboardNavigation
         appTheme={appTheme}
         currentView={currentView}
@@ -488,6 +489,7 @@ const Settings = ({
         onOpenAccountSettings={onOpenAccountSettings}
         onOpenSettings={onOpenSettings}
         onOpenDashboard={onOpenDashboard}
+        onOpenBrowseServices={onOpenBrowseServices}
         isAdminView={false}
         onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
