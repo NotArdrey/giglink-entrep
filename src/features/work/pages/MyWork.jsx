@@ -9,6 +9,7 @@ import CreateServiceModal from '../components/CreateServiceModal';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
 import ErrorNotification from '../../../shared/components/ErrorNotification';
 import { updateBookingWorkflow } from '../../bookings/services/bookingService';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 import { useWorkPayments, useWorkProfileServices, useWorkSchedule } from '../hooks';
 import {
   CalendarDays,
@@ -509,6 +510,228 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     setIsCashQrPreviewOpen(false);
   };
 
+  const themeTokens = getThemeTokens(appTheme);
+  const isDarkMode = themeTokens.isDarkMode;
+  const sectionCardStyle = {
+    background: themeTokens.surface,
+    border: `1px solid ${themeTokens.border}`,
+    borderRadius: '8px',
+    padding: isMobile ? '16px' : '20px',
+    color: themeTokens.textPrimary,
+    boxShadow: themeTokens.shadowSoft,
+  };
+  const queueCardStyle = {
+    background: isDarkMode ? themeTokens.surfaceAlt : '#ffffff',
+    border: `1px solid ${themeTokens.border}`,
+    color: themeTokens.textSecondary,
+    boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(15, 23, 42, 0.05)',
+  };
+  const themeClassStyles = {
+    'my-work-page': {
+      background: themeTokens.pageBg,
+      color: themeTokens.textPrimary,
+    },
+    'empty-state-banner': {
+      background: isDarkMode ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.18), rgba(245, 158, 11, 0.12))' : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+      border: `1px solid ${isDarkMode ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'}`,
+    },
+    'profile-summary-card': {
+      background: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
+      borderRadius: '8px',
+      boxShadow: themeTokens.shadowSoft,
+      color: themeTokens.textPrimary,
+    },
+    'profile-name-link': {
+      color: themeTokens.textPrimary,
+    },
+    'service-type': {
+      color: themeTokens.accent,
+    },
+    location: {
+      color: themeTokens.textSecondary,
+    },
+    'service-mode-tag': {
+      background: themeTokens.accentSoft,
+      color: isDarkMode ? '#93c5fd' : '#1d4ed8',
+    },
+    stat: {
+      background: themeTokens.surfaceAlt,
+      border: `1px solid ${themeTokens.border}`,
+      color: themeTokens.textPrimary,
+    },
+    'stat-label': {
+      color: themeTokens.textMuted,
+    },
+    'inquiries-section': sectionCardStyle,
+    'payment-confirm-section': sectionCardStyle,
+    'refund-section': sectionCardStyle,
+    'cancelled-section': sectionCardStyle,
+    'schedule-section': sectionCardStyle,
+    'section-header': {
+      marginBottom: '18px',
+    },
+    'section-subtitle': {
+      color: themeTokens.textSecondary,
+    },
+    'inquiry-card': queueCardStyle,
+    'inquiry-description': {
+      color: themeTokens.textSecondary,
+    },
+    'inquiry-meta': {
+      color: themeTokens.textMuted,
+    },
+    'week-slider': {
+      background: themeTokens.surfaceAlt,
+      border: `1px solid ${themeTokens.border}`,
+    },
+    'week-nav-btn': {
+      background: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
+      color: themeTokens.textPrimary,
+    },
+    'week-range': {
+      color: themeTokens.textPrimary,
+    },
+    'calendar-day-card': queueCardStyle,
+    'calendar-date': {
+      color: themeTokens.textPrimary,
+    },
+    'calendar-note': {
+      color: themeTokens.textSecondary,
+    },
+    'calendar-booked': {
+      color: isDarkMode ? '#86efac' : '#166534',
+    },
+    'schedule-day-card': queueCardStyle,
+    'day-header': {
+      color: themeTokens.textPrimary,
+    },
+    'day-date': {
+      color: themeTokens.textMuted,
+    },
+    'no-slots': {
+      color: themeTokens.textMuted,
+    },
+    'time-block': {
+      background: isDarkMode ? themeTokens.surfaceSoft : themeTokens.surfaceAlt,
+      border: `1px solid ${themeTokens.border}`,
+    },
+    'slot-available': {
+      background: isDarkMode ? 'rgba(37, 99, 235, 0.12)' : '#eff6ff',
+      border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.4)' : '#bfdbfe'}`,
+    },
+    'slot-half': {
+      background: isDarkMode ? 'rgba(217, 119, 6, 0.14)' : '#fffbeb',
+      border: `1px solid ${isDarkMode ? 'rgba(251, 191, 36, 0.38)' : '#fef3c7'}`,
+    },
+    'slot-full': {
+      background: isDarkMode ? 'rgba(220, 38, 38, 0.14)' : '#fef2f2',
+      border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.36)' : '#fecaca'}`,
+    },
+    'block-time': {
+      color: themeTokens.textPrimary,
+    },
+    'slots-counter': {
+      color: themeTokens.textSecondary,
+    },
+    'bookings-preview': {
+      background: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.04)',
+      color: themeTokens.textSecondary,
+    },
+    'booking-name': {
+      color: themeTokens.textPrimary,
+    },
+    'check-toggle': {
+      color: themeTokens.textPrimary,
+    },
+    'booking-item-checks': {
+      color: themeTokens.textSecondary,
+    },
+    'recurring-cycle-pill': {
+      background: themeTokens.accentSoft,
+      color: isDarkMode ? '#bfdbfe' : '#1e3a8a',
+    },
+    'lock-hint': {
+      color: themeTokens.textMuted,
+    },
+    'action-btn': {
+      background: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
+      color: themeTokens.textPrimary,
+    },
+    'btn-add-slot': {
+      background: themeTokens.surface,
+      color: themeTokens.accent,
+      border: `2px dashed ${themeTokens.accent}`,
+    },
+    'stat-card': queueCardStyle,
+    'stat-desc': {
+      color: themeTokens.textMuted,
+    },
+    'done-confirm-overlay': {
+      background: isDarkMode ? 'rgba(2, 6, 23, 0.78)' : 'rgba(15, 23, 42, 0.45)',
+    },
+    'done-confirm-modal': {
+      background: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
+      color: themeTokens.textPrimary,
+    },
+    'done-confirm-note': {
+      color: themeTokens.textSecondary,
+    },
+    'done-cancel-btn': {
+      background: themeTokens.surfaceAlt,
+      color: themeTokens.textPrimary,
+      border: `1px solid ${themeTokens.border}`,
+    },
+    'gcash-qr-btn': {
+      background: themeTokens.accentSoft,
+      border: `1px solid ${isDarkMode ? '#60a5fa' : '#bfdbfe'}`,
+      color: isDarkMode ? '#bfdbfe' : '#1d4ed8',
+    },
+    'btn-gcash-preview': {
+      background: themeTokens.accentSoft,
+      border: `1px solid ${isDarkMode ? '#60a5fa' : '#bfdbfe'}`,
+      color: isDarkMode ? '#bfdbfe' : '#1d4ed8',
+    },
+    'payment-confirm-card': queueCardStyle,
+    'confirm-status-pending': {
+      background: isDarkMode ? 'rgba(249, 115, 22, 0.16)' : '#ffedd5',
+      color: isDarkMode ? '#fed7aa' : '#9a3412',
+    },
+    'confirm-status-approved': {
+      background: isDarkMode ? 'rgba(22, 163, 74, 0.16)' : '#dcfce7',
+      color: isDarkMode ? '#bbf7d0' : '#166534',
+    },
+    'confirm-status-denied': {
+      background: isDarkMode ? 'rgba(220, 38, 38, 0.16)' : '#fee2e2',
+      color: isDarkMode ? '#fecaca' : '#b91c1c',
+    },
+    'payment-qr-item': queueCardStyle,
+    'payment-qr-title': {
+      color: themeTokens.textPrimary,
+    },
+    'payment-qr-caption': {
+      color: themeTokens.textSecondary,
+    },
+    'section-filter-btn': {
+      background: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
+      color: themeTokens.textPrimary,
+    },
+    'refund-card': {
+      background: isDarkMode ? 'rgba(79, 70, 229, 0.16)' : '#eef2ff',
+      border: `1px solid ${isDarkMode ? 'rgba(129, 140, 248, 0.42)' : '#c7d2fe'}`,
+      color: themeTokens.textPrimary,
+    },
+    'cancelled-card': {
+      background: isDarkMode ? 'rgba(220, 38, 38, 0.14)' : '#fef2f2',
+      border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.38)' : '#fecaca'}`,
+      color: themeTokens.textPrimary,
+    },
+  };
+
   const responsiveClassStyles = isMobile
     ? {
         'my-work-header-bar': { padding: '12px', gap: '8px', flexWrap: 'wrap' },
@@ -534,7 +757,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         'booking-item': { flexDirection: 'column', alignItems: 'flex-start', gap: '6px' },
         'booking-name': { minWidth: 0 },
         'booking-inline-actions': { width: '100%', flexWrap: 'wrap' },
-        'stats-footer': { gridTemplateColumns: '1fr', marginTop: '24px' },
+        'stats-footer': { gridTemplateColumns: '1fr', margin: '24px auto 0' },
         'gcash-preview-body': { flexDirection: 'column', alignItems: 'center' },
         'gcash-preview-qr': { width: '100%', maxWidth: '220px', height: 'auto' },
         'payment-confirm-grid': { gridTemplateColumns: '1fr' },
@@ -550,12 +773,29 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
       (acc, name) => ({
         ...acc,
         ...(classStyles[name] || {}),
+        ...(themeClassStyles[name] || {}),
         ...(responsiveClassStyles[name] || {}),
       }),
       {}
     );
 
   const isHovered = (key) => hoverKey === key;
+  const sectionTitleStyle = { fontSize: '22px', fontWeight: 800, color: themeTokens.textPrimary, margin: '0 0 4px 0', lineHeight: 1.2 };
+  const cardMutedTextStyle = { margin: 0, color: themeTokens.textSecondary };
+  const cardStrongTextStyle = { color: themeTokens.textPrimary };
+  const queueMetaTextStyle = { margin: 0, color: themeTokens.textSecondary, fontSize: '12px' };
+  const queueServiceTextStyle = { margin: 0, color: themeTokens.textPrimary, fontWeight: 700, fontSize: '13px' };
+  const monoSuccessTextStyle = { margin: 0, color: isDarkMode ? '#5eead4' : '#0f766e', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 };
+  const refundPrimaryTextStyle = { margin: 0, color: isDarkMode ? '#c7d2fe' : '#3730a3', fontWeight: 700, fontSize: '13px' };
+  const refundMetaTextStyle = { margin: 0, color: isDarkMode ? '#a5b4fc' : '#4f46e5', fontSize: '12px' };
+  const refundMonoTextStyle = { margin: 0, color: isDarkMode ? '#c4b5fd' : '#4338ca', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 };
+  const cancelledPrimaryTextStyle = { margin: 0, color: isDarkMode ? '#fecaca' : '#991b1b', fontWeight: 700, fontSize: '13px' };
+  const cancelledMetaTextStyle = { margin: 0, color: isDarkMode ? '#fca5a5' : '#991b1b', fontSize: '12px' };
+  const cancelledPolicyTextStyle = { margin: 0, color: isDarkMode ? '#fecaca' : '#7f1d1d', fontSize: '12px', fontWeight: 700 };
+  const statTitleStyle = { fontSize: '14px', color: themeTokens.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' };
+  const modalTextStyle = { margin: 0, color: themeTokens.textPrimary, lineHeight: 1.5 };
+  const modalMetaTextStyle = { margin: '8px 0 0', color: themeTokens.textSecondary, fontSize: '13px' };
+  const modalDangerTextStyle = { margin: '8px 0 0', color: isDarkMode ? '#fca5a5' : '#b91c1c', fontSize: '13px', fontWeight: 600 };
 
   const gcashNumber = currentProfile?.gcashNumber || '09054891105';
   const currentRateBasis = normalizeRateBasis(
@@ -688,22 +928,22 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
         {/* Loading state while fetching seller data */}
         {isLoadingSellerData && (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#6b7280' }}>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: themeTokens.textSecondary }}>
             <Loader2 size={30} className="gl-spin" aria-hidden="true" style={{ marginBottom: '12px' }} />
             <p style={{ fontSize: '16px', fontWeight: 500 }}>Loading your seller profile…</p>
           </div>
         )}
 
         {!isLoadingSellerData && (
-          <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#64748b' }}>
+          <p style={{ margin: '0 0 12px', fontSize: '12px', color: themeTokens.textMuted }}>
             Synced services: {(sellerDbServices || []).length}
           </p>
         )}
 
         {showSetupBanner && (
           <div style={sx('empty-state-banner')}>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
-            <p style={{ fontSize: '16px', color: '#92400e', margin: '0 0 20px 0' }}>Complete your service profile to start receiving inquiries from clients.</p>
+            <h2 style={{ fontSize: '28px', fontWeight: 700, color: isDarkMode ? '#fde68a' : '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
+            <p style={{ fontSize: '16px', color: isDarkMode ? '#fed7aa' : '#92400e', margin: '0 0 20px 0' }}>Complete your service profile to start receiving inquiries from clients.</p>
             <button
               style={{
                 padding: '12px 28px',
@@ -742,7 +982,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                     {currentProfile?.fullName || 'Service Provider'}
                   </button>
                   <p style={sx('service-type')}>{currentProfile?.serviceType || 'Service Type'}</p>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: themeTokens.textSecondary, fontWeight: 600 }}>
                     {currentPriceLabel}
                   </p>
                   <p style={sx('location')} className="gl-inline-icon-line">
@@ -798,18 +1038,18 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                     gap: '12px',
                     padding: '12px 16px',
                     borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#0f172a',
+                    border: `1px solid ${themeTokens.border}`,
+                    background: themeTokens.surface,
+                    color: themeTokens.textPrimary,
                     fontSize: '14px',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    boxShadow: isWorkNavDropdownOpen ? '0 8px 24px rgba(37, 99, 235, 0.12)' : 'none',
+                    boxShadow: isWorkNavDropdownOpen ? themeTokens.shadowSoft : 'none',
                   }}
                   onClick={() => setIsWorkNavDropdownOpen((prev) => !prev)}
                 >
                   <span>Navigate Work Sections</span>
-                  <span style={{ color: '#2563eb', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: themeTokens.accent, fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     {activeWorkSectionLabel}
                     <ChevronDown size={14} aria-hidden="true" />
                   </span>
@@ -821,10 +1061,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                     top: 'calc(100% + 8px)',
                     right: 0,
                     left: 0,
-                    background: '#ffffff',
-                    border: '1px solid #dbe4ee',
+                    background: themeTokens.surface,
+                    border: `1px solid ${themeTokens.border}`,
                     borderRadius: '12px',
-                    boxShadow: '0 14px 32px rgba(15, 23, 42, 0.14)',
+                    boxShadow: themeTokens.shadow,
                     zIndex: 20,
                     overflow: 'hidden',
                   }}>
@@ -839,10 +1079,10 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                             textAlign: 'left',
                             padding: '12px 14px',
                             border: 'none',
-                            background: isSelected ? '#eff6ff' : '#ffffff',
-                            color: isSelected ? '#1d4ed8' : '#0f172a',
+                            background: isSelected ? themeTokens.accentSoft : themeTokens.surface,
+                            color: isSelected ? themeTokens.accent : themeTokens.textPrimary,
                             cursor: 'pointer',
-                            borderBottom: index < workSectionOptions.length - 1 ? '1px solid #eef2f7' : 'none',
+                            borderBottom: index < workSectionOptions.length - 1 ? `1px solid ${themeTokens.border}` : 'none',
                           }}
                           onClick={() => {
                             setWorkSectionFilter(option.value);
@@ -850,7 +1090,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                           }}
                         >
                           <div style={{ fontWeight: 700, fontSize: '14px' }}>{option.label}</div>
-                          <div style={{ fontSize: '12px', color: isSelected ? '#2563eb' : '#64748b', marginTop: '2px' }}>{option.description}</div>
+                          <div style={{ fontSize: '12px', color: isSelected ? themeTokens.accent : themeTokens.textMuted, marginTop: '2px' }}>{option.description}</div>
                         </button>
                       );
                     })}
@@ -861,7 +1101,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             
             {showInquiriesSection && <section style={sx('inquiries-section')} data-testid="work-inquiries-section">
               <div style={sx('section-header')}>
-                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Active Inquiries ({activeInquiries.length})</h2>
+                <h2 style={sectionTitleStyle}>Active Inquiries ({activeInquiries.length})</h2>
                 <p style={sx('section-subtitle')}>Clients waiting for your response</p>
               </div>
               
@@ -881,7 +1121,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                           style={sx('client-photo')}
                         />
                         <div>
-                          <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#2c3e50', margin: 0 }}>{inquiry.clientName}</h3>
+                          <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, ...cardStrongTextStyle }}>{inquiry.clientName}</h3>
                           <p style={sx('client-rating')} className="gl-inline-icon-line">
                             <Star size={13} fill="currentColor" aria-hidden="true" />
                             {inquiry.clientRating} rating
@@ -920,14 +1160,14 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
             {showCashApprovalSection && <section style={sx('payment-confirm-section')} data-testid="work-cash-section">
               <div style={sx('section-header')}>
-                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Payment Confirmations (Cash)</h2>
+                <h2 style={sectionTitleStyle}>Payment Confirmations (Cash)</h2>
                 <p style={sx('section-subtitle')}>Worker review queue for face-to-face cash confirmations scanned via Cash QR.</p>
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
                   <button
                     style={{
                       padding: '0.5rem 1rem',
-                      backgroundColor: cashPaymentView === 'pending' ? '#2563eb' : '#e2e8f0',
-                      color: cashPaymentView === 'pending' ? '#ffffff' : '#0f172a',
+                      backgroundColor: cashPaymentView === 'pending' ? themeTokens.accent : themeTokens.surfaceAlt,
+                      color: cashPaymentView === 'pending' ? '#ffffff' : themeTokens.textPrimary,
                       border: 'none',
                       borderRadius: '0.375rem',
                       fontWeight: 600,
@@ -941,8 +1181,8 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   <button
                     style={{
                       padding: '0.5rem 1rem',
-                      backgroundColor: cashPaymentView === 'history' ? '#2563eb' : '#e2e8f0',
-                      color: cashPaymentView === 'history' ? '#ffffff' : '#0f172a',
+                      backgroundColor: cashPaymentView === 'history' ? themeTokens.accent : themeTokens.surfaceAlt,
+                      color: cashPaymentView === 'history' ? '#ffffff' : themeTokens.textPrimary,
                       border: 'none',
                       borderRadius: '0.375rem',
                       fontWeight: 600,
@@ -958,7 +1198,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
               {cashConfirmationNotifications.length === 0 ? (
                 <div style={sx('payment-confirm-card')}>
-                  <p style={{ margin: 0, color: '#64748b' }}>{cashPaymentView === 'pending' ? 'No cash confirmation requests for this week.' : 'No completed cash transactions.'}</p>
+                  <p style={cardMutedTextStyle}>{cashPaymentView === 'pending' ? 'No cash confirmation requests for this week.' : 'No completed cash transactions.'}</p>
                 </div>
               ) : (
                 <div style={sx('payment-confirm-grid')}>
@@ -973,7 +1213,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                     return (
                       <div key={`confirm-${txn.id}`} style={sx('payment-confirm-card')} data-testid={`cash-confirmation-${txn.id}`}>
                         <div style={sx('payment-confirm-meta')}>
-                          <strong>{txn.clientName}</strong>
+                          <strong style={cardStrongTextStyle}>{txn.clientName}</strong>
                           <span style={statusStyle}>
                             {txn.cashConfirmationStatus === 'approved'
                               ? 'Approved'
@@ -982,14 +1222,14 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                 : 'Pending Review'}
                           </span>
                         </div>
-                        <p style={{ margin: 0, color: '#334155', fontSize: '13px' }}>{txn.service}</p>
-                        <p style={{ margin: 0, color: '#475569', fontSize: '12px' }}>
+                        <p style={queueServiceTextStyle}>{txn.service}</p>
+                        <p style={queueMetaTextStyle}>
                           QR Ref: {txn.cashConfirmationQrId || 'N/A'}
                         </p>
-                        <p style={{ margin: 0, color: '#475569', fontSize: '12px' }}>
+                        <p style={queueMetaTextStyle}>
                           Submitted: ₱{txn.submittedCashAmount || 0} | Expected: ₱{txn.expectedCashAmount || 0}
                         </p>
-                        <p style={{ margin: 0, color: '#0f766e', fontSize: '12px', fontWeight: 700, fontFamily: "'Courier New', monospace" }}>
+                        <p style={monoSuccessTextStyle}>
                           {txn.transactionId ? `Transaction ID: ${txn.transactionId}` : 'Transaction ID: Pending approval'}
                         </p>
                         {cashPaymentView === 'pending' && (
@@ -1026,26 +1266,26 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             {showRefundSection && (
               <section style={sx('refund-section')} data-testid="work-refund-section">
                 <div style={sx('section-header')}>
-                  <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Refund Queue (GCash)</h2>
+                  <h2 style={sectionTitleStyle}>Refund Queue (GCash)</h2>
                   <p style={sx('section-subtitle')}>Cases for GCash Advance and GCash post-service payments that need refund tracking.</p>
                 </div>
                 {refundTransactions.length === 0 ? (
                   <div style={sx('payment-confirm-card')}>
-                    <p style={{ margin: 0, color: '#64748b' }}>No refund scenarios for this week.</p>
+                    <p style={cardMutedTextStyle}>No refund scenarios for this week.</p>
                   </div>
                 ) : (
                   <div style={sx('refund-grid')}>
                     {refundTransactions.map((txn) => (
                       <div key={`refund-${txn.id}`} style={sx('refund-card')} data-testid={`refund-request-${txn.id}`}>
                         <div style={sx('payment-confirm-meta')}>
-                          <strong>{txn.clientName}</strong>
+                          <strong style={cardStrongTextStyle}>{txn.clientName}</strong>
                           <span
                             style={{
                               ...sx('confirm-status-pill'),
                               ...((txn.refundStatus === 'completed' || txn.refundStatus === 'approved')
                                 ? sx('confirm-status-approved')
                                 : txn.refundStatus === 'approved-awaiting-client-confirmation'
-                                  ? { background: '#dbeafe', color: '#1d4ed8' }
+                                  ? { background: isDarkMode ? 'rgba(59, 130, 246, 0.18)' : '#dbeafe', color: isDarkMode ? '#bfdbfe' : '#1d4ed8' }
                                   : sx('confirm-status-pending')),
                             }}
                           >
@@ -1056,13 +1296,13 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                 : 'Refund Requested'}
                           </span>
                         </div>
-                        <p style={{ margin: 0, color: '#3730a3', fontWeight: 700, fontSize: '13px' }}>{txn.service}</p>
-                        <p style={{ margin: 0, color: '#4f46e5', fontSize: '12px' }}>Amount: ₱{txn.refundAmount || 0}</p>
-                        <p style={{ margin: 0, color: '#4f46e5', fontSize: '12px' }}>Reason: {txn.refundReason || 'Service cancellation/refund case'}</p>
-                        <p style={{ margin: 0, color: '#4338ca', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 }}>
+                        <p style={refundPrimaryTextStyle}>{txn.service}</p>
+                        <p style={refundMetaTextStyle}>Amount: ₱{txn.refundAmount || 0}</p>
+                        <p style={refundMetaTextStyle}>Reason: {txn.refundReason || 'Service cancellation/refund case'}</p>
+                        <p style={refundMonoTextStyle}>
                           {txn.refundReference ? `Refund Ref: ${txn.refundReference}` : 'Refund Ref: Pending'}
                         </p>
-                        <p style={{ margin: 0, color: '#0f766e', fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 }}>
+                        <p style={monoSuccessTextStyle}>
                           {txn.transactionId ? `Transaction ID: ${txn.transactionId}` : 'Transaction ID: N/A'}
                         </p>
                         {txn.refundStatus === 'requested' && (
@@ -1088,25 +1328,25 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             {showCancelledSection && (
               <section style={sx('cancelled-section')} data-testid="work-cancelled-section">
                 <div style={sx('section-header')}>
-                  <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>Cancelled Bookings (Cash Only)</h2>
+                  <h2 style={sectionTitleStyle}>Cancelled Bookings (Cash Only)</h2>
                   <p style={sx('section-subtitle')}>Cash-based bookings that were cancelled and should not enter GCash refund flow.</p>
                 </div>
                 {cancelledCashTransactions.length === 0 ? (
                   <div style={sx('payment-confirm-card')}>
-                    <p style={{ margin: 0, color: '#64748b' }}>No cancelled cash bookings for this week.</p>
+                    <p style={cardMutedTextStyle}>No cancelled cash bookings for this week.</p>
                   </div>
                 ) : (
                   <div style={sx('cancelled-grid')}>
                     {cancelledCashTransactions.map((txn) => (
                       <div key={`cancelled-${txn.id}`} style={sx('cancelled-card')}>
                         <div style={sx('payment-confirm-meta')}>
-                          <strong>{txn.clientName}</strong>
+                          <strong style={cardStrongTextStyle}>{txn.clientName}</strong>
                           <span style={sx('confirm-status-pill', 'confirm-status-denied')}>Cancelled</span>
                         </div>
-                        <p style={{ margin: 0, color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>{txn.service}</p>
-                        <p style={{ margin: 0, color: '#991b1b', fontSize: '12px' }}>Payment Channel: Cash (No GCash refund needed)</p>
-                        <p style={{ margin: 0, color: '#b91c1c', fontSize: '12px' }}>Reason: {txn.cancelReason || 'Cancelled before service.'}</p>
-                        <p style={{ margin: 0, color: '#7f1d1d', fontSize: '12px', fontWeight: 700 }}>{txn.cancelPolicy || 'Cash-only cancellation flow'}</p>
+                        <p style={cancelledPrimaryTextStyle}>{txn.service}</p>
+                        <p style={cancelledMetaTextStyle}>Payment Channel: Cash (No GCash refund needed)</p>
+                        <p style={cancelledMetaTextStyle}>Reason: {txn.cancelReason || 'Cancelled before service.'}</p>
+                        <p style={cancelledPolicyTextStyle}>{txn.cancelPolicy || 'Cash-only cancellation flow'}</p>
                       </div>
                     ))}
                   </div>
@@ -1116,7 +1356,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
 
             {showScheduleSection && <section style={sx('schedule-section')} data-testid="work-schedule-section">
               <div style={sx('section-header')}>
-                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' }}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
+                <h2 style={sectionTitleStyle}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
                 <p style={sx('section-subtitle')}>
                   {scheduleMode === 'calendar-only'
                     ? 'Manage available dates for manual coordination'
@@ -1135,7 +1375,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                 </button>
                 <div style={sx('week-range')}>
                   <strong>{weekRangeLabel}</strong>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>{weekOffset === 0 ? 'Current Week' : `${weekOffset > 0 ? '+' : ''}${weekOffset} week`}</span>
+                  <span style={{ fontSize: '12px', color: themeTokens.textMuted }}>{weekOffset === 0 ? 'Current Week' : `${weekOffset > 0 ? '+' : ''}${weekOffset} week`}</span>
                 </div>
                 <button
                   style={{ ...sx('week-nav-btn'), ...(isHovered('next-week') ? hoverStyles.weekNav : {}) }}
@@ -1196,7 +1436,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                       <span style={sx('done-pill')}>Done</span>
                                     ) : (
                                       <button
-                                        style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${txn.id}`) ? hoverStyles.markDone : {}), ...( !canMarkDone(txn) ? { background: '#9ca3af', cursor: 'not-allowed' } : {}) }}
+                                        style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${txn.id}`) ? hoverStyles.markDone : {}), ...( !canMarkDone(txn) ? { background: isDarkMode ? '#475569' : '#9ca3af', cursor: 'not-allowed' } : {}) }}
                                         onMouseEnter={() => setHoverKey(`mark-done-${txn.id}`)}
                                         onMouseLeave={() => setHoverKey('')}
                                         disabled={!canMarkDone(txn)}
@@ -1318,7 +1558,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                                                 <span style={sx('done-pill')}>Done</span>
                                               ) : (
                                                 <button
-                                                  style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${bookingTxn.id}`) ? hoverStyles.markDone : {}), ...(!canMarkDone(bookingTxn) ? { background: '#9ca3af', cursor: 'not-allowed' } : {}) }}
+                                                  style={{ ...sx('mark-done-btn'), ...(isHovered(`mark-done-${bookingTxn.id}`) ? hoverStyles.markDone : {}), ...(!canMarkDone(bookingTxn) ? { background: isDarkMode ? '#475569' : '#9ca3af', cursor: 'not-allowed' } : {}) }}
                                                   onMouseEnter={() => setHoverKey(`mark-done-${bookingTxn.id}`)}
                                                   onMouseLeave={() => setHoverKey('')}
                                                   disabled={!canMarkDone(bookingTxn)}
@@ -1383,17 +1623,17 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             
             {workSectionFilter === 'all' && <section style={sx('stats-footer')}>
               <div style={sx('stat-card')}>
-                <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>Response Rate</h4>
+                <h4 style={statTitleStyle}>Response Rate</h4>
                 <p style={sx('stat-value')}>92%</p>
                 <p style={sx('stat-desc')}>Avg response within 2 hours</p>
               </div>
               <div style={sx('stat-card')}>
-                <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>This Week</h4>
+                <h4 style={statTitleStyle}>This Week</h4>
                 <p style={sx('stat-value')}>8 hours</p>
                 <p style={sx('stat-desc')}>Total scheduled time</p>
               </div>
               <div style={sx('stat-card')}>
-                <h4 style={{ fontSize: '14px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>Earnings</h4>
+                <h4 style={statTitleStyle}>Earnings</h4>
                 <p style={sx('stat-value')}>₱3,600</p>
                 <p style={sx('stat-desc')}>Pending completion</p>
               </div>
@@ -1496,17 +1736,17 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         cancelLabel="No"
         confirmLabel={`Yes, ${cashDecisionTarget?.decision === 'approve' ? 'Approve' : 'Deny'}`}
       >
-        <p style={{ margin: 0, color: '#374151', lineHeight: 1.5 }}>
+        <p style={modalTextStyle}>
           Are you sure you want to <strong>{cashDecisionTarget?.decision === 'approve' ? 'approve' : 'deny'}</strong> this cash confirmation?
         </p>
         <p style={sx('done-confirm-note')}>
           Client: <strong>{cashDecisionTarget?.clientName}</strong> | Service: <strong>{cashDecisionTarget?.service}</strong>
         </p>
-        <p style={{ margin: '8px 0 0', color: '#4b5563', fontSize: '13px' }}>
+        <p style={modalMetaTextStyle}>
           Submitted: ₱{cashDecisionTarget?.submittedCashAmount} | Expected: ₱{cashDecisionTarget?.expectedCashAmount}
         </p>
         {cashDecisionTarget?.decision === 'deny' && (
-          <p style={{ margin: '8px 0 0', color: '#b91c1c', fontSize: '13px', fontWeight: 600 }}>
+          <p style={modalDangerTextStyle}>
             Denying this payment can affect transaction records. Please verify details before continuing.
           </p>
         )}

@@ -364,7 +364,7 @@ function AuthPage({
           <strong>GigLink</strong>
         </button>
 
-        <button type="button" className="auth-back-button" onClick={onBack}>
+        <button type="button" className="auth-back-button" onClick={onBack} aria-label="Back to GigLink home">
           <ArrowLeft size={18} aria-hidden="true" />
           Back
         </button>
