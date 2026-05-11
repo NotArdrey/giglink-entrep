@@ -98,10 +98,10 @@ textarea {
 .gl-app-user-row {
   border: 0;
   background: transparent;
-  color: var(--gl-text);
+  color: var(--gl-blue);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   text-align: left;
   cursor: pointer;
 }
@@ -112,24 +112,16 @@ textarea {
   padding: 0 4px;
 }
 
-.gl-app-brand-mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  background: #0f172a;
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  flex: 0 0 auto;
-}
-
-[data-theme="dark"] .gl-app-brand-mark {
-  background: var(--gl-blue);
-}
-
 .gl-app-brand strong,
+.gl-app-mobile-brand strong {
+  display: block;
+  color: var(--gl-blue);
+  font-size: 23px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
 .gl-app-user-row strong {
   display: block;
   color: var(--gl-text);
@@ -137,7 +129,6 @@ textarea {
   line-height: 1.2;
 }
 
-.gl-app-brand small,
 .gl-app-user-row small {
   display: block;
   color: var(--gl-text-3);
@@ -1663,44 +1654,18 @@ textarea {
 .auth-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  color: #ffffff;
+  gap: 0;
+  color: var(--gl-blue);
   text-align: left;
 }
 
-.auth-brand-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #0f172a;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 900;
-}
-
-[data-theme="dark"] .auth-brand-mark {
-  background: var(--gl-blue);
-}
-
-.auth-brand strong,
-.auth-brand small {
-  display: block;
-  line-height: 1.2;
-}
-
 .auth-brand strong {
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.auth-brand small {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 12px;
-  font-weight: 700;
+  display: block;
+  color: var(--gl-blue);
+  font-size: 23px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .auth-back-button {
@@ -2162,11 +2127,7 @@ textarea {
   }
 
   .auth-brand strong {
-    color: var(--gl-text);
-  }
-
-  .auth-brand small {
-    color: var(--gl-text-3);
+    color: var(--gl-blue);
   }
 
   .auth-shell {
@@ -2599,7 +2560,7 @@ textarea {
   }
 
   .gl-app-mobile-brand strong {
-    font-size: 15px;
+    font-size: 22px;
   }
 
   .gl-app-topbar-actions {

@@ -32,11 +32,12 @@ function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSec
     brandWrap: { display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 },
     brand: {
       margin: 0,
-      fontFamily: "'Times New Roman', Georgia, serif",
-      fontSize: '1.85rem',
-      fontWeight: 800,
+      fontFamily: "'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontSize: '1.45rem',
+      fontWeight: 850,
       color: themeTokens.accent,
       lineHeight: 1,
+      letterSpacing: 0,
       whiteSpace: 'nowrap',
     },
     badge: {

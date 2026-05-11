@@ -131,11 +131,7 @@ function DashboardNavigation({
     <>
       <aside className="gl-app-sidebar">
         <button type="button" className="gl-app-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
-          <span className="gl-app-brand-mark">G</span>
-          <span>
-            <strong>GigLink</strong>
-            <small>Marketplace OS</small>
-          </span>
+          <strong>GigLink</strong>
         </button>
 
         <div className="gl-app-sidebar-search">
@@ -162,7 +158,6 @@ function DashboardNavigation({
 
       <header className="gl-app-topbar">
         <button type="button" className="gl-app-mobile-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
-          <span className="gl-app-brand-mark">G</span>
           <strong>GigLink</strong>
         </button>
 

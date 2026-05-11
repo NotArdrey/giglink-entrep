@@ -124,9 +124,10 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
     logo: {
       textDecoration: 'none',
       color: '#2563eb',
-      fontWeight: 800,
-      fontSize: '1.75rem',
-      fontFamily: "'Times New Roman', Georgia, serif",
+      fontWeight: 850,
+      fontSize: '1.45rem',
+      fontFamily: "'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      letterSpacing: 0,
       marginRight: '0.5rem',
     },
     searchWrap: {

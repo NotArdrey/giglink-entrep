@@ -108,7 +108,7 @@ function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearc
       gap: '0.6rem',
       flexWrap: 'wrap',
     },
-    logo: { textDecoration: 'none', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 },
+    logo: { textDecoration: 'none', color: '#2563eb', fontSize: '1.45rem', fontWeight: 850, letterSpacing: 0 },
     headerActions: { display: 'flex', gap: '0.5rem', flexWrap: isMobile ? 'wrap' : 'nowrap', width: isMobile ? '100%' : 'auto' },
     headerButton: {
       border: '1px solid #cbd5e1',
