@@ -6,7 +6,6 @@ import {
   Filter,
   MapPin,
   Search,
-  Sparkles,
 } from 'lucide-react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
@@ -305,12 +304,6 @@ function BrowseServicesPage({
     setIsBookingSubmitting(false);
   };
 
-  const stats = [
-    { label: 'Live services', value: services.length || 0 },
-    { label: 'Categories', value: Math.max(categories.length - 2, 0) },
-    { label: 'Visible now', value: filteredServices.length || 0 },
-  ];
-
   return (
     <div className="gl-page" data-testid={isPublic ? 'public-browse-services' : 'app-browse-services'}>
       {!isPublic && (
@@ -337,26 +330,8 @@ function BrowseServicesPage({
       )}
 
       <main className="gl-shell gl-page-pad">
-        <section className="browse-hero gl-card">
-          <div>
-            <span className="gl-eyebrow"><Sparkles size={15} /> Browse Services</span>
-            <h1 className="gl-title">Find trusted local help without the clutter.</h1>
-            <p className="gl-subtitle">
-              Search live services, compare availability, and choose the right provider for the work you need.
-            </p>
-          </div>
-          <div className="gl-kpi-grid browse-kpis">
-            {stats.map((item) => (
-              <div className="gl-kpi gl-card" key={item.label}>
-                <p className="gl-kpi-value">{item.value}</p>
-                <p className="gl-kpi-label">{item.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
         <section className="browse-marketplace" aria-label="Service marketplace">
-          <aside className="browse-filter-rail gl-card" aria-label="Browse filters">
+          <aside className="browse-filter-rail gl-card" aria-label="Browse filters" style={{ gridColumn: 2, gridRow: 1 }}>
             <div className="browse-filter-head">
               <Filter size={17} aria-hidden="true" />
               <strong>Filters</strong>
@@ -408,7 +383,7 @@ function BrowseServicesPage({
             </button>
           </aside>
 
-          <section className="browse-results-panel">
+          <section className="browse-results-panel" style={{ gridColumn: 1, gridRow: 1 }}>
             <div className="browse-toolbar gl-card">
               <div className="browse-search">
                 <Search size={18} aria-hidden="true" />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 // Note: Nested data structure is read as schedule.dayBlocks[dayKey] where each block stores capacity and slotsLeft.
 // Note: Available slots use Emerald Green and full slots use Light Gray per requirement.
 
@@ -225,7 +226,11 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       border: '1px solid #cbd5e1',
       backgroundColor: '#ffffff',
       cursor: 'pointer',
-      fontWeight: 700,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#334155',
+      padding: 0,
     },
     monthHeading: { margin: 0 },
     gridWrap: { marginTop: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' },
@@ -309,6 +314,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
 
         <div style={styles.monthNavRow}>
           <button
+            type="button"
             style={styles.monthButton}
             onClick={() => {
               const prev = new Date(visibleMonth);
@@ -317,10 +323,11 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
             }}
             aria-label="Previous month"
           >
-            Back
+            <ChevronLeft size={18} aria-hidden="true" />
           </button>
           <h3 style={styles.monthHeading}>{formatMonthHeading(visibleMonth)}</h3>
           <button
+            type="button"
             style={styles.monthButton}
             onClick={() => {
               const next = new Date(visibleMonth);
@@ -329,7 +336,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
             }}
             aria-label="Next month"
           >
-            Next
+            <ChevronRight size={18} aria-hidden="true" />
           </button>
         </div>
 

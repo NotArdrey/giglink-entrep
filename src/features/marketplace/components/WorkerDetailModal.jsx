@@ -1,21 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
-  BadgeDollarSign,
+  BadgeCheck,
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
+  Clock,
   MapPin,
+  MessageSquareText,
+  Sparkles,
   Star,
   UserRound,
   X,
 } from 'lucide-react';
 import { getDisplayServiceType, getProviderQuoteAmount } from '../utils/serviceNormalizer';
-
-const fallbackGallery = [
-  'https://via.placeholder.com/900x600?text=Sample+Work+1',
-  'https://via.placeholder.com/900x600?text=Sample+Work+2',
-  'https://via.placeholder.com/900x600?text=Sample+Work+3',
-];
 
 const formatRate = (worker = {}) => {
   if (worker.pricingType === 'inquiry' || worker.actionType === 'inquire') {
@@ -65,6 +62,20 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
     return () => clearTimeout(timer);
   }, [isOpen, worker]);
 
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKey = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    document.addEventListener('keydown', handleKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !worker) return null;
 
   const gallery = (worker.gallery && worker.gallery.length > 0)
@@ -73,32 +84,49 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       ? worker.uploadedPhotos
       : (worker.photos && worker.photos.length > 0)
         ? worker.photos
-        : (worker.photo ? [worker.photo] : fallbackGallery);
+        : (worker.photo ? [worker.photo] : []);
 
   const serviceType = getDisplayServiceType(worker);
   const isInquiry = worker.actionType === 'inquire';
   const rating = worker.rating || 'New';
   const reviews = worker.reviews || 0;
-  const selectedImage = gallery[galleryIndex] || worker.photo || fallbackGallery[0];
+  const providerName = worker.name || 'Service Provider';
+  const selectedImage = gallery[galleryIndex];
 
   const showPrev = () => setGalleryIndex((index) => (index - 1 + gallery.length) % gallery.length);
   const showNext = () => setGalleryIndex((index) => (index + 1) % gallery.length);
 
+  const handleBackdropClick = (event) => {
+    if (event.target === event.currentTarget) onClose?.();
+  };
+
   return (
-    <div className="worker-modal-overlay" role="dialog" aria-modal="true" aria-label={`${worker.name || 'Provider'} details`}>
+    <div
+      className="worker-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${providerName} details`}
+      onClick={handleBackdropClick}
+    >
       <div className="worker-modal gl-card">
-        <button type="button" className="worker-modal-close gl-icon-button" onClick={onClose} aria-label="Close service details">
+        <button
+          type="button"
+          className="worker-modal-close gl-icon-button"
+          onClick={onClose}
+          aria-label="Close service details"
+        >
           <X size={18} aria-hidden="true" />
         </button>
 
+        {/* LEFT: Gallery */}
         <div className="worker-modal-gallery">
           {isLoadingDetails ? (
             <div className="worker-modal-skeleton">
               <UserRound size={46} aria-hidden="true" />
             </div>
-          ) : (
+          ) : selectedImage ? (
             <>
-              <img src={selectedImage} alt={`${worker.name || 'Provider'} work sample`} />
+              <img src={selectedImage} alt={`${providerName} work sample`} loading="lazy" />
               {gallery.length > 1 && (
                 <>
                   <button type="button" className="worker-gallery-nav prev" onClick={showPrev} aria-label="Previous image">
@@ -107,6 +135,9 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
                   <button type="button" className="worker-gallery-nav next" onClick={showNext} aria-label="Next image">
                     <ChevronRight size={20} aria-hidden="true" />
                   </button>
+                  <div className="worker-gallery-counter" aria-hidden="true">
+                    {galleryIndex + 1} / {gallery.length}
+                  </div>
                   <div className="worker-gallery-thumbs" aria-label="Gallery thumbnails">
                     {gallery.map((image, index) => (
                       <button
@@ -117,16 +148,22 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
                         onClick={() => setGalleryIndex(index)}
                         aria-label={`Show image ${index + 1}`}
                       >
-                        <img src={image} alt="" />
+                        <img src={image} alt="" loading="lazy" />
                       </button>
                     ))}
                   </div>
                 </>
               )}
             </>
+          ) : (
+            <div className="worker-modal-empty-gallery">
+              <Sparkles size={36} aria-hidden="true" />
+              <p>No portfolio photos shared yet.</p>
+            </div>
           )}
         </div>
 
+        {/* RIGHT: Details */}
         <div className="worker-modal-details">
           {isLoadingDetails ? (
             <div className="worker-detail-loading">
@@ -138,36 +175,85 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
             </div>
           ) : (
             <>
-              <span className="gl-eyebrow">{serviceType}</span>
-              <h2>{worker.title || serviceType}</h2>
-              <p className="worker-provider-name">{worker.name || 'Service Provider'}</p>
-
-              <div className="worker-modal-meta">
-                <span><Star size={15} fill="currentColor" aria-hidden="true" /> {rating} ({reviews})</span>
-                <span><BadgeDollarSign size={15} aria-hidden="true" /> {getRateBadge(worker)}</span>
-                <span><CalendarCheck size={15} aria-hidden="true" /> {isInquiry ? 'Manual scheduling' : 'Bookable'}</span>
-                {worker.location && <span><MapPin size={15} aria-hidden="true" /> {worker.location}</span>}
+              {/* Provider header card */}
+              <div className="worker-provider-header">
+                <div className="worker-provider-avatar">
+                  {worker.photo ? (
+                    <img src={worker.photo} alt={providerName} />
+                  ) : (
+                    <UserRound size={28} aria-hidden="true" />
+                  )}
+                </div>
+                <div className="worker-provider-info">
+                  <div className="worker-provider-name-row">
+                    <strong>{providerName}</strong>
+                    <span className="worker-verified-badge" title="Verified provider">
+                      <BadgeCheck size={14} aria-hidden="true" />
+                      Verified
+                    </span>
+                  </div>
+                  <div className="worker-provider-rating">
+                    <Star size={14} fill="currentColor" aria-hidden="true" />
+                    <strong>{rating}</strong>
+                    <span>({reviews} {reviews === 1 ? 'review' : 'reviews'})</span>
+                  </div>
+                </div>
               </div>
 
+              {/* Title + service eyebrow */}
+              <div className="worker-modal-title-block">
+                <span className="gl-eyebrow">{serviceType}</span>
+                <h2>{worker.title || serviceType}</h2>
+              </div>
+
+              {/* Trust / quick-facts pills */}
+              <div className="worker-modal-meta">
+                <span><CalendarCheck size={14} aria-hidden="true" /> {isInquiry ? 'Manual scheduling' : 'Bookable online'}</span>
+                <span><Clock size={14} aria-hidden="true" /> Responds in &lt; 15 min</span>
+                {worker.location && <span><MapPin size={14} aria-hidden="true" /> {worker.location}</span>}
+                {worker.experience ? <span>{worker.experience}+ years experience</span> : null}
+              </div>
+
+              {/* Description */}
               <p className="worker-modal-description">
-                {worker.description || 'Professional service available through GigLink.'}
+                {worker.description || 'Professional service available through GigLink. Message this provider for full project details.'}
               </p>
 
+              {/* Rate card */}
               <div className="worker-modal-rate gl-card">
-                <span>Service rate</span>
-                <strong>{formatRate(worker)}</strong>
+                <div>
+                  <span className="worker-modal-rate-label">{getRateBadge(worker)}</span>
+                  <strong className="worker-modal-rate-value">{formatRate(worker)}</strong>
+                </div>
+                <p className="worker-modal-rate-note">
+                  {isInquiry
+                    ? 'Final pricing confirmed after you message the provider.'
+                    : 'Price shown is the standard rate. Booking unlocks the schedule.'}
+                </p>
               </div>
+            </>
+          )}
 
-              {worker.experience ? (
-                <p className="worker-modal-note">{worker.experience}+ years of listed experience.</p>
-              ) : (
-                <p className="worker-modal-note">Verified local provider details are available before booking.</p>
-              )}
-
-              <button type="button" className="gl-button primary" onClick={() => onBookNow?.(worker)}>
+          {/* Sticky action bar */}
+          {!isLoadingDetails && (
+            <div className="worker-modal-action-bar">
+              <button
+                type="button"
+                className="gl-button secondary worker-modal-secondary"
+                onClick={() => onBookNow?.({ ...worker, actionType: 'inquire' })}
+                aria-label={`Message ${providerName}`}
+              >
+                <MessageSquareText size={16} aria-hidden="true" />
+                Message
+              </button>
+              <button
+                type="button"
+                className="gl-button primary worker-modal-primary"
+                onClick={() => onBookNow?.(worker)}
+              >
                 {isInquiry ? 'Inquire Now' : 'Book Now'}
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
