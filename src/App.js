@@ -55,6 +55,7 @@ function App() {
     return (
       <>
         <LandingPage
+          appTheme={navigationContext.appTheme}
           onLogin={navigationContext.handleLogin}
           onResendVerification={navigationContext.handleResendVerification}
           onForgotPasswordSubmit={navigationContext.handleForgotPasswordSubmit}

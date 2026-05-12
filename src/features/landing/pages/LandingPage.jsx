@@ -483,7 +483,7 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
   );
 }
 
-function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) {
+function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForgotPasswordSubmit }) {
   const [authMode, setAuthMode] = useState(() => getAuthModeFromHash());
   const [isPublicBrowseOpen, setIsPublicBrowseOpen] = useState(() =>
     typeof window !== 'undefined' ? window.location.hash === '#browse-services' && !getAuthModeFromHash() : false
@@ -732,7 +732,7 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
         <main style={styles.publicBrowseMain}>
           <BrowseServicesPage
             mode="public"
-            appTheme="light"
+            appTheme={appTheme}
             onRequireLogin={handleLoginClick}
           />
         </main>

@@ -243,13 +243,13 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
     generatePortfolioBtn: { width: '100%', border: 'none', borderRadius: '8px', padding: '12px', background: isPortfolioHovered ? themeTokens.accent : themeTokens.accent, color: '#ffffff', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px', transition: 'all 0.3s ease', transform: isPortfolioHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isPortfolioHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
     manageAccountBtn: { width: '100%', border: 'none', borderRadius: '10px', padding: '14px', background: isManageHovered ? themeTokens.surfaceAlt : themeTokens.surfaceSoft, color: themeTokens.textPrimary, fontWeight: 700, fontSize: '15px', cursor: 'pointer' },
     photoSourceOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 220 },
-    photoSourceModal: { width: 'min(460px, 94vw)', background: '#ffffff', borderRadius: '14px', padding: '20px', boxShadow: '0 16px 32px rgba(15, 23, 42, 0.22)' },
-    modalTitle: { margin: '0 0 8px', fontSize: '1.55rem', lineHeight: 1.2 },
-    modalText: { margin: '0 0 8px', color: '#4b5563', fontSize: '1rem' },
-    modalHint: { margin: '0 0 14px', color: '#334155', fontSize: '0.9rem' },
+    photoSourceModal: { width: 'min(460px, 94vw)', background: themeTokens.surface, color: themeTokens.textPrimary, border: `1px solid ${themeTokens.border}`, borderRadius: '14px', padding: '20px', boxShadow: themeTokens.shadow },
+    modalTitle: { margin: '0 0 8px', fontSize: '1.55rem', lineHeight: 1.2, color: themeTokens.textPrimary },
+    modalText: { margin: '0 0 8px', color: themeTokens.textSecondary, fontSize: '1rem' },
+    modalHint: { margin: '0 0 14px', color: themeTokens.textMuted, fontSize: '0.9rem' },
     photoSourceActions: { display: 'grid', gap: '8px' },
     photoActionBtn: { border: 'none', borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: '#2563eb', color: '#ffffff' },
-    cancelBtn: { border: 'none', borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: '#e5e7eb', color: '#1f2937' },
+    cancelBtn: { border: `1px solid ${themeTokens.border}`, borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: themeTokens.surfaceAlt, color: themeTokens.textPrimary },
   };
 
   return (
@@ -424,7 +424,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
                   <button style={styles.photoActionBtn} onClick={() => deviceInputRef.current && deviceInputRef.current.click()}>From Device</button>
                   {profilePhoto && (
                     <button
-                      style={{ ...styles.cancelBtn, border: '1px solid transparent', background: '#f3f4f6', color: '#111827' }}
+                      style={{ ...styles.cancelBtn }}
                       onClick={handleRemovePhoto}
                     >
                       {isSavingPhoto ? 'Removing...' : 'Remove Photo'}

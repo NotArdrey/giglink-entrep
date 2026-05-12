@@ -87,7 +87,7 @@ function DashboardNavigation({
     .join('') || 'U';
   const unreadCount = notifications.filter((item) => !item.isRead).length;
   const isDarkMode = appTheme === 'dark';
-  const ThemeIcon = isDarkMode ? Sun : Moon;
+  const ThemeIcon = isDarkMode ? Moon : Sun;
   const handleThemeToggle = () => {
     onThemeChange?.(isDarkMode ? 'light' : 'dark');
   };
@@ -168,8 +168,8 @@ function DashboardNavigation({
             <ThemeIcon size={17} aria-hidden="true" />
           </span>
           <span>
-            <strong>{isDarkMode ? 'Light mode' : 'Dark mode'}</strong>
-            <small>{themeMode === 'system' ? 'Device theme active' : 'Manual theme'}</small>
+            <strong>{isDarkMode ? 'Dark mode' : 'Light mode'}</strong>
+            <small>{themeMode === 'system' ? 'Device theme active' : `Click for ${isDarkMode ? 'light' : 'dark'}`}</small>
           </span>
         </button>
 

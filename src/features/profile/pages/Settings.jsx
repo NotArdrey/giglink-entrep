@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 const Settings = ({
   currentView,
@@ -108,37 +109,7 @@ const Settings = ({
 
   const t = translations[language];
 
-  const themeTokens = isDarkMode
-    ? {
-        bgPrimary: '#2f343c',
-        bgSecondary: '#3a414b',
-        textPrimary: '#f2f5fa',
-        textSecondary: '#c7ceda',
-        cardBg: '#3a414b',
-        inputBg: '#464e5a',
-        inputBorder: '#687282',
-        accent: '#10b0d1',
-        accentHover: '#0c507e',
-        borderColor: '#58606c',
-        successBg: '#1b4332',
-        successText: '#a7e4c0',
-        successBorder: '#52b788',
-      }
-    : {
-        bgPrimary: '#ffffff',
-        bgSecondary: '#f9f9f9',
-        textPrimary: '#2c3e50',
-        textSecondary: '#7f8c8d',
-        cardBg: '#ffffff',
-        inputBg: '#f5f5f5',
-        inputBorder: '#d1d5db',
-        accent: '#0c507e',
-        accentHover: '#0b4066',
-        borderColor: '#e5e7eb',
-        successBg: '#dcfce7',
-        successText: '#166534',
-        successBorder: '#86efac',
-      };
+  const themeTokens = getThemeTokens(appTheme);
 
   const handleLanguageChange = (e) => {
     if (onLanguageChange) {

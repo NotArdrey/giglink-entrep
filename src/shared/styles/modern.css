@@ -2874,13 +2874,13 @@ textarea {
 .gl-app-sidebar {
   width: 260px;
   padding: 18px 16px;
-  background: rgba(255, 255, 255, 0.98);
+  background: color-mix(in srgb, var(--gl-surface) 98%, transparent);
   box-shadow: none;
 }
 
 .gl-app-topbar {
   left: 260px;
-  background: rgba(249, 250, 251, 0.9);
+  background: color-mix(in srgb, var(--gl-page) 90%, transparent);
   box-shadow: none;
 }
 
