@@ -13,12 +13,54 @@ import {
 const DEFAULT_NEW_SERVICE = {
   title: '',
   shortDescription: '',
+  description: '',
   basePrice: '',
   priceType: 'fixed',
   rateBasis: 'per-project',
   bookingMode: 'with-slots',
   currency: 'PHP',
   durationMinutes: '',
+};
+
+const buildDefaultServiceForSeller = ({ sellerData, workerProfileBundle, sellerProfile }) => {
+  const serviceType =
+    workerProfileBundle?.serviceType ||
+    workerProfileBundle?.customServiceType ||
+    sellerProfile?.serviceType ||
+    sellerData?.headline ||
+    sellerData?.search_meta?.service_type ||
+    'Service';
+  const description =
+    workerProfileBundle?.bio ||
+    sellerProfile?.bio ||
+    sellerData?.about ||
+    sellerData?.tagline ||
+    `Professional ${serviceType} service.`;
+  const rateBasis = workerProfileBundle?.rateBasis || sellerProfile?.rateBasis || 'per-project';
+  const basePrice =
+    workerProfileBundle?.fixedPrice ||
+    workerProfileBundle?.hourlyRate ||
+    workerProfileBundle?.dailyRate ||
+    workerProfileBundle?.weeklyRate ||
+    workerProfileBundle?.monthlyRate ||
+    workerProfileBundle?.projectRate ||
+    sellerProfile?.fixedPrice ||
+    null;
+
+  return {
+    title: serviceType,
+    shortDescription: description.slice(0, 160),
+    description,
+    basePrice,
+    priceType: workerProfileBundle?.pricingModel === 'inquiry' ? 'custom' : 'fixed',
+    currency: 'PHP',
+    durationMinutes: null,
+    metadata: {
+      createdVia: 'my-work-auto-repair',
+      rate_basis: rateBasis,
+      booking_mode: workerProfileBundle?.bookingMode || sellerProfile?.bookingMode || sellerData?.search_meta?.booking_mode || 'with-slots',
+    },
+  };
 };
 
 export const useWorkProfileServices = ({ sellerProfile } = {}) => {
@@ -72,11 +114,29 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
         fallbackProfile: sellerProfile,
       });
 
+      let resolvedServices = result.sellerDbServices || [];
+      let resolvedWorkerServices = result.workerServices || [];
+
+      if (result.sellerData && resolvedServices.length === 0) {
+        const repaired = await createWorkerService({
+          sellerId: result.sellerData.user_id || authUser.id,
+          serviceData: buildDefaultServiceForSeller({
+            sellerData: result.sellerData,
+            workerProfileBundle: result.workerProfileBundle,
+            sellerProfile,
+          }),
+          sellerData: result.sellerData,
+          fallbackProfile: sellerProfile,
+        });
+        resolvedServices = [repaired.raw];
+        resolvedWorkerServices = [repaired.mapped];
+      }
+
       setSellerData(result.sellerData);
       sellerDataRef.current = result.sellerData;
       setWorkerProfileBundle(result.workerProfileBundle);
-      setSellerDbServices(result.sellerDbServices);
-      setWorkerServices(result.workerServices);
+      setSellerDbServices(resolvedServices);
+      setWorkerServices(resolvedWorkerServices);
     } catch (error) {
       console.error('Failed to load seller data:', error);
       setSellerDataError(error?.message || 'Failed to load seller profile');
@@ -167,6 +227,7 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
       const payload = {
         title: newService.title,
         shortDescription: newService.shortDescription,
+        description: newService.description || newService.shortDescription,
         basePrice: Number(newService.basePrice) || null,
         priceType: newService.priceType,
         currency: newService.currency || 'PHP',

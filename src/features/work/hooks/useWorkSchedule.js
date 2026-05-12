@@ -132,6 +132,12 @@ export const useWorkSchedule = ({ sellerId, currentProfile } = {}) => {
 
     if (editSlotId && typeof editSlotId === 'number') {
       try {
+        const existingEntry = calendarAvailability.find((item) => item.id === editSlotId);
+        const existingMetadata = { ...(existingEntry?.raw?.metadata || {}) };
+        delete existingMetadata.note;
+        const nextMetadata = updatedData.note
+          ? { ...existingMetadata, note: updatedData.note }
+          : existingMetadata;
         const { startTs, endTs } = buildSlotTimestamps({
           date: updatedData.date,
           startTime: '00:00',
@@ -144,7 +150,7 @@ export const useWorkSchedule = ({ sellerId, currentProfile } = {}) => {
             end_ts: endTs,
             capacity: updatedData.maxBookings,
             note: updatedData.note || null,
-            metadata: updatedData.note ? { note: updatedData.note } : {},
+            metadata: nextMetadata,
           },
         });
         setCalendarAvailability((prev) => prev.map((item) =>
@@ -169,9 +175,46 @@ export const useWorkSchedule = ({ sellerId, currentProfile } = {}) => {
           : item
       )
     );
-  }, [currentProfile?.raw, editSlotId, sellerId, slotModalType]);
+  }, [calendarAvailability, currentProfile?.raw, editSlotId, sellerId, slotModalType]);
 
   const handleSaveWeeklySlot = useCallback(async (updatedData) => {
+    const currentService = currentProfile?.raw || null;
+
+    if (slotModalType === 'add') {
+      if (currentService && sellerId && editSlotDayKey) {
+        try {
+          const inserted = await createServiceSlot({
+            serviceId: currentService.id,
+            sellerId,
+            date: getDateForDay(editSlotDayKey),
+            startTime: updatedData.startTime,
+            endTime: updatedData.endTime,
+            capacity: updatedData.capacity,
+          });
+
+          setWeeklySchedule((prev) => ({
+            ...prev,
+            [editSlotDayKey]: [
+              ...(prev[editSlotDayKey] || []),
+              {
+                id: inserted.id,
+                startTime: updatedData.startTime,
+                endTime: updatedData.endTime,
+                capacity: inserted.capacity || updatedData.capacity,
+                slotsLeft: inserted.status === 'available' ? (inserted.capacity || updatedData.capacity) : 0,
+                bookings: [],
+                raw: inserted,
+              },
+            ],
+          }));
+        } catch (error) {
+          console.error('Failed to add weekly service slot', error);
+        }
+      }
+
+      return;
+    }
+
     if (editSlotId && typeof editSlotId === 'number') {
       try {
         const sourceBlock = (weeklySchedule[editSlotDayKey] || []).find((item) => item.id === editSlotId);
@@ -228,13 +271,13 @@ export const useWorkSchedule = ({ sellerId, currentProfile } = {}) => {
           : item
       ),
     }));
-  }, [editSlotDayKey, editSlotId, getDateForDay, weeklySchedule]);
+  }, [currentProfile?.raw, editSlotDayKey, editSlotId, getDateForDay, sellerId, slotModalType, weeklySchedule]);
 
-  const handleSaveSlotEdit = useCallback((updatedData) => {
+  const handleSaveSlotEdit = useCallback(async (updatedData) => {
     if (scheduleMode === 'calendar-only') {
-      handleSaveCalendarSlot(updatedData);
+      await handleSaveCalendarSlot(updatedData);
     } else {
-      handleSaveWeeklySlot(updatedData);
+      await handleSaveWeeklySlot(updatedData);
     }
     closeSlotModal();
   }, [closeSlotModal, handleSaveCalendarSlot, handleSaveWeeklySlot, scheduleMode]);
@@ -309,45 +352,16 @@ export const useWorkSchedule = ({ sellerId, currentProfile } = {}) => {
       return;
     }
 
-    const startTime = window.prompt(`New slot start time for ${dayKey} (HH:MM):`, '09:00');
-    if (!startTime) return;
-    const endTime = window.prompt(`New slot end time for ${dayKey} (HH:MM):`, '11:00');
-    if (!endTime) return;
-    const capacity = window.prompt('Slot capacity:', '3');
-    if (!capacity || Number(capacity) < 1) return;
-
-    const currentService = currentProfile?.raw || null;
-    if (currentService && sellerId) {
-      createServiceSlot({
-        serviceId: currentService.id,
-        sellerId,
-        date: getDateForDay(dayKey),
-        startTime,
-        endTime,
-        capacity: Number(capacity),
-      })
-        .then((inserted) => {
-          setWeeklySchedule((prev) => ({
-            ...prev,
-            [dayKey]: [
-              ...(prev[dayKey] || []),
-              {
-                id: inserted.id,
-                startTime,
-                endTime,
-                capacity: inserted.capacity || Number(capacity),
-                slotsLeft: inserted.status === 'available' ? (inserted.capacity || Number(capacity)) : 0,
-                bookings: [],
-                raw: inserted,
-              },
-            ],
-          }));
-        })
-        .catch((error) => {
-          console.error('Failed to add weekly service slot', error);
-        });
-    }
-  }, [currentProfile?.raw, getDateForDay, scheduleMode, sellerId]);
+    setSlotModalType('add');
+    setEditSlotDayKey(dayKey);
+    setEditSlotId(null);
+    setEditSlotData({
+      startTime: '09:00',
+      endTime: '11:00',
+      capacity: 3,
+    });
+    setEditSlotModalOpen(true);
+  }, [scheduleMode]);
 
   return {
     calendarAvailability,

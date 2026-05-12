@@ -5,7 +5,7 @@ import SellerScheduleModal from '../components/SellerScheduleModal';
 import LogoutConfirmModal from '../../auth/components/LogoutConfirmModal';
 
 
-function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToClient, onOpenAdminDashboard }) {
+function WorkerDashboard({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToClient, onOpenAdminDashboard }) {
   const workerName = sellerProfile?.fullName || 'New Seller';
   const serviceType =
     sellerProfile?.serviceType === 'Others'
@@ -151,6 +151,8 @@ function WorkerDashboard({ appTheme = 'light', currentView, searchQuery, onSearc
     <div style={styles.page}>
       <DashboardNavigation
         appTheme={appTheme}
+        themeMode={themeMode}
+        onThemeChange={onThemeChange}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

@@ -72,31 +72,16 @@ export const mapSlotRowToWeeklyBlock = (slot) => {
 };
 
 export const mapSlotsToSchedule = (slots = []) => {
-  const dateMap = {};
   const weekly = { ...INITIAL_WEEKLY_SCHEDULE };
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const calendarAvailability = [];
 
   (slots || []).forEach((slot) => {
     const start = new Date(slot.start_ts);
     if (Number.isNaN(start.getTime())) return;
 
-    const dateKey = (slot.start_ts || '').slice(0, 10);
     const dayName = dayNames[start.getDay()];
-
-    if (!dateMap[dateKey]) {
-      dateMap[dateKey] = {
-        id: `date-${dateKey}`,
-        date: dateKey,
-        maxBookings: 0,
-        booked: 0,
-        note: '',
-        raw: [],
-      };
-    }
-
-    dateMap[dateKey].maxBookings += slot.capacity || 1;
-    dateMap[dateKey].booked += slot.status === 'booked' ? (slot.capacity || 1) : 0;
-    dateMap[dateKey].raw.push(slot);
+    calendarAvailability.push(mapSlotRowToCalendarEntry(slot));
 
     if (weekly[dayName]) {
       weekly[dayName].push(mapSlotRowToWeeklyBlock(slot));
@@ -104,7 +89,7 @@ export const mapSlotsToSchedule = (slots = []) => {
   });
 
   return {
-    calendarAvailability: Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date)),
+    calendarAvailability: calendarAvailability.sort((a, b) => a.date.localeCompare(b.date)),
     weeklySchedule: weekly,
   };
 };

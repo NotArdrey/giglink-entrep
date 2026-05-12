@@ -32,6 +32,8 @@ const DEFAULT_CATEGORIES = ['All', 'Tutor', 'Technician', 'Cleaner', 'More Servi
 function BrowseServicesPage({
   mode = 'authenticated',
   appTheme = 'light',
+  themeMode = 'system',
+  onThemeChange,
   currentView = 'browse-services',
   searchQuery: externalSearchQuery = '',
   onSearchChange,
@@ -314,6 +316,8 @@ function BrowseServicesPage({
       {!isPublic && (
         <DashboardNavigation
           appTheme={appTheme}
+          themeMode={themeMode}
+          onThemeChange={onThemeChange}
           currentView={currentView}
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}

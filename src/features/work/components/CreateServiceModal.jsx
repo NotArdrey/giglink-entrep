@@ -1,4 +1,5 @@
 import React from 'react';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 const fieldStyle = {
   padding: 8,
@@ -12,39 +13,54 @@ const CreateServiceModal = ({
   onChange,
   onClose,
   onSubmit,
+  appTheme = 'light',
 }) => {
   if (!isOpen) return null;
+  const themeTokens = getThemeTokens(appTheme);
+  const inputStyle = {
+    ...fieldStyle,
+    border: `1px solid ${themeTokens.inputBorder}`,
+    background: themeTokens.inputBg,
+    color: themeTokens.inputText,
+  };
 
   return (
     <div data-testid="create-service-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
-      <div style={{ width: 'min(760px, 92vw)', background: 'white', borderRadius: 12, padding: 18 }}>
+      <div style={{ width: 'min(760px, 92vw)', background: themeTokens.surface, color: themeTokens.textPrimary, border: `1px solid ${themeTokens.border}`, borderRadius: 12, padding: 18, boxShadow: themeTokens.shadow }}>
         <h3 style={{ margin: 0, marginBottom: 8 }}>Add New Service</h3>
         <div style={{ display: 'grid', gap: 8 }}>
           <input
             placeholder="Title"
             value={newService.title}
             onChange={(event) => onChange('title', event.target.value)}
-            style={fieldStyle}
+            style={inputStyle}
           />
           <input
             placeholder="Short description"
             value={newService.shortDescription}
             onChange={(event) => onChange('shortDescription', event.target.value)}
-            style={fieldStyle}
+            style={inputStyle}
           />
-          <div style={{ display: 'flex', gap: 8 }}>
+          <textarea
+            placeholder="Detailed description"
+            value={newService.description}
+            onChange={(event) => onChange('description', event.target.value)}
+            rows={5}
+            style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+          />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input
               placeholder="Price"
               type="number"
               value={newService.basePrice}
               onChange={(event) => onChange('basePrice', event.target.value)}
-              style={{ ...fieldStyle, flex: 1 }}
+              style={{ ...inputStyle, flex: 1 }}
             />
             <select
               aria-label="Price type"
               value={newService.priceType}
               onChange={(event) => onChange('priceType', event.target.value)}
-              style={fieldStyle}
+              style={inputStyle}
             >
               <option value="fixed">Fixed</option>
               <option value="hourly">Hourly</option>
@@ -56,7 +72,7 @@ const CreateServiceModal = ({
               aria-label="Rate basis"
               value={newService.rateBasis}
               onChange={(event) => onChange('rateBasis', event.target.value)}
-              style={fieldStyle}
+              style={inputStyle}
             >
               <option value="per-hour">Per hour</option>
               <option value="per-day">Per day</option>
@@ -68,7 +84,7 @@ const CreateServiceModal = ({
               aria-label="Booking mode"
               value={newService.bookingMode}
               onChange={(event) => onChange('bookingMode', event.target.value)}
-              style={fieldStyle}
+              style={inputStyle}
             >
               <option value="with-slots">Book with slots</option>
               <option value="calendar-only">Book by day (calendar)</option>
@@ -78,15 +94,15 @@ const CreateServiceModal = ({
               type="number"
               value={newService.durationMinutes}
               onChange={(event) => onChange('durationMinutes', event.target.value)}
-              style={{ ...fieldStyle, width: 140 }}
+              style={{ ...inputStyle, width: 140 }}
             />
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-          <button type="button" onClick={onClose} style={{ padding: '8px 12px', borderRadius: 8, background: '#eee', border: 'none' }}>
+          <button type="button" onClick={onClose} style={{ padding: '8px 12px', borderRadius: 8, background: themeTokens.surfaceAlt, color: themeTokens.textPrimary, border: `1px solid ${themeTokens.border}` }}>
             Cancel
           </button>
-          <button type="button" onClick={onSubmit} style={{ padding: '8px 12px', borderRadius: 8, background: '#1d4ed8', color: '#fff', border: 'none' }}>
+          <button type="button" onClick={onSubmit} style={{ padding: '8px 12px', borderRadius: 8, background: themeTokens.accent, color: '#fff', border: 'none' }}>
             Create
           </button>
         </div>

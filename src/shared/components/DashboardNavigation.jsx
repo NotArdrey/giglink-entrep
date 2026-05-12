@@ -5,15 +5,20 @@ import {
   Home,
   LogOut,
   MessageCircle,
+  Moon,
   Search,
   Settings,
   Shield,
   Store,
+  Sun,
   UserRound,
 } from 'lucide-react';
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 
 function DashboardNavigation({
+  appTheme = 'light',
+  themeMode = 'system',
+  onThemeChange,
   searchQuery,
   onSearchChange,
   onLogout,
@@ -81,6 +86,11 @@ function DashboardNavigation({
     .map((segment) => segment.charAt(0).toUpperCase())
     .join('') || 'U';
   const unreadCount = notifications.filter((item) => !item.isRead).length;
+  const isDarkMode = appTheme === 'dark';
+  const ThemeIcon = isDarkMode ? Sun : Moon;
+  const handleThemeToggle = () => {
+    onThemeChange?.(isDarkMode ? 'light' : 'dark');
+  };
 
   const navItems = [
     { key: 'home', label: 'Home', icon: Home, onClick: onOpenDashboard },
@@ -131,6 +141,7 @@ function DashboardNavigation({
     <>
       <aside className="gl-app-sidebar">
         <button type="button" className="gl-app-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
+          <img src="/giglink-logo.svg" alt="" aria-hidden="true" />
           <strong>GigLink</strong>
         </button>
 
@@ -145,6 +156,23 @@ function DashboardNavigation({
 
         {renderNavButtons()}
 
+        <button
+          type="button"
+          className="gl-app-theme-toggle"
+          onClick={handleThemeToggle}
+          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-pressed={isDarkMode}
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          <span className="gl-app-theme-icon">
+            <ThemeIcon size={17} aria-hidden="true" />
+          </span>
+          <span>
+            <strong>{isDarkMode ? 'Light mode' : 'Dark mode'}</strong>
+            <small>{themeMode === 'system' ? 'Device theme active' : 'Manual theme'}</small>
+          </span>
+        </button>
+
         <div className="gl-app-sidebar-footer">
           <button type="button" className="gl-app-user-row" onClick={() => onOpenProfile?.()}>
             <span className="gl-app-avatar">{profileInitials}</span>
@@ -158,6 +186,7 @@ function DashboardNavigation({
 
       <header className="gl-app-topbar">
         <button type="button" className="gl-app-mobile-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
+          <img src="/giglink-logo.svg" alt="" aria-hidden="true" />
           <strong>GigLink</strong>
         </button>
 

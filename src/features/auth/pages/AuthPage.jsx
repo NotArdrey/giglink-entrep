@@ -361,6 +361,7 @@ function AuthPage({
     <main className="auth-page">
       <header className="auth-topbar">
         <button type="button" className="auth-brand" onClick={onBack} aria-label="Back to GigLink home">
+          <img src="/giglink-logo.svg" alt="" aria-hidden="true" />
           <strong>GigLink</strong>
         </button>
 

@@ -117,8 +117,8 @@ const Settings = ({
         cardBg: '#3a414b',
         inputBg: '#464e5a',
         inputBorder: '#687282',
-        accent: '#27ae60',
-        accentHover: '#219653',
+        accent: '#10b0d1',
+        accentHover: '#0c507e',
         borderColor: '#58606c',
         successBg: '#1b4332',
         successText: '#a7e4c0',
@@ -132,8 +132,8 @@ const Settings = ({
         cardBg: '#ffffff',
         inputBg: '#f5f5f5',
         inputBorder: '#d1d5db',
-        accent: '#27ae60',
-        accentHover: '#219653',
+        accent: '#0c507e',
+        accentHover: '#0b4066',
         borderColor: '#e5e7eb',
         successBg: '#dcfce7',
         successText: '#166534',
@@ -477,6 +477,8 @@ const Settings = ({
     <div style={styles.page} data-testid="settings-page">
       <DashboardNavigation
         appTheme={appTheme}
+        themeMode={themeMode}
+        onThemeChange={onThemeChange}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

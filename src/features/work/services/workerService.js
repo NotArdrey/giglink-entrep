@@ -80,7 +80,7 @@ export const mapServiceRowToWorkerService = (service, sellerRow = null, fallback
   return {
     fullName: sellerDisplayName,
     serviceType: service?.title || service?.metadata?.service_type || 'Service',
-    description: service?.short_description || service?.description || '',
+    description: service?.description || service?.short_description || '',
     pricingModel: getPricingModelFromService(service),
     fixedPrice: service?.base_price || '',
     rateBasis,

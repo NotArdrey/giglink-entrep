@@ -53,6 +53,13 @@ const classStyles = {
   location: { fontSize: '14px', color: '#7f8c8d', margin: 0 },
   'service-mode-tag': { margin: '8px 0 0', fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', display: 'inline-block', padding: '4px 8px', borderRadius: '999px' },
   'profile-stats': { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
+  'service-description-panel': { gridColumn: '1 / -1', borderTop: '1px solid #eceff1', paddingTop: '18px' },
+  'service-description-title': { margin: '0 0 8px', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' },
+  'service-description-text': { margin: 0, color: '#374151', lineHeight: 1.6, fontSize: '14px', whiteSpace: 'pre-wrap' },
+  'service-detail-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginTop: '16px' },
+  'service-detail-item': { display: 'grid', gap: '3px' },
+  'service-detail-label': { fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' },
+  'service-detail-value': { fontSize: '13px', fontWeight: 700, color: '#1f2937' },
   stat: { textAlign: 'center', padding: '16px', background: '#f9f9f9', borderRadius: '8px' },
   'stat-number': { display: 'block', fontSize: '24px', fontWeight: 700, color: '#2563eb', marginBottom: '4px' },
   'stat-label': { display: 'block', fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
@@ -191,7 +198,7 @@ const hoverStyles = {
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
  */
-const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
+const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
   // ============ STATE MANAGEMENT ============
 
   const [selectedChatId, setSelectedChatId] = useState(null);
@@ -542,6 +549,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
       boxShadow: themeTokens.shadowSoft,
       color: themeTokens.textPrimary,
     },
+    'profile-avatar': {
+      background: `linear-gradient(135deg, ${themeTokens.accent}, ${themeTokens.accentDeep || themeTokens.accent})`,
+    },
     'profile-name-link': {
       color: themeTokens.textPrimary,
     },
@@ -553,7 +563,22 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     },
     'service-mode-tag': {
       background: themeTokens.accentSoft,
-      color: isDarkMode ? '#93c5fd' : '#1d4ed8',
+      color: themeTokens.accent,
+    },
+    'service-description-panel': {
+      borderTop: `1px solid ${themeTokens.border}`,
+    },
+    'service-description-title': {
+      color: themeTokens.textMuted,
+    },
+    'service-description-text': {
+      color: themeTokens.textSecondary,
+    },
+    'service-detail-label': {
+      color: themeTokens.textMuted,
+    },
+    'service-detail-value': {
+      color: themeTokens.textPrimary,
     },
     stat: {
       background: themeTokens.surfaceAlt,
@@ -562,6 +587,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     },
     'stat-label': {
       color: themeTokens.textMuted,
+    },
+    'stat-number': {
+      color: themeTokens.accent,
     },
     'inquiries-section': sectionCardStyle,
     'payment-confirm-section': sectionCardStyle,
@@ -577,6 +605,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     'inquiry-card': queueCardStyle,
     'inquiry-description': {
       color: themeTokens.textSecondary,
+    },
+    'inquiry-service': {
+      color: themeTokens.accent,
     },
     'inquiry-meta': {
       color: themeTokens.textMuted,
@@ -635,6 +666,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     'slots-counter': {
       color: themeTokens.textSecondary,
     },
+    'filled-bar': {
+      background: `linear-gradient(90deg, ${themeTokens.accent}, ${themeTokens.accentDeep || themeTokens.accent})`,
+    },
     'bookings-preview': {
       background: isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(15, 23, 42, 0.04)',
       color: themeTokens.textSecondary,
@@ -668,6 +702,9 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     'stat-card': queueCardStyle,
     'stat-desc': {
       color: themeTokens.textMuted,
+    },
+    'stat-value': {
+      color: themeTokens.accent,
     },
     'done-confirm-overlay': {
       background: isDarkMode ? 'rgba(2, 6, 23, 0.78)' : 'rgba(15, 23, 42, 0.45)',
@@ -829,6 +866,19 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                   : 'project'
         }`
         : 'Custom pricing';
+  const currentServiceDescription =
+    currentProfile?.raw?.description ||
+    currentProfile?.description ||
+    currentProfile?.raw?.short_description ||
+    'Add a detailed service description so clients understand the scope, deliverables, schedule expectations, and what makes your work a good fit.';
+  const currentDurationLabel = currentProfile?.raw?.duration_minutes
+    ? `${currentProfile.raw.duration_minutes} min`
+    : 'Flexible';
+  const currentPaymentLabel = currentProfile?.paymentAdvance && currentProfile?.paymentAfterService
+    ? 'Advance or after service'
+    : currentProfile?.paymentAdvance
+      ? 'Advance payment'
+      : 'After service';
   const cashQrId = currentProfile?.cashQrId || `CASHQR-${(currentProfile?.fullName || 'WORKER').replace(/\s+/g, '-').toUpperCase()}`;
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
   const cashConfirmQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`CASH-CONFIRM-${currentProfile?.fullName || 'Worker'}-${gcashNumber}`)}`;
@@ -888,6 +938,8 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
     <div style={sx('my-work-page')} data-testid="my-work-page">
       <DashboardNavigation
         appTheme={appTheme}
+        themeMode={themeMode}
+        onThemeChange={onThemeChange}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
@@ -1022,6 +1074,28 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
                 <div style={sx('stat')}>
                   <span style={sx('stat-number')}>0</span>
                   <span style={sx('stat-label')}>Completed</span>
+                </div>
+              </div>
+              <div style={sx('service-description-panel')}>
+                <p style={sx('service-description-title')}>Work Description</p>
+                <p style={sx('service-description-text')}>{currentServiceDescription}</p>
+                <div style={sx('service-detail-grid')}>
+                  <div style={sx('service-detail-item')}>
+                    <span style={sx('service-detail-label')}>Service</span>
+                    <span style={sx('service-detail-value')}>{currentProfile?.serviceType || 'Service'}</span>
+                  </div>
+                  <div style={sx('service-detail-item')}>
+                    <span style={sx('service-detail-label')}>Rate</span>
+                    <span style={sx('service-detail-value')}>{currentPriceLabel}</span>
+                  </div>
+                  <div style={sx('service-detail-item')}>
+                    <span style={sx('service-detail-label')}>Duration</span>
+                    <span style={sx('service-detail-value')}>{currentDurationLabel}</span>
+                  </div>
+                  <div style={sx('service-detail-item')}>
+                    <span style={sx('service-detail-label')}>Payment</span>
+                    <span style={sx('service-detail-value')}>{currentPaymentLabel}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1773,11 +1847,12 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
             ? slotModalType === 'add'
               ? 'Add Available Date'
               : 'Edit Available Date'
-            : `Edit Time Slot - ${editSlotDayKey || 'Day'}`
+            : `${slotModalType === 'add' ? 'Add' : 'Edit'} Time Slot - ${editSlotDayKey || 'Day'}`
         }
-        submitLabel={slotModalType === 'add' ? 'Add Date' : 'Save Changes'}
+        submitLabel={slotModalType === 'add' ? (scheduleMode === 'calendar-only' ? 'Add Date' : 'Add Slot') : 'Save Changes'}
         onSave={handleSaveSlotEdit}
         onClose={closeSlotModal}
+        appTheme={appTheme}
       />
 
       <CreateServiceModal
@@ -1786,11 +1861,12 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         onChange={handleCreateServiceChange}
         onClose={closeCreateService}
         onSubmit={handleCreateServiceSubmit}
+        appTheme={appTheme}
       />
 
       {/* Floating Add Service button (visible when seller exists) */}
       {sellerData && (
-        <button onClick={() => setIsCreateServiceOpen(true)} aria-label="Add service" style={{ position: 'fixed', right: isMobile ? 14 : 20, bottom: isMobile ? 112 : 28, zIndex: 2500, background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 999, width: 56, height: 56, fontSize: 20 }}>+</button>
+        <button onClick={() => setIsCreateServiceOpen(true)} aria-label="Add service" style={{ position: 'fixed', right: isMobile ? 14 : 20, bottom: isMobile ? 112 : 28, zIndex: 2500, background: themeTokens.accent, color: '#fff', border: 'none', borderRadius: 999, width: 56, height: 56, fontSize: 20 }}>+</button>
       )}
 
       {/* PROFILE EDIT MODAL */}
@@ -1799,6 +1875,7 @@ const MyWork = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, 
         profileData={currentProfile}
         onSave={handleProfileEditSave}
         onClose={() => setProfileEditModalOpen(false)}
+        appTheme={appTheme}
       />
 
     </div>

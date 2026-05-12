@@ -123,12 +123,20 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
     },
     logo: {
       textDecoration: 'none',
-      color: '#2563eb',
+      color: '#0c507e',
       fontWeight: 850,
       fontSize: '1.45rem',
       fontFamily: "'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       letterSpacing: 0,
       marginRight: '0.5rem',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    logoImg: {
+      width: '34px',
+      height: '34px',
+      objectFit: 'contain',
     },
     searchWrap: {
       width: '100%',
@@ -375,6 +383,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
             }
           }}
         >
+          <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.logoImg} />
           GigLink
         </a>
 

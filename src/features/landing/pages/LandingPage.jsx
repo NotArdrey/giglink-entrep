@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import { BriefcaseBusiness, Check, Network, Star, Target, TrendingUp, Wrench } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  Check,
+  Network,
+  Star,
+  Target,
+  TrendingUp,
+  Wrench,
+} from 'lucide-react';
 import Navigation from '../../../shared/components/Navigation';
 import HeroSlider from '../components/HeroSlider';
 import AuthPage from '../../auth/pages/AuthPage';
@@ -300,16 +308,15 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
   const styles = {
     goalsSection: {
       position: 'relative',
-      padding: isMobile ? '72px 14px 56px' : isTablet ? '84px 24px 64px' : '100px 40px 80px',
-      background: 'var(--bg-surface)',
+      padding: isMobile ? '56px 14px 44px' : isTablet ? '68px 24px 56px' : '76px 40px 64px',
+      background: 'var(--gl-page)',
       overflow: 'hidden',
     },
     goalsSectionHeaderBg: {
       content: '""',
       position: 'absolute',
       inset: 0,
-      background:
-        'radial-gradient(ellipse 60% 50% at 20% 0%, rgba(37, 99, 235, 0.08) 0%, transparent 70%), radial-gradient(ellipse 50% 40% at 80% 100%, rgba(59, 130, 246, 0.07) 0%, transparent 70%)',
+      background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.04), transparent 320px)',
       pointerEvents: 'none',
     },
     goalsSectionHeader: {
@@ -319,32 +326,32 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
     },
     goalsSectionEyebrow: {
       display: 'inlineBlock',
-      fontFamily: "'DM Mono', 'Courier New', monospace",
+      fontFamily: 'var(--gl-font)',
       fontSize: '12px',
       fontWeight: 500,
-      letterSpacing: '0.18em',
+      letterSpacing: 0,
       textTransform: 'uppercase',
       color: '#2563eb',
       marginBottom: '16px',
       padding: '4px 14px',
       border: '1px solid rgba(37, 99, 235, 0.25)',
-      borderRadius: '100px',
+      borderRadius: '8px',
     },
     goalsSectionTitle: {
-      fontFamily: "'Playfair Display', Georgia, serif",
+      fontFamily: 'var(--gl-font)',
       fontSize: 'clamp(36px, 5vw, 56px)',
-      fontWeight: 700,
+      fontWeight: 850,
       color: 'var(--text-primary)',
       lineHeight: 1.15,
       margin: '0 0 20px',
-      letterSpacing: '-0.02em',
+      letterSpacing: 0,
     },
     goalsSectionTitleEm: {
       fontStyle: 'italic',
       color: '#2563eb',
     },
     goalsSectionSubtitle: {
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: 'var(--gl-font)',
       fontSize: '19px',
       lineHeight: 1.75,
       color: 'var(--text-secondary)',
@@ -373,7 +380,7 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
       borderTop: '1px solid var(--border-default)',
     },
     goalsCtaText: {
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: 'var(--gl-font)',
       fontSize: '18px',
       color: 'var(--text-secondary)',
       margin: 0,
@@ -382,10 +389,10 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
     },
     goalsCtaBtn: {
       padding: '13px 28px',
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: 'var(--gl-font)',
       fontSize: '17px',
       fontWeight: 600,
-      borderRadius: '100px',
+      borderRadius: '8px',
       cursor: 'pointer',
       transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
       letterSpacing: '0.01em',
@@ -403,9 +410,9 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
       gap: '10px',
       background: 'var(--bg-surface)',
       border: '1px solid var(--border-default)',
-      borderRadius: isMobile ? '14px' : '100px',
+      borderRadius: '8px',
       padding: '12px 24px',
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: 'var(--gl-font)',
       fontSize: '16px',
       color: 'var(--text-primary)',
       whiteSpace: isMobile ? 'normal' : 'nowrap',
@@ -585,12 +592,12 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
       alignItems: 'center',
       minHeight: '28px',
       padding: '0 10px',
-      borderRadius: '999px',
+      borderRadius: '8px',
       border: '1px solid #cbd5e1',
       color: '#334155',
       background: '#f8fafc',
       fontSize: '11px',
-      letterSpacing: '0.08em',
+      letterSpacing: 0,
       textTransform: 'uppercase',
       fontWeight: 700,
     },
@@ -612,9 +619,9 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
     },
     landingStatCard: {
       border: '1px solid var(--border-default)',
-      borderRadius: '14px',
-      background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98))',
-      boxShadow: '0 10px 26px rgba(15, 23, 42, 0.11)',
+      borderRadius: '8px',
+      background: '#ffffff',
+      boxShadow: '0 4px 12px rgba(17, 24, 39, 0.06)',
       padding: '16px 18px',
       textAlign: 'center',
     },
@@ -622,7 +629,7 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
       margin: 0,
       fontSize: 'clamp(1.25rem, 2vw, 1.7rem)',
       fontWeight: 800,
-      letterSpacing: '-0.01em',
+      letterSpacing: 0,
       color: '#0f172a',
     },
     landingStatLabel: {
@@ -689,7 +696,7 @@ function LandingPage({ onLogin, onResendVerification, onForgotPasswordSubmit }) 
     landingSocialLink: (id) => ({
       width: '38px',
       height: '38px',
-      borderRadius: '999px',
+      borderRadius: '8px',
       border: socialLinkHovered === id ? '1px solid #111827' : '1px solid #d1d5db',
       display: 'inline-flex',
       alignItems: 'center',

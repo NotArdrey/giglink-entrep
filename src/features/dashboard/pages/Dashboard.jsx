@@ -45,6 +45,8 @@ const quickActions = [
 
 function Dashboard({
   appTheme = 'light',
+  themeMode = 'system',
+  onThemeChange,
   currentView = 'client-dashboard',
   searchQuery = '',
   onSearchChange,
@@ -91,6 +93,8 @@ function Dashboard({
     <div className="gl-page" data-testid="client-home-dashboard">
       <DashboardNavigation
         appTheme={appTheme}
+        themeMode={themeMode}
+        onThemeChange={onThemeChange}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

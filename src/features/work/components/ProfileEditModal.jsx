@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 
 /**
@@ -16,6 +17,7 @@ const ProfileEditModal = ({
   profileData,
   onSave,
   onClose,
+  appTheme = 'light',
 }) => {
   const [fullName, setFullName] = useState('');
   const [serviceType, setServiceType] = useState('');
@@ -113,6 +115,7 @@ const ProfileEditModal = ({
   };
 
   if (!isOpen) return null;
+  const themeTokens = getThemeTokens(appTheme);
 
   const styles = {
     overlay: {
@@ -129,25 +132,27 @@ const ProfileEditModal = ({
       width: 'min(95vw, 760px)',
       maxHeight: '94vh',
       overflowY: 'auto',
-      backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
+      backgroundColor: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.85rem',
       boxShadow: '0 18px 40px rgba(15, 23, 42, 0.25)',
+      color: themeTokens.textPrimary,
     },
     header: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0.8rem 1rem',
-      borderBottom: '1px solid #e2e8f0',
-      backgroundColor: '#f8fafc',
+      borderBottom: `1px solid ${themeTokens.border}`,
+      backgroundColor: themeTokens.surfaceAlt,
     },
     close: {
       width: '32px',
       height: '32px',
       borderRadius: '999px',
-      border: '1px solid #cbd5e1',
-      backgroundColor: '#ffffff',
+      border: `1px solid ${themeTokens.border}`,
+      backgroundColor: themeTokens.surface,
+      color: themeTokens.textPrimary,
       cursor: 'pointer',
     },
     body: { padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' },
@@ -159,12 +164,12 @@ const ProfileEditModal = ({
       fontSize: '0.9rem',
     },
     field: { display: 'flex', flexDirection: 'column', gap: '0.3rem' },
-    input: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', padding: '0.5rem 0.55rem' },
-    textarea: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', padding: '0.5rem 0.55rem', resize: 'vertical' },
+    input: { border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '0.45rem', padding: '0.5rem 0.55rem', background: themeTokens.inputBg, color: themeTokens.inputText },
+    textarea: { border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '0.45rem', padding: '0.5rem 0.55rem', resize: 'vertical', background: themeTokens.inputBg, color: themeTokens.inputText },
     section: {
-      border: '1px solid #e2e8f0',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.65rem',
-      backgroundColor: '#f8fafc',
+      backgroundColor: themeTokens.surfaceAlt,
       padding: '0.75rem',
       display: 'flex',
       flexDirection: 'column',
@@ -175,8 +180,9 @@ const ProfileEditModal = ({
       display: 'flex',
       alignItems: 'center',
       gap: '0.45rem',
-      border: '1px solid #cbd5e1',
-      backgroundColor: '#ffffff',
+      border: `1px solid ${themeTokens.border}`,
+      backgroundColor: themeTokens.surface,
+      color: themeTokens.textPrimary,
       borderRadius: '0.45rem',
       padding: '0.4rem 0.5rem',
     },
@@ -184,11 +190,11 @@ const ProfileEditModal = ({
       display: 'flex',
       justifyContent: 'flex-end',
       gap: '0.5rem',
-      borderTop: '1px solid #e2e8f0',
+      borderTop: `1px solid ${themeTokens.border}`,
       padding: '0.75rem 1rem',
     },
-    cancel: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600 },
-    save: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700 },
+    cancel: { border: `1px solid ${themeTokens.border}`, borderRadius: '0.45rem', backgroundColor: themeTokens.surfaceAlt, color: themeTokens.textPrimary, padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600 },
+    save: { border: 'none', borderRadius: '0.45rem', backgroundColor: themeTokens.accent, color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700 },
   };
 
   return (
@@ -424,7 +430,7 @@ const ProfileEditModal = ({
             Cancel
           </button>
           <button
-            style={{ ...styles.save, backgroundColor: hoveredButton === 'save-profile' ? '#1d4ed8' : '#2563eb' }}
+            style={{ ...styles.save, backgroundColor: hoveredButton === 'save-profile' ? themeTokens.accentHover : themeTokens.accent }}
             onMouseEnter={() => setHoveredButton('save-profile')}
             onMouseLeave={() => setHoveredButton('')}
             onClick={handleSave}

@@ -30,6 +30,7 @@ function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSec
       gap: '0.75rem',
     },
     brandWrap: { display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 },
+    brandLogo: { width: '34px', height: '34px', objectFit: 'contain', flex: '0 0 auto' },
     brand: {
       margin: 0,
       fontFamily: "'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -100,6 +101,7 @@ function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSec
     <nav className="gl-admin-nav" style={styles.nav}>
       <div className="gl-admin-nav-inner" style={styles.inner}>
         <div className="gl-admin-nav-brand" style={styles.brandWrap}>
+          <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.brandLogo} />
           <h1 style={styles.brand}>GigLink</h1>
           <span style={styles.badge}>Admin</span>
         </div>

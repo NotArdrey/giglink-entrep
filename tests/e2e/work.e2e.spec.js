@@ -134,12 +134,11 @@ test('My Work loads profile data and manages service slots end to end', async ({
   const serviceTitle = `E2E Slot Service ${Date.now()}`;
   await createService(page, { title: serviceTitle, bookingMode: 'with-slots' });
 
-  const promptAnswers = ['09:00', '10:30', '2'];
-  page.on('dialog', async (dialog) => {
-    await dialog.accept(promptAnswers.shift() || '');
-  });
-
   await page.getByRole('button', { name: /\+ Add Slot/ }).first().click();
+  await page.getByLabel('Start Time').fill('09:00');
+  await page.getByLabel('End Time').fill('10:30');
+  await page.getByLabel('Slot Capacity').fill('2');
+  await page.getByRole('button', { name: 'Add Slot' }).click();
   await expect(page.getByText('09:00 - 10:30')).toBeVisible({ timeout: 20_000 });
 
   await page.getByTitle('Edit slot').first().click();

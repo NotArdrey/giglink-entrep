@@ -104,7 +104,7 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
     title: resolveServiceTitle(service, seller, sellerProfile),
     serviceType,
     customServiceType: service.metadata?.custom_service_type || service.metadata?.customServiceType || '',
-    description: service.short_description || service.description || seller.about || seller.tagline || 'Professional service available through GigLink.',
+    description: service.description || service.short_description || seller.about || seller.tagline || 'Professional service available through GigLink.',
     rating: service.rating || seller.avg_rating || 4.8,
     reviews: service.reviews_count || seller.rating_count || 0,
     photo: seller.profile_photo || seller.avatar_url || '',

@@ -58,8 +58,8 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
     heroSlider: {
       position: 'relative',
       width: '100%',
-      height: isMobile ? 'clamp(660px, calc(100svh - 150px), 720px)' : 'min(760px, calc(100vh - 128px))',
-      minHeight: isMobile ? '660px' : '520px',
+      height: isMobile ? 'clamp(620px, calc(100svh - 118px), 700px)' : 'min(700px, calc(100vh - 118px))',
+      minHeight: isMobile ? '620px' : '500px',
       overflow: 'hidden',
       marginTop: isMobile ? '66px' : '70px',
       background: '#0f172a',
@@ -266,7 +266,7 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
               <div style={{ ...styles.heroSearchStrip, ...(isMobile ? styles.mobileStyles.heroSearchStrip : {}) }}>
                 <div style={styles.heroSearchCopy}>
                   <Search size={18} aria-hidden="true" />
-                  <span>Try “math tutor”, “aircon cleaning”, or “graphic design”</span>
+                  <span>Try "math tutor", "aircon cleaning", or "graphic design"</span>
                 </div>
                 <button type="button" style={styles.heroSearchButton} onClick={handleBrowseServices}>
                   Search now

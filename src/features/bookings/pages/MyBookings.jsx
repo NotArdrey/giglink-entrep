@@ -12,7 +12,7 @@ import {
   useRatingController,
 } from '../hooks';
 
-const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
+const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
   // ========================================================================
   // CONTROLLER HOOKS INITIALIZATION
   // ========================================================================
@@ -357,6 +357,8 @@ const MyBookings = ({ appTheme = 'light', currentView, searchQuery, onSearchChan
     <div style={styles.myBookings} data-testid="my-bookings-page">
       <DashboardNavigation
         appTheme={appTheme}
+        themeMode={themeMode}
+        onThemeChange={onThemeChange}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}

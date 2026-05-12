@@ -1,5 +1,7 @@
 
 
+import { useState } from 'react';
+
 /**
  * DigitalPortfolioModal Component
  * 
@@ -23,6 +25,8 @@ const DigitalPortfolioModal = ({
   gcashNumber = '09XXXXXXXXX',
   onClose,
 }) => {
+  const [generationError, setGenerationError] = useState('');
+
   if (!isOpen) return null;
 
   const styles = {
@@ -89,6 +93,16 @@ const DigitalPortfolioModal = ({
       fontSize: '0.92rem',
       lineHeight: 1.45,
     },
+    errorNotice: {
+      marginTop: '0.75rem',
+      border: '1px solid #fecaca',
+      borderRadius: '0.55rem',
+      backgroundColor: '#fee2e2',
+      color: '#991b1b',
+      padding: '0.65rem 0.75rem',
+      fontSize: '0.92rem',
+      fontWeight: 700,
+    },
     actions: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid #e2e8f0', padding: '0.75rem 1rem' },
     cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600 },
     downloadButton: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700 },
@@ -96,6 +110,7 @@ const DigitalPortfolioModal = ({
 
   const generatePDF = async () => {
     try {
+      setGenerationError('');
       // Dynamically import jsPDF to avoid build-time dependency issues
       const { jsPDF } = await import('jspdf');
 
@@ -217,8 +232,7 @@ const DigitalPortfolioModal = ({
       const fileName = `${workerName}_GigLink_Portfolio_${new Date().getFullYear()}.pdf`;
       doc.save(fileName);
     } catch (error) {
-      console.error('PDF generation error:', error);
-      alert('Could not generate PDF. Please try again.');
+      setGenerationError('Could not generate PDF. Please try again.');
     }
   };
 
@@ -281,6 +295,11 @@ const DigitalPortfolioModal = ({
             <p>
               <strong>💼 Professional Use:</strong> Use this portfolio in emails, social media, or print ads to establish your professional identity.
             </p>
+            {generationError && (
+              <div style={styles.errorNotice} role="alert">
+                {generationError}
+              </div>
+            )}
           </div>
         </div>
 

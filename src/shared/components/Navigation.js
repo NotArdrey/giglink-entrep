@@ -40,9 +40,19 @@ function Navigation({ onLoginClick, onBrowseServices }) {
       gap: '1rem',
     },
     navLogo: {
+      wrap: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+      },
+      img: {
+        width: '34px',
+        height: '34px',
+        objectFit: 'contain',
+      },
       h1: {
         fontSize: '1.45rem',
-        color: '#2563eb',
+        color: '#0c507e',
         margin: 0,
         fontWeight: 850,
         letterSpacing: 0,
@@ -121,7 +131,8 @@ function Navigation({ onLoginClick, onBrowseServices }) {
     <nav style={styles.navigation}>
       <div style={styles.navContainer}>
         {/* Logo */}
-        <div>
+        <div style={styles.navLogo.wrap}>
+          <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.navLogo.img} />
           <h1 style={styles.navLogo.h1}>GigLink</h1>
         </div>
 

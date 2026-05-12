@@ -1,25 +1,31 @@
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
 :root {
-  --gl-page: #f6f8fb;
-  --gl-page-soft: #eef2f7;
+  --gl-page: #f9fafb;
+  --gl-page-soft: #f3f4f6;
   --gl-surface: #ffffff;
   --gl-surface-2: #f8fafc;
   --gl-surface-3: #eef2f7;
-  --gl-border: #d9e2ef;
-  --gl-border-strong: #c3cfdd;
-  --gl-text: #0f172a;
-  --gl-text-2: #475569;
-  --gl-text-3: #64748b;
-  --gl-blue: #2563eb;
-  --gl-blue-2: #1d4ed8;
-  --gl-green: #059669;
-  --gl-amber: #d97706;
+  --gl-border: #e5e7eb;
+  --gl-border-strong: #cbd5e1;
+  --gl-text: #111827;
+  --gl-text-2: #374151;
+  --gl-text-3: #6b7280;
+  --gl-blue: #0c507e;
+  --gl-blue-2: #0b4066;
+  --gl-cyan: #10b0d1;
+  --gl-green: #10b981;
+  --gl-amber: #f59e0b;
   --gl-red: #dc2626;
-  --gl-shadow: 0 16px 40px rgba(15, 23, 42, 0.1);
-  --gl-shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.07);
+  --gl-shadow: 0 16px 34px rgba(17, 24, 39, 0.12);
+  --gl-shadow-soft: 0 4px 12px rgba(17, 24, 39, 0.06);
   --gl-radius: 8px;
-  --gl-font: "Poppins", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --gl-font: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg-page: var(--gl-page);
+  --bg-surface: var(--gl-surface);
+  --border-default: var(--gl-border);
+  --text-primary: var(--gl-text);
+  --text-secondary: var(--gl-text-2);
 }
 
 [data-theme="dark"] {
@@ -33,6 +39,9 @@
   --gl-text: #f8fafc;
   --gl-text-2: #cbd5e1;
   --gl-text-3: #94a3b8;
+  --gl-blue: #10b0d1;
+  --gl-blue-2: #0c507e;
+  --gl-cyan: #10b0d1;
   --gl-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
   --gl-shadow-soft: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
@@ -115,9 +124,19 @@ textarea {
   color: var(--gl-blue);
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px;
   text-align: left;
   cursor: pointer;
+}
+
+.gl-app-brand img,
+.gl-app-mobile-brand img,
+.auth-brand img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .gl-app-brand {
@@ -211,8 +230,8 @@ textarea {
 }
 
 .gl-app-nav-item.active {
-  border-color: rgba(37, 99, 235, 0.24);
-  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(16, 176, 209, 0.32);
+  background: rgba(16, 176, 209, 0.12);
   color: var(--gl-blue);
 }
 
@@ -220,6 +239,56 @@ textarea {
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--gl-border);
+}
+
+.gl-app-theme-toggle {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--gl-border);
+  border-radius: 8px;
+  background: var(--gl-surface-2);
+  color: var(--gl-text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gl-app-theme-toggle:hover {
+  border-color: var(--gl-blue);
+  background: color-mix(in srgb, var(--gl-blue) 10%, var(--gl-surface));
+}
+
+.gl-app-theme-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--gl-blue) 14%, var(--gl-surface));
+  color: var(--gl-blue);
+  flex: 0 0 auto;
+}
+
+.gl-app-theme-toggle strong,
+.gl-app-theme-toggle small {
+  display: block;
+}
+
+.gl-app-theme-toggle strong {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 850;
+}
+
+.gl-app-theme-toggle small {
+  margin-top: 2px;
+  color: var(--gl-text-3);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .gl-app-user-row {
@@ -1505,6 +1574,11 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .browse-hero,
+  .dashboard-hero {
+    grid-template-columns: 1fr !important;
+  }
+
   .browse-filter-rail,
   .browse-toolbar {
     position: static;
@@ -2597,5 +2671,177 @@ textarea {
   .gl-app-icon-btn {
     width: 38px;
     height: 38px;
+  }
+}
+
+/* Stitch Professional Marketplace Core refresh */
+.gl-app-sidebar {
+  width: 260px;
+  padding: 18px 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
+}
+
+.gl-app-topbar {
+  left: 260px;
+  background: rgba(249, 250, 251, 0.9);
+  box-shadow: none;
+}
+
+.gl-app-shell-active .gl-page,
+.gl-app-shell-active [data-testid="my-bookings-page"],
+.gl-app-shell-active [data-testid="my-work-page"],
+.gl-app-shell-active [data-testid="profile-page"],
+.gl-app-shell-active [data-testid="account-settings-page"],
+.gl-app-shell-active [data-testid="settings-page"] {
+  padding-left: 260px !important;
+  background: var(--gl-page) !important;
+}
+
+.gl-app-shell-active .gl-shell {
+  width: min(1280px, calc(100vw - 316px));
+}
+
+.gl-card,
+.gl-app-dropdown,
+.gl-app-notification,
+.gl-settings-card-modern,
+.service-result-card,
+.dashboard-action-card,
+.dashboard-status-panel,
+.dashboard-wide-panel,
+.browse-filter-rail,
+.browse-toolbar {
+  border-color: var(--gl-border) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.gl-card:hover,
+.service-result-card:hover,
+.dashboard-action-card:hover {
+  box-shadow: var(--gl-shadow-soft) !important;
+}
+
+.gl-title {
+  font-size: clamp(28px, 3.2vw, 42px);
+  font-weight: 800;
+}
+
+.gl-subtitle {
+  color: var(--gl-text-2);
+}
+
+.gl-eyebrow,
+.gl-chip,
+.browse-results-head span,
+.dashboard-action-icon,
+[style*="border-radius: 999px"],
+[style*="borderRadius: 999"] {
+  border-radius: 8px !important;
+}
+
+.browse-hero,
+.dashboard-hero {
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  padding: 24px;
+}
+
+.browse-marketplace {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.browse-results-list {
+  gap: 8px;
+}
+
+.service-result-card {
+  grid-template-columns: 72px minmax(0, 1fr) 160px;
+  min-height: 110px;
+}
+
+.dashboard-action-card,
+.dashboard-wide-panel {
+  min-height: 132px;
+}
+
+[data-testid="my-bookings-page"],
+[data-testid="my-work-page"],
+[data-testid="profile-page"],
+[data-testid="account-settings-page"],
+[data-testid="settings-page"] {
+  background: var(--gl-page) !important;
+  color: var(--gl-text) !important;
+}
+
+[data-testid="my-bookings-page"] :where(div, section, article)[style*="box-shadow"],
+[data-testid="my-work-page"] :where(div, section, article)[style*="box-shadow"],
+[data-testid="profile-page"] :where(div, section, article)[style*="box-shadow"],
+[data-testid="settings-page"] :where(div, section, article)[style*="box-shadow"],
+.gl-admin-page :where(article, section)[style*="box-shadow"] {
+  box-shadow: none !important;
+}
+
+[data-testid="my-bookings-page"] :where(div, section, article)[style*="border-radius: 12px"],
+[data-testid="my-bookings-page"] :where(div, section, article)[style*="border-radius: 16px"],
+[data-testid="my-work-page"] :where(div, section, article, button)[style*="border-radius: 12px"],
+[data-testid="my-work-page"] :where(div, section, article, button)[style*="border-radius: 16px"],
+[data-testid="profile-page"] :where(div, section, article, button)[style*="border-radius: 12px"],
+[data-testid="settings-page"] :where(div, section, article, button)[style*="border-radius: 12px"],
+.gl-admin-page :where(article, section, button, input, select) {
+  border-radius: 8px !important;
+}
+
+[data-testid="my-work-page"] main > section,
+[data-testid="my-work-page"] main > div,
+[data-testid="my-bookings-page"] main > section,
+[data-testid="profile-page"] main > div,
+[data-testid="settings-page"] main > div {
+  border-color: var(--gl-border) !important;
+}
+
+[data-testid="my-work-page"] button,
+[data-testid="my-bookings-page"] button,
+[data-testid="profile-page"] button,
+[data-testid="settings-page"] button,
+.gl-admin-page button {
+  letter-spacing: 0 !important;
+}
+
+[data-testid="my-work-page"] :where(h1, h2, h3, h4),
+[data-testid="my-bookings-page"] :where(h1, h2, h3, h4),
+[data-testid="profile-page"] :where(h1, h2, h3, h4),
+[data-testid="settings-page"] :where(h1, h2, h3, h4),
+.gl-admin-page :where(h1, h2, h3, h4) {
+  color: var(--gl-text) !important;
+  letter-spacing: 0 !important;
+}
+
+@media (max-width: 880px) {
+  .gl-app-topbar {
+    left: 0;
+  }
+
+  .gl-app-shell-active .gl-page,
+  .gl-app-shell-active [data-testid="my-bookings-page"],
+  .gl-app-shell-active [data-testid="my-work-page"],
+  .gl-app-shell-active [data-testid="profile-page"],
+  .gl-app-shell-active [data-testid="account-settings-page"],
+  .gl-app-shell-active [data-testid="settings-page"] {
+    padding-left: 0 !important;
+  }
+
+  .browse-marketplace {
+    grid-template-columns: 1fr;
+  }
+
+  .browse-hero,
+  .dashboard-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .browse-filter-rail,
+  .browse-toolbar {
+    position: static;
   }
 }

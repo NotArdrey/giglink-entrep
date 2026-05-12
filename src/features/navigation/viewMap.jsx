@@ -218,7 +218,11 @@ export const renderView = (currentView, context) => {
   }
 
   const { component: Component, propsBuilder } = viewConfig;
-  const props = propsBuilder(context);
+  const props = {
+    themeMode: context.themeMode,
+    onThemeChange: context.handleThemeChange,
+    ...propsBuilder(context),
+  };
 
   return <Component {...props} />;
 };

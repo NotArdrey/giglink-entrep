@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
@@ -15,7 +16,7 @@ const BULACAN_CODE = '031400000';
  * - If mismatch: show red error message.
  * - If match: clear error and show success toast notification.
  */
-function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
+function AccountSettings({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
   const splitNameParts = (value = '') => {
     const parts = String(value).trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
@@ -61,6 +62,7 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
+  const themeTokens = getThemeTokens(appTheme);
 
   useEffect(() => {
     const handleResize = () => {
@@ -214,7 +216,8 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
   const styles = {
     page: {
       minHeight: '100vh',
-      backgroundColor: '#f8fafc',
+      backgroundColor: themeTokens.pageBg,
+      color: themeTokens.textPrimary,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'stretch',
@@ -225,10 +228,10 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
     },
     card: {
       width: 'min(96vw, 760px)',
-      backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
+      backgroundColor: themeTokens.surface,
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.8rem',
-      boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+      boxShadow: themeTokens.shadowSoft,
       padding: isMobile ? '0.8rem' : '1rem',
       display: 'flex',
       flexDirection: 'column',
@@ -236,29 +239,31 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
       margin: '0 auto',
     },
     backButton: {
-      border: '1px solid #cbd5e1',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.5rem',
-      backgroundColor: '#ffffff',
+      backgroundColor: themeTokens.surface,
+      color: themeTokens.textPrimary,
       padding: '0.5rem 0.7rem',
       cursor: 'pointer',
       width: 'fit-content',
       fontWeight: 600,
     },
-    ownerText: { margin: 0, color: '#64748b' },
+    ownerText: { margin: 0, color: themeTokens.textSecondary },
     section: {
-      border: '1px solid #e2e8f0',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.65rem',
       padding: isMobile ? '0.75rem' : '0.9rem',
-      backgroundColor: '#f8fafc',
+      backgroundColor: themeTokens.surfaceAlt,
       display: 'flex',
       flexDirection: 'column',
       gap: '0.45rem',
     },
     input: {
-      border: '1px solid #cbd5e1',
+      border: `1px solid ${themeTokens.inputBorder}`,
       borderRadius: '0.45rem',
       padding: '0.5rem 0.58rem',
-      backgroundColor: '#ffffff',
+      backgroundColor: themeTokens.inputBg,
+      color: themeTokens.inputText,
       fontSize: '0.95rem',
     },
     errorText: {
@@ -272,7 +277,7 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
     actionButton: {
       border: 'none',
       borderRadius: '0.5rem',
-      backgroundColor: '#2563eb',
+      backgroundColor: themeTokens.accent,
       color: '#ffffff',
       padding: '0.58rem 0.85rem',
       fontWeight: 700,
@@ -300,6 +305,8 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
     <div style={styles.page} data-testid="account-settings-page">
       <DashboardNavigation
         appTheme={appTheme}
+        themeMode={themeMode}
+        onThemeChange={onThemeChange}
         currentView={currentView}
         searchQuery={searchQuery}
         onSearchChange={onSearchChange}
@@ -408,7 +415,7 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
           {locationError && <p style={styles.errorText}>{locationError}</p>}
 
           <button
-            style={{ ...styles.actionButton, backgroundColor: hoveredButton === 'save-personal' ? '#1d4ed8' : '#2563eb' }}
+            style={{ ...styles.actionButton, backgroundColor: hoveredButton === 'save-personal' ? themeTokens.accentHover : themeTokens.accent }}
             onMouseEnter={() => setHoveredButton('save-personal')}
             onMouseLeave={() => setHoveredButton('')}
             onClick={handleSavePersonalInfo}
@@ -450,7 +457,7 @@ function AccountSettings({ appTheme = 'light', currentView, searchQuery, onSearc
           {passwordError && <p style={styles.errorText}>{passwordError}</p>}
 
           <button
-            style={{ ...styles.actionButton, backgroundColor: hoveredButton === 'update-password' ? '#1d4ed8' : '#2563eb' }}
+            style={{ ...styles.actionButton, backgroundColor: hoveredButton === 'update-password' ? themeTokens.accentHover : themeTokens.accent }}
             onMouseEnter={() => setHoveredButton('update-password')}
             onMouseLeave={() => setHoveredButton('')}
             onClick={handlePasswordUpdate}

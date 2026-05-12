@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 
 /**
@@ -16,6 +17,7 @@ const SlotEditModal = ({
   submitLabel,
   onSave,
   onClose,
+  appTheme = 'light',
 }) => {
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('11:00');
@@ -78,6 +80,7 @@ const SlotEditModal = ({
   };
 
   if (!isOpen) return null;
+  const themeTokens = getThemeTokens(appTheme);
 
   const styles = {
     overlay: {
@@ -92,31 +95,33 @@ const SlotEditModal = ({
     },
     modal: {
       width: 'min(94vw, 620px)',
-      backgroundColor: '#ffffff',
+      backgroundColor: themeTokens.surface,
       borderRadius: '0.8rem',
-      border: '1px solid #e2e8f0',
-      boxShadow: '0 18px 35px rgba(15, 23, 42, 0.24)',
+      border: `1px solid ${themeTokens.border}`,
+      boxShadow: themeTokens.shadow,
       overflow: 'hidden',
+      color: themeTokens.textPrimary,
     },
     header: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      backgroundColor: '#f8fafc',
-      borderBottom: '1px solid #e2e8f0',
+      backgroundColor: themeTokens.surfaceAlt,
+      borderBottom: `1px solid ${themeTokens.border}`,
       padding: '0.8rem 1rem',
     },
     close: {
-      border: '1px solid #cbd5e1',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '999px',
       width: '32px',
       height: '32px',
-      backgroundColor: '#ffffff',
+      backgroundColor: themeTokens.surface,
+      color: themeTokens.textPrimary,
       cursor: 'pointer',
     },
     body: { padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' },
     field: { display: 'flex', flexDirection: 'column', gap: '0.3rem' },
-    input: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', padding: '0.5rem 0.55rem' },
+    input: { border: `1px solid ${themeTokens.inputBorder}`, borderRadius: '0.45rem', padding: '0.5rem 0.55rem', background: themeTokens.inputBg, color: themeTokens.inputText },
     row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' },
     error: {
       borderRadius: '0.4rem',
@@ -126,23 +131,24 @@ const SlotEditModal = ({
       fontSize: '0.9rem',
     },
     preview: {
-      border: '1px solid #bfdbfe',
-      backgroundColor: '#eff6ff',
+      border: `1px solid ${themeTokens.accent}`,
+      backgroundColor: themeTokens.accentSoft,
       borderRadius: '0.45rem',
       padding: '0.5rem 0.6rem',
-      color: '#1e3a8a',
+      color: themeTokens.accent,
     },
     actions: {
       display: 'flex',
       justifyContent: 'flex-end',
       gap: '0.5rem',
-      borderTop: '1px solid #e2e8f0',
+      borderTop: `1px solid ${themeTokens.border}`,
       padding: '0.75rem 1rem',
     },
     cancel: {
-      border: '1px solid #cbd5e1',
+      border: `1px solid ${themeTokens.border}`,
       borderRadius: '0.45rem',
-      backgroundColor: '#ffffff',
+      backgroundColor: themeTokens.surfaceAlt,
+      color: themeTokens.textPrimary,
       padding: '0.5rem 0.75rem',
       cursor: 'pointer',
       fontWeight: 600,
@@ -150,7 +156,7 @@ const SlotEditModal = ({
     save: {
       border: 'none',
       borderRadius: '0.45rem',
-      backgroundColor: '#2563eb',
+      backgroundColor: themeTokens.accent,
       color: '#ffffff',
       padding: '0.5rem 0.75rem',
       cursor: 'pointer',
@@ -266,7 +272,7 @@ const SlotEditModal = ({
             Cancel
           </button>
           <button
-            style={{ ...styles.save, backgroundColor: hoveredButton === 'save' ? '#1d4ed8' : '#2563eb' }}
+            style={{ ...styles.save, backgroundColor: hoveredButton === 'save' ? themeTokens.accentHover : themeTokens.accent }}
             onMouseEnter={() => setHoveredButton('save')}
             onMouseLeave={() => setHoveredButton('')}
             onClick={handleSave}
