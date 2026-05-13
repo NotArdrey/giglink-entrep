@@ -1,6 +1,6 @@
 
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * DigitalPortfolioModal Component
@@ -26,6 +26,18 @@ const DigitalPortfolioModal = ({
   onClose,
 }) => {
   const [generationError, setGenerationError] = useState('');
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 720 : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const handleResize = () => setIsMobile(window.innerWidth <= 720);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -35,14 +47,15 @@ const DigitalPortfolioModal = ({
       inset: 0,
       backgroundColor: 'rgba(15, 23, 42, 0.58)',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: isMobile ? 'flex-start' : 'center',
       justifyContent: 'center',
-      padding: '1rem',
+      padding: isMobile ? '0.75rem' : '1rem',
       zIndex: 280,
+      overflowY: 'auto',
     },
     card: {
-      width: 'min(96vw, 980px)',
-      maxHeight: '94vh',
+      width: 'min(100%, 980px)',
+      maxHeight: isMobile ? 'calc(100svh - 24px)' : '94vh',
       overflowY: 'auto',
       backgroundColor: '#ffffff',
       borderRadius: '0.9rem',
@@ -52,17 +65,18 @@ const DigitalPortfolioModal = ({
     header: {
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '0.85rem 1rem',
+      alignItems: isMobile ? 'flex-start' : 'center',
+      gap: '0.75rem',
+      padding: isMobile ? '0.75rem' : '0.85rem 1rem',
       borderBottom: '1px solid #e2e8f0',
       backgroundColor: '#f8fafc',
     },
     close: { width: '32px', height: '32px', borderRadius: '999px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
     body: {
       display: 'grid',
-      gridTemplateColumns: 'minmax(270px, 1.4fr) minmax(220px, 1fr)',
+      gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(270px, 1.4fr) minmax(220px, 1fr)',
       gap: '0.8rem',
-      padding: '1rem',
+      padding: isMobile ? '0.75rem' : '1rem',
       alignItems: 'start',
     },
     previewWrap: { width: '100%' },
@@ -72,6 +86,7 @@ const DigitalPortfolioModal = ({
       backgroundColor: '#ffffff',
       padding: '0.9rem',
       color: '#0f172a',
+      overflowWrap: 'break-word',
     },
     previewHeader: {
       borderBottom: '1px solid #e2e8f0',
@@ -103,9 +118,16 @@ const DigitalPortfolioModal = ({
       fontSize: '0.92rem',
       fontWeight: 700,
     },
-    actions: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid #e2e8f0', padding: '0.75rem 1rem' },
-    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600 },
-    downloadButton: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700 },
+    actions: {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: '0.5rem',
+      borderTop: '1px solid #e2e8f0',
+      padding: isMobile ? '0.75rem' : '0.75rem 1rem',
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600, width: isMobile ? '100%' : 'auto' },
+    downloadButton: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700, width: isMobile ? '100%' : 'auto' },
   };
 
   const generatePDF = async () => {

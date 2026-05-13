@@ -65,6 +65,8 @@ const classStyles = {
   'stat-label': { display: 'block', fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
   'inquiries-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 48px' },
   'section-header': { marginBottom: '24px' },
+  'section-header-with-action': { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' },
+  'section-heading-copy': { minWidth: 0, flex: '1 1 260px' },
   'section-subtitle': { fontSize: '14px', color: '#7f8c8d', margin: 0 },
   'inquiries-grid': { width: '100%', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' },
   'inquiry-card': { width: '100%', boxSizing: 'border-box', background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', transition: 'all 0.3s ease', border: '1px solid transparent' },
@@ -87,6 +89,9 @@ const classStyles = {
   'week-slider': { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px' },
   'week-nav-btn': { border: '1px solid #cbd5e1', background: '#f8fafc', color: '#1f2937', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
   'week-range': { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', color: '#1f2937' },
+  'schedule-state-message': { margin: '0 0 12px', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 700 },
+  'schedule-loading-state': { background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' },
+  'schedule-error-state': { background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' },
   'calendar-availability-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' },
   'calendar-day-card': { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '16px' },
   'calendar-date': { margin: '0 0 6px', color: '#1f2937', fontSize: '17px' },
@@ -122,6 +127,7 @@ const classStyles = {
   'block-actions': { display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' },
   'action-btn': { width: '28px', height: '28px', padding: 0, background: 'white', border: '1px solid #eceff1', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   'btn-add-slot': { width: '100%', padding: '10px', background: 'white', color: '#2563eb', border: '2px dashed #2563eb', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'section-add-slot-btn': { width: 'auto', minWidth: '148px', minHeight: '40px', padding: '9px 14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', whiteSpace: 'nowrap' },
   'stats-footer': { width: '100%', maxWidth: '1100px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', margin: '48px auto 0' },
   'stat-card': { background: 'white', borderRadius: '12px', padding: '24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' },
   'stat-value': { fontSize: '32px', fontWeight: 700, color: '#2563eb', margin: '0 0 4px 0' },
@@ -249,6 +255,8 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     handleDeleteSlot,
     handleEditSlot,
     handleSaveSlotEdit,
+    isScheduleLoading,
+    scheduleError,
     scheduleMode,
     setDeleteConfirmTarget,
     setWeekOffset,
@@ -256,6 +264,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     weekDateByDay,
     weekOffset,
     weekRangeLabel,
+    weeklyScheduledMinutes,
     weeklySchedule,
   } = useWorkSchedule({ sellerId, currentProfile });
 
@@ -602,6 +611,16 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     'section-subtitle': {
       color: themeTokens.textSecondary,
     },
+    'schedule-loading-state': {
+      background: themeTokens.accentSoft,
+      border: `1px solid ${isDarkMode ? '#60a5fa' : '#bfdbfe'}`,
+      color: isDarkMode ? '#bfdbfe' : '#1d4ed8',
+    },
+    'schedule-error-state': {
+      background: isDarkMode ? 'rgba(220, 38, 38, 0.14)' : '#fef2f2',
+      border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.38)' : '#fecaca'}`,
+      color: isDarkMode ? '#fecaca' : '#b91c1c',
+    },
     'inquiry-card': queueCardStyle,
     'inquiry-description': {
       color: themeTokens.textSecondary,
@@ -784,11 +803,14 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
         'profile-stats': { gridTemplateColumns: '1fr' },
         'inquiries-section': { width: '100%', maxWidth: '600px', margin: '0 auto 32px' },
         'section-header': { textAlign: 'center' },
+        'section-header-with-action': { alignItems: 'stretch', textAlign: 'left' },
+        'section-add-slot-btn': { width: '100%' },
         'inquiries-grid': { width: '100%', maxWidth: '600px', margin: '0 auto', gridTemplateColumns: '1fr', justifyItems: 'center' },
         'inquiry-card': { width: '100%', maxWidth: '560px', margin: '0 auto' },
         'inquiry-meta': { flexWrap: 'wrap', gap: '8px' },
         'inquiry-actions': { flexDirection: 'column' },
         'week-slider': { flexDirection: 'column', alignItems: 'stretch' },
+        'schedule-section': { width: '100%', maxWidth: '600px', margin: '0 auto 32px' },
         'calendar-availability-grid': { gridTemplateColumns: '1fr' },
         'schedule-grid': { gridTemplateColumns: '1fr' },
         'booking-item': { flexDirection: 'column', alignItems: 'flex-start', gap: '6px' },
@@ -888,6 +910,19 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
   const showRefundSection = workSectionFilter === 'all' || workSectionFilter === 'refunds';
   const showCancelledSection = workSectionFilter === 'all' || workSectionFilter === 'cancelled';
   const showScheduleSection = workSectionFilter === 'all' || workSectionFilter === 'schedule';
+  const visibleCalendarAvailability = calendarAvailability.filter((entry) => {
+    const entryDate = new Date(`${entry.date}T00:00:00`);
+    return entryDate >= currentWeekMonday && entryDate <= currentWeekSunday;
+  });
+  const scheduledDurationLabel = scheduleMode === 'calendar-only'
+    ? `${visibleCalendarAvailability.length} ${visibleCalendarAvailability.length === 1 ? 'date' : 'dates'}`
+    : weeklyScheduledMinutes >= 60
+      ? `${Number((weeklyScheduledMinutes / 60).toFixed(weeklyScheduledMinutes % 60 === 0 ? 0 : 1))} hours`
+      : `${weeklyScheduledMinutes} min`;
+  const pendingCompletionAmount = weekTransactions
+    .filter((txn) => !txn.isDone && txn.bookingStatus !== 'Refunded' && txn.bookingStatus !== 'Cancelled (Cash)')
+    .reduce((total, txn) => total + Number(txn.expectedCashAmount || 0), 0);
+  const pendingCompletionLabel = `₱${pendingCompletionAmount.toLocaleString('en-PH')}`;
   const workSectionOptions = [
     { label: 'Show All', value: 'all', description: 'Overview of every work section' },
     { label: 'Active Inquiries', value: 'inquiries', description: 'Client requests waiting for a response' },
@@ -957,7 +992,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
         onToggleAdminView={() => { if (typeof onOpenAdminDashboard === 'function') onOpenAdminDashboard(); }}
       />
       
-      <main style={sx('my-work-main')}>
+      <main style={sx('my-work-main')} aria-hidden={editSlotModalOpen ? 'true' : undefined}>
 
         {/* Inline notifications */}
         {successMessage && (
@@ -1429,13 +1464,23 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
             )}
 
             {showScheduleSection && <section style={sx('schedule-section')} data-testid="work-schedule-section">
-              <div style={sx('section-header')}>
-                <h2 style={sectionTitleStyle}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
-                <p style={sx('section-subtitle')}>
-                  {scheduleMode === 'calendar-only'
-                    ? 'Manage available dates for manual coordination'
-                    : 'Manage your availability and time-slot bookings'}
-                </p>
+              <div style={sx('section-header', 'section-header-with-action')}>
+                <div style={sx('section-heading-copy')}>
+                  <h2 style={sectionTitleStyle}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
+                  <p style={sx('section-subtitle')}>
+                    {scheduleMode === 'calendar-only'
+                      ? 'Manage available dates for manual coordination'
+                      : 'Manage your availability and time-slot bookings'}
+                  </p>
+                </div>
+                <button
+                  style={{ ...sx('btn-add-slot', 'section-add-slot-btn'), ...(isHovered('schedule-header-add') ? hoverStyles.addSlot : {}) }}
+                  onMouseEnter={() => setHoverKey('schedule-header-add')}
+                  onMouseLeave={() => setHoverKey('')}
+                  onClick={() => handleAddSlot(scheduleMode === 'calendar-only' ? 'calendar' : undefined)}
+                >
+                  {scheduleMode === 'calendar-only' ? '+ Add Available Date' : '+ Add Slot'}
+                </button>
               </div>
 
               <div style={sx('week-slider')}>
@@ -1461,13 +1506,21 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                 </button>
               </div>
 
+              {isScheduleLoading && (
+                <p role="status" style={sx('schedule-state-message', 'schedule-loading-state')}>
+                  Loading real schedule slots...
+                </p>
+              )}
+
+              {scheduleError && (
+                <p role="alert" style={sx('schedule-state-message', 'schedule-error-state')}>
+                  {scheduleError}
+                </p>
+              )}
+
               {scheduleMode === 'calendar-only' ? (
                 <div style={sx('calendar-availability-grid')}>
-                  {calendarAvailability
-                    .filter((entry) => {
-                      const entryDate = new Date(`${entry.date}T00:00:00`);
-                      return entryDate >= currentWeekMonday && entryDate <= currentWeekSunday;
-                    })
+                  {visibleCalendarAvailability
                     .map((entry) => {
                       const entryTransactions = weekTransactions.filter((txn) => txn.scheduleRef === entry.id);
                       return (
@@ -1558,7 +1611,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                     onMouseLeave={() => setHoverKey('')}
                     onClick={() => handleAddSlot('calendar')}
                   >
-                    + Add Available Date
+                    + Add Date
                   </button>
                 </div>
               ) : (
@@ -1703,12 +1756,12 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
               </div>
               <div style={sx('stat-card')}>
                 <h4 style={statTitleStyle}>This Week</h4>
-                <p style={sx('stat-value')}>8 hours</p>
-                <p style={sx('stat-desc')}>Total scheduled time</p>
+                <p style={sx('stat-value')}>{scheduledDurationLabel}</p>
+                <p style={sx('stat-desc')}>{scheduleMode === 'calendar-only' ? 'Available dates' : 'Total scheduled time'}</p>
               </div>
               <div style={sx('stat-card')}>
                 <h4 style={statTitleStyle}>Earnings</h4>
-                <p style={sx('stat-value')}>₱3,600</p>
+                <p style={sx('stat-value')}>{pendingCompletionLabel}</p>
                 <p style={sx('stat-desc')}>Pending completion</p>
               </div>
             </section>}

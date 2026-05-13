@@ -2,8 +2,14 @@ import { supabase } from '../../../shared/services/supabaseClient';
 
 export const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 export const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
-export const INITIAL_WEEKLY_SCHEDULE = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [] };
+export const createEmptyWeeklySchedule = () =>
+  DAY_ORDER.reduce((schedule, dayKey) => {
+    schedule[dayKey] = [];
+    return schedule;
+  }, {});
+export const INITIAL_WEEKLY_SCHEDULE = createEmptyWeeklySchedule();
 export const INITIAL_CALENDAR_AVAILABILITY = [];
+const SLOT_TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 export const addDays = (date, days) => {
   const next = new Date(date);
@@ -28,16 +34,39 @@ export const formatDateLong = (date) =>
 
 const pad = (value) => String(value).padStart(2, '0');
 
-export const formatDateForDay = (weekMonday, dayKey) => {
-  const index = DAY_INDEX[dayKey] ?? 0;
-  const date = addDays(weekMonday, index);
+export const formatDateOnly = (date) => {
   const year = date.getFullYear();
   const month = pad(date.getMonth() + 1);
   const day = pad(date.getDate());
   return `${year}-${month}-${day}`;
 };
 
-export const toLocalTimeValue = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+export const formatDateForDay = (weekMonday, dayKey) => {
+  const index = DAY_INDEX[dayKey] ?? 0;
+  const date = addDays(weekMonday, index);
+  return formatDateOnly(date);
+};
+
+const getSlotDateInServiceTimezone = (timestamp) => {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Date(date.getTime() + SLOT_TIMEZONE_OFFSET_MS);
+};
+
+export const getSlotDateKey = (timestamp) => {
+  const serviceDate = getSlotDateInServiceTimezone(timestamp);
+  if (!serviceDate) return '';
+  const year = serviceDate.getUTCFullYear();
+  const month = pad(serviceDate.getUTCMonth() + 1);
+  const day = pad(serviceDate.getUTCDate());
+  return `${year}-${month}-${day}`;
+};
+
+export const toLocalTimeValue = (dateOrTimestamp) => {
+  const serviceDate = getSlotDateInServiceTimezone(dateOrTimestamp);
+  if (!serviceDate) return '00:00';
+  return `${pad(serviceDate.getUTCHours())}:${pad(serviceDate.getUTCMinutes())}`;
+};
 
 export const buildSlotTimestamps = ({ date, startTime = '00:00', endTime = '23:59:59' }) => ({
   startTs: `${date}T${startTime.length === 5 ? `${startTime}:00` : startTime}+08`,
@@ -46,7 +75,7 @@ export const buildSlotTimestamps = ({ date, startTime = '00:00', endTime = '23:5
 
 export const mapSlotRowToCalendarEntry = (slot) => ({
   id: slot.id,
-  date: (slot.start_ts || '').slice(0, 10),
+  date: getSlotDateKey(slot.start_ts),
   maxBookings: slot.capacity || 1,
   booked: slot.status === 'booked'
     ? (slot.capacity || 0)
@@ -56,12 +85,10 @@ export const mapSlotRowToCalendarEntry = (slot) => ({
 });
 
 export const mapSlotRowToWeeklyBlock = (slot) => {
-  const start = new Date(slot.start_ts);
-  const end = new Date(slot.end_ts);
   return {
     id: slot.id,
-    startTime: toLocalTimeValue(start),
-    endTime: toLocalTimeValue(end),
+    startTime: toLocalTimeValue(slot.start_ts),
+    endTime: toLocalTimeValue(slot.end_ts),
     capacity: slot.capacity || 1,
     slotsLeft: slot.status === 'available'
       ? Math.max(0, (slot.capacity || 1) - Number(slot.metadata?.booked_count || slot.metadata?.bookedCount || 0))
@@ -71,16 +98,24 @@ export const mapSlotRowToWeeklyBlock = (slot) => {
   };
 };
 
-export const mapSlotsToSchedule = (slots = []) => {
-  const weekly = { ...INITIAL_WEEKLY_SCHEDULE };
+export const mapSlotsToSchedule = (slots = [], { weekMonday = null } = {}) => {
+  const weekly = createEmptyWeeklySchedule();
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayByDate = weekMonday
+    ? DAY_ORDER.reduce((acc, dayKey) => {
+        acc[formatDateForDay(weekMonday, dayKey)] = dayKey;
+        return acc;
+      }, {})
+    : null;
   const calendarAvailability = [];
 
   (slots || []).forEach((slot) => {
-    const start = new Date(slot.start_ts);
-    if (Number.isNaN(start.getTime())) return;
+    const slotDateKey = getSlotDateKey(slot.start_ts);
+    if (!slotDateKey) return;
 
-    const dayName = dayNames[start.getDay()];
+    const serviceDate = getSlotDateInServiceTimezone(slot.start_ts);
+    const dayName = dayByDate ? dayByDate[slotDateKey] : dayNames[serviceDate.getUTCDay()];
+
     calendarAvailability.push(mapSlotRowToCalendarEntry(slot));
 
     if (weekly[dayName]) {
@@ -88,20 +123,39 @@ export const mapSlotsToSchedule = (slots = []) => {
     }
   });
 
+  Object.keys(weekly).forEach((dayKey) => {
+    weekly[dayKey].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  });
+
   return {
-    calendarAvailability: calendarAvailability.sort((a, b) => a.date.localeCompare(b.date)),
+    calendarAvailability: calendarAvailability.sort((a, b) => (
+      a.date === b.date
+        ? String(a.raw?.start_ts || '').localeCompare(String(b.raw?.start_ts || ''))
+        : a.date.localeCompare(b.date)
+    )),
     weeklySchedule: weekly,
   };
 };
 
-export const fetchSellerSlots = async (sellerId) => {
+export const fetchSellerSlots = async (sellerIdOrOptions) => {
+  const options =
+    typeof sellerIdOrOptions === 'object' && sellerIdOrOptions !== null
+      ? sellerIdOrOptions
+      : { sellerId: sellerIdOrOptions };
+  const { sellerId, serviceId, startTs, endTs } = options;
+
   if (!sellerId) return [];
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('service_slots')
     .select('*')
-    .eq('seller_id', sellerId)
-    .order('start_ts', { ascending: true });
+    .eq('seller_id', sellerId);
+
+  if (serviceId) query = query.eq('service_id', serviceId);
+  if (startTs) query = query.gte('start_ts', startTs);
+  if (endTs) query = query.lt('start_ts', endTs);
+
+  const { data, error } = await query.order('start_ts', { ascending: true });
 
   if (error) throw error;
   return data || [];
@@ -166,11 +220,14 @@ const scheduleService = {
   addDays,
   buildSlotTimestamps,
   createServiceSlot,
+  createEmptyWeeklySchedule,
   deleteServiceSlot,
   fetchSellerSlots,
+  formatDateOnly,
   formatDateForDay,
   formatDateLabel,
   formatDateLong,
+  getSlotDateKey,
   getMonday,
   getSlotStatusColor,
   mapSlotsToSchedule,

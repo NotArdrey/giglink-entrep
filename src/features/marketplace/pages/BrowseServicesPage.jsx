@@ -330,6 +330,34 @@ function BrowseServicesPage({
       )}
 
       <main className="gl-shell gl-page-pad">
+        <section className="browse-hero gl-card" aria-labelledby="browse-page-title">
+          <div>
+            <span className="gl-eyebrow">
+              <Search size={15} aria-hidden="true" />
+              Service Marketplace
+            </span>
+            <h1 className="gl-title" id="browse-page-title">Find trusted local help</h1>
+            <p className="gl-subtitle">
+              Compare providers by service, location, schedule readiness, and reviews before opening a booking flow.
+            </p>
+          </div>
+
+          <div className="browse-kpis gl-kpi-grid" aria-label="Marketplace summary">
+            <div className="gl-kpi gl-card">
+              <p className="gl-kpi-value">{services.length}</p>
+              <p className="gl-kpi-label">Active services</p>
+            </div>
+            <div className="gl-kpi gl-card">
+              <p className="gl-kpi-value">{categories.length}</p>
+              <p className="gl-kpi-label">Categories</p>
+            </div>
+            <div className="gl-kpi gl-card">
+              <p className="gl-kpi-value">{districts.length - 1}</p>
+              <p className="gl-kpi-label">Locations</p>
+            </div>
+          </div>
+        </section>
+
         <section className="browse-marketplace" aria-label="Service marketplace">
           <aside className="browse-filter-rail gl-card" aria-label="Browse filters" style={{ gridColumn: 2, gridRow: 1 }}>
             <div className="browse-filter-head">

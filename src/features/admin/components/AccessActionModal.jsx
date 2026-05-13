@@ -47,6 +47,8 @@ function AccessActionModal({
           boxShadow: '0 20px 50px rgba(15, 23, 42, 0.25)',
           display: 'grid',
           gap: '14px',
+          maxHeight: 'calc(100vh - 32px)',
+          overflowY: 'auto',
         }}
       >
         <div style={styles.panelTitleWrap}>
@@ -79,7 +81,7 @@ function AccessActionModal({
           </label>
 
           {mode === 'ban' && (
-            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 160px' }}>
+            <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))' }}>
               <label style={{ display: 'grid', gap: '6px', fontWeight: 700 }}>
                 Duration
                 <input
