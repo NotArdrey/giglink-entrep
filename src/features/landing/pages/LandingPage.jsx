@@ -11,6 +11,7 @@ import {
 import Navigation from '../../../shared/components/Navigation';
 import HeroSlider from '../components/HeroSlider';
 import AuthPage from '../../auth/pages/AuthPage';
+import IdentityRegistrationPage from '../../auth/pages/IdentityRegistrationPage';
 import BrowseServicesPage from '../../marketplace/pages/BrowseServicesPage';
 
 const LANDING_STATS = [
@@ -181,6 +182,9 @@ const getAuthHash = (mode) => {
   if (mode === 'forgot') return 'forgot-password';
   return 'login';
 };
+
+const isIdentityRegisterHash = () =>
+  typeof window !== 'undefined' && window.location.hash === '#identity-register';
 
 function GoalCard({ icon, title, description, tag, color, onSet }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -485,8 +489,9 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
 
 function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForgotPasswordSubmit }) {
   const [authMode, setAuthMode] = useState(() => getAuthModeFromHash());
+  const [isIdentityRegisterOpen, setIsIdentityRegisterOpen] = useState(() => isIdentityRegisterHash());
   const [isPublicBrowseOpen, setIsPublicBrowseOpen] = useState(() =>
-    typeof window !== 'undefined' ? window.location.hash === '#browse-services' && !getAuthModeFromHash() : false
+    typeof window !== 'undefined' ? window.location.hash === '#browse-services' && !getAuthModeFromHash() && !isIdentityRegisterHash() : false
   );
   const [socialLinkHovered, setSocialLinkHovered] = useState(null);
   const [footerLinkHovered, setFooterLinkHovered] = useState(null);
@@ -511,8 +516,10 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
   useEffect(() => {
     const handleHashChange = () => {
       const nextAuthMode = getAuthModeFromHash();
+      const nextIdentityOpen = isIdentityRegisterHash();
       setAuthMode(nextAuthMode);
-      setIsPublicBrowseOpen(!nextAuthMode && window.location.hash === '#browse-services');
+      setIsIdentityRegisterOpen(nextIdentityOpen);
+      setIsPublicBrowseOpen(!nextAuthMode && !nextIdentityOpen && window.location.hash === '#browse-services');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -524,6 +531,7 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
   const handleAuthModeChange = (nextMode) => {
     const resolvedMode = nextMode === 'register' || nextMode === 'forgot' ? nextMode : 'login';
     setAuthMode(resolvedMode);
+    setIsIdentityRegisterOpen(false);
     setIsPublicBrowseOpen(false);
 
     if (typeof window !== 'undefined') {
@@ -541,6 +549,7 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
 
   const handleBrowseServicesClick = () => {
     setAuthMode(null);
+    setIsIdentityRegisterOpen(false);
     setIsPublicBrowseOpen(true);
     if (typeof window !== 'undefined') {
       window.location.hash = 'browse-services';
@@ -548,8 +557,19 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
     }
   };
 
+  const handleIdentityRegisterClick = () => {
+    setAuthMode(null);
+    setIsPublicBrowseOpen(false);
+    setIsIdentityRegisterOpen(true);
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'identity-register';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const handleCloseAuthPage = () => {
     setAuthMode(null);
+    setIsIdentityRegisterOpen(false);
     setIsPublicBrowseOpen(false);
 
     if (typeof window !== 'undefined') {
@@ -715,8 +735,12 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
 
   return (
     <div style={styles.landingPage}>
-      {!authMode && (
-        <Navigation onLoginClick={handleLoginClick} onBrowseServices={handleBrowseServicesClick} />
+      {!authMode && !isIdentityRegisterOpen && (
+        <Navigation
+          onLoginClick={handleLoginClick}
+          onBrowseServices={handleBrowseServicesClick}
+          onIdentityRegister={handleIdentityRegisterClick}
+        />
       )}
 
       {authMode ? (
@@ -728,6 +752,11 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
           onForgotPasswordSubmit={onForgotPasswordSubmit}
           onResendVerification={onResendVerification}
         />
+      ) : isIdentityRegisterOpen ? (
+        <IdentityRegistrationPage
+          onBack={handleCloseAuthPage}
+          onLogin={handleLoginClick}
+        />
       ) : isPublicBrowseOpen ? (
         <main style={styles.publicBrowseMain}>
           <BrowseServicesPage
@@ -738,7 +767,11 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
         </main>
       ) : (
       <main style={styles.landingMain}>
-        <HeroSlider onGetStarted={handleRegisterClick} onBrowseServices={handleBrowseServicesClick} />
+        <HeroSlider
+          onGetStarted={handleRegisterClick}
+          onBrowseServices={handleBrowseServicesClick}
+          onIdentityRegister={handleIdentityRegisterClick}
+        />
 
         <GoalsSection onLoginClick={handleLoginClick} isMobile={isMobile} isTablet={isTablet} />
 

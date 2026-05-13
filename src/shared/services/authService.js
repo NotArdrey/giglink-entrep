@@ -338,6 +338,13 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
     suspendedUntil: profileRow?.suspended_until || null,
     disabledAt: profileRow?.disabled_at || null,
     suspendedAt: profileRow?.suspended_at || null,
+    identityRequired: Boolean(profileRow?.identity_required),
+    identityRole: profileRow?.identity_role || '',
+    identityVerificationStatus: profileRow?.verification_status || '',
+    isVerified: Boolean(profileRow?.is_verified),
+    diditSessionId: profileRow?.didit_session_id || '',
+    idDocumentExpiry: profileRow?.id_document_expiry || null,
+    idVerifiedAt: profileRow?.id_verified_at || null,
     serviceType: workerRow?.service_type || '',
     customServiceType: workerRow?.custom_service_type || '',
     pricingModel: workerRow?.pricing_model || 'fixed',
@@ -669,6 +676,40 @@ export const isAccountBlockedForLogin = (profile = null) => {
       }
     }
     return 'Your account is currently suspended. Please try again later or contact support.';
+  }
+
+  const identityRequired = Boolean(profile?.identityRequired ?? profile?.identity_required ?? false);
+  if (identityRequired) {
+    const identityStatus = getCleanString(
+      profile?.identityVerificationStatus
+      || profile?.verification_status
+      || 'PENDING'
+    ).replace(/[\s-]+/g, '_').toUpperCase();
+    const isIdentityVerified = Boolean(profile?.isVerified ?? profile?.is_verified ?? false);
+    const expiryValue = profile?.idDocumentExpiry || profile?.id_document_expiry || null;
+
+    if (expiryValue) {
+      const expiryDate = new Date(`${String(expiryValue).slice(0, 10)}T23:59:59`);
+      if (!Number.isNaN(expiryDate.getTime()) && expiryDate.getTime() < Date.now()) {
+        return 'Your verified ID document has expired. Please complete identity verification again before logging in.';
+      }
+    }
+
+    if (identityStatus === 'PENDING_REVIEW') {
+      return 'Your identity review is still pending. We will email you when the review is approved.';
+    }
+
+    if (['DECLINED', 'ABANDONED', 'EXPIRED'].includes(identityStatus)) {
+      return 'Identity verification was not completed. Please restart verified registration before logging in.';
+    }
+
+    if (identityStatus !== 'APPROVED') {
+      return 'Identity verification is still required before login access is allowed.';
+    }
+
+    if (!isIdentityVerified) {
+      return 'Please confirm your email before logging in.';
+    }
   }
 
   return '';

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { LogIn, Search } from 'lucide-react';
+import { LogIn, Search, ShieldCheck } from 'lucide-react';
 
-function Navigation({ onLoginClick, onBrowseServices }) {
+function Navigation({ onLoginClick, onBrowseServices, onIdentityRegister }) {
   const [isLoginHovered, setIsLoginHovered] = useState(false);
   const [isBrowseHovered, setIsBrowseHovered] = useState(false);
+  const [isIdentityHovered, setIsIdentityHovered] = useState(false);
   const [windowWidth, setWindowWidth] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth : 1200
   );
@@ -82,6 +83,25 @@ function Navigation({ onLoginClick, onBrowseServices }) {
       cursor: 'pointer',
       transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
     },
+    navIdentity: {
+      height: 40,
+      minHeight: 40,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      borderRadius: 8,
+      border: isIdentityHovered ? '1px solid rgba(5, 150, 105, 0.42)' : '1px solid rgba(5, 150, 105, 0.24)',
+      background: isIdentityHovered ? 'rgba(5, 150, 105, 0.12)' : 'rgba(5, 150, 105, 0.08)',
+      color: '#047857',
+      padding: '0 12px',
+      fontWeight: 800,
+      lineHeight: 1,
+      boxSizing: 'border-box',
+      whiteSpace: 'nowrap',
+      cursor: 'pointer',
+      transition: 'background 0.18s ease, border-color 0.18s ease, color 0.18s ease',
+    },
     navButtonsLogin: {
       backgroundColor: isLoginHovered ? '#1d4ed8' : '#2563eb',
       color: '#ffffff',
@@ -149,6 +169,16 @@ function Navigation({ onLoginClick, onBrowseServices }) {
             Browse Services
           </button>
           <button
+            type="button"
+            style={styles.navIdentity}
+            onClick={onIdentityRegister}
+            onMouseEnter={() => setIsIdentityHovered(true)}
+            onMouseLeave={() => setIsIdentityHovered(false)}
+          >
+            <ShieldCheck size={16} aria-hidden="true" />
+            Create verified account
+          </button>
+          <button
             onClick={onLoginClick}
             style={styles.navButtonsLogin}
             onMouseEnter={() => setIsLoginHovered(true)}
@@ -163,6 +193,9 @@ function Navigation({ onLoginClick, onBrowseServices }) {
           <div style={styles.mobileHeaderActions}>
             <button onClick={onBrowseServices} style={styles.mobileLoginIconBtn} aria-label="Browse services">
               <Search size={18} aria-hidden="true" />
+            </button>
+            <button onClick={onIdentityRegister} style={styles.mobileLoginIconBtn} aria-label="Create verified account">
+              <ShieldCheck size={18} aria-hidden="true" />
             </button>
             <button onClick={onLoginClick} style={styles.mobileLoginIconBtn} aria-label="Login">
               <LogIn style={styles.mobileLoginIcon} aria-hidden="true" />

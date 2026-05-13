@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowRight, Search, ShieldCheck } from 'lucide-react';
 
-function HeroSlider({ onGetStarted, onBrowseServices }) {
+function HeroSlider({ onGetStarted, onBrowseServices, onIdentityRegister }) {
   const sliderImages = [
     {
       url: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1800&h=1100&fit=crop',
@@ -261,6 +261,14 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
                 >
                   Join GigLink
                   <ArrowRight size={17} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  style={styles.sliderCtaButton('secondary')}
+                  onClick={onIdentityRegister}
+                >
+                  <ShieldCheck size={17} aria-hidden="true" />
+                  Create verified account
                 </button>
               </div>
               <div style={{ ...styles.heroSearchStrip, ...(isMobile ? styles.mobileStyles.heroSearchStrip : {}) }}>

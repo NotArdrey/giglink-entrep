@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { LandingPage, SellerOnboarding } from './features';
-import { LoadingScreen, SuccessNotification, ErrorNotification } from './shared/components';
+import { LoadingScreen, SuccessNotification, ErrorNotification, FloatingChatbot } from './shared/components';
 import { useAppNavigation, renderView } from './features/navigation';
 
 function App() {
@@ -60,6 +60,12 @@ function App() {
           onResendVerification={navigationContext.handleResendVerification}
           onForgotPasswordSubmit={navigationContext.handleForgotPasswordSubmit}
         />
+        <FloatingChatbot
+          appTheme={navigationContext.appTheme}
+          currentView="landing"
+          isLoggedIn={false}
+          role="guest"
+        />
         <SuccessNotification
           message={navigationContext.successNotification.message}
           isVisible={navigationContext.successNotification.isVisible}
@@ -98,6 +104,13 @@ function App() {
     <>
       {content}
       {sellerOnboardingOverlay}
+      <FloatingChatbot
+        appTheme={navigationContext.appTheme}
+        currentView={navigationContext.currentView}
+        isLoggedIn={navigationContext.isLoggedIn}
+        role={navigationContext.sellerProfile?.role || 'client'}
+        isHidden={navigationContext.isSellerOnboardingOpen}
+      />
       <SuccessNotification
         message={navigationContext.successNotification.message}
         isVisible={navigationContext.successNotification.isVisible}
