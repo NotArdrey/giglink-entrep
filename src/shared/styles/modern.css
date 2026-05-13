@@ -2384,7 +2384,7 @@ textarea {
 
 .auth-register-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 14px;
 }
 
@@ -2436,6 +2436,11 @@ textarea {
   transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
+.auth-input-wrap select {
+  padding-right: 34px;
+  text-overflow: ellipsis;
+}
+
 .auth-input-wrap.has-action input {
   padding-right: 46px;
 }
@@ -2448,6 +2453,40 @@ textarea {
 
 .auth-input-wrap input::placeholder {
   color: var(--gl-text-3);
+}
+
+.auth-consent-control {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 18px 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--gl-border-strong);
+  border-radius: 8px;
+  background: var(--gl-surface);
+  color: var(--gl-text);
+}
+
+.auth-consent-control > svg {
+  color: var(--gl-text-3);
+}
+
+.auth-consent-control input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--gl-blue);
+}
+
+.auth-consent-control span {
+  min-width: 0;
+  color: var(--gl-text-2);
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .auth-input-action {

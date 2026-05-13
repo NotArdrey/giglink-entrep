@@ -101,7 +101,6 @@ async function mockDiditRoutes(page, finalStatus, createUserPayload = {}) {
 }
 
 async function fillDiditSignup(page, email = 'verified-user@example.com') {
-  await page.getByLabel('Full legal name').fill('Verified User');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill('Password123!');
   await page.getByLabel('Confirm password').fill('Password123!');
@@ -185,7 +184,6 @@ test.describe('identity-first registration', () => {
     await page.getByLabel('Identity document').selectOption('umid');
     await expect(page.getByTestId('manual-review-fields')).toBeVisible();
 
-    await page.getByLabel('Full legal name').fill('Manual User');
     await page.getByLabel('Email').fill('manual-user@example.com');
     await page.getByLabel('Password', { exact: true }).fill('Password123!');
     await page.getByLabel('Confirm password').fill('Password123!');
@@ -281,7 +279,9 @@ test.describe('identity-first registration', () => {
     await page.goto('/#register');
 
     await expect(page.getByRole('heading', { name: /Create Account/i })).toBeVisible();
-    await expect(page.getByLabel('First Name')).toBeVisible();
+    await expect(page.getByLabel('First Name')).toHaveCount(0);
+    await expect(page.getByLabel('Middle Name')).toHaveCount(0);
+    await expect(page.getByLabel('Last Name')).toHaveCount(0);
     await expect(page.getByLabel('Account Type')).toBeVisible();
     await expect(page.getByLabel('Identity document')).toBeVisible();
     await expect(page.getByLabel('Account Type')).toContainText(/Client/);

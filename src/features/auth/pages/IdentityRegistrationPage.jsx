@@ -28,7 +28,6 @@ import {
 
 const EMPTY_FORM = {
   accountRole: 'client',
-  fullName: '',
   email: '',
   password: '',
   confirmPassword: '',
@@ -75,7 +74,6 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
     setFormData((current) => ({
       ...current,
       accountRole: storedState.appRole || current.accountRole,
-      fullName: storedState.fullName || current.fullName,
       email: storedState.email || current.email,
       password: storedState.password || current.password,
       confirmPassword: storedState.password || current.confirmPassword,
@@ -92,7 +90,6 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
   };
 
   const validateDetails = () => {
-    if (!formData.fullName.trim()) return 'Enter your full legal name.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) return 'Enter a valid email address.';
     if (formData.password.length < 8) return 'Password must be at least 8 characters.';
     if (formData.password !== formData.confirmPassword) return 'Password and confirm password do not match.';
@@ -567,18 +564,6 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
                     </select>
                   </label>
                 </div>
-
-                <label style={styles.field} htmlFor="identity-full-name">
-                  <span style={styles.label}>Full legal name</span>
-                  <input
-                    id="identity-full-name"
-                    value={formData.fullName}
-                    onChange={(event) => updateField('fullName', event.target.value)}
-                    style={styles.input}
-                    autoComplete="name"
-                    required
-                  />
-                </label>
 
                 <div style={styles.grid2}>
                   <label style={styles.field} htmlFor="identity-email">

@@ -36,9 +36,6 @@ const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 const EMPTY_AUTH_FORM = {
   email: '',
   password: '',
-  firstName: '',
-  middleName: '',
-  lastName: '',
   confirmPassword: '',
   province: '',
   city: '',
@@ -79,9 +76,6 @@ const getAuthErrorMessage = (error) => {
 };
 
 const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
-
-const buildFullLegalName = ({ firstName, middleName, lastName }) =>
-  [firstName, middleName, lastName].map((part) => part.trim()).filter(Boolean).join(' ');
 
 function AuthPage({
   mode = 'login',
@@ -190,15 +184,8 @@ function AuthPage({
     setIdentityStep('didit');
     setIdentityStatusMessage('Verification session restored. You can continue checking the result.');
     setFormData((current) => {
-      const [firstName = '', ...rest] = (storedState.fullName || '').split(' ').filter(Boolean);
-      const lastName = rest.length > 0 ? rest.pop() : '';
-      const middleName = rest.join(' ');
-
       return {
         ...current,
-        firstName: current.firstName || firstName,
-        middleName: current.middleName || middleName,
-        lastName: current.lastName || lastName,
         email: storedState.email || current.email,
         password: storedState.password || current.password,
         confirmPassword: storedState.password || current.confirmPassword,
@@ -339,10 +326,6 @@ function AuthPage({
   const validateAuthForm = () => {
     if (!isRegisterMode) return '';
 
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      return 'First name and last name are required.';
-    }
-
     if (formData.password !== formData.confirmPassword) {
       return 'Password and confirm password do not match.';
     }
@@ -369,10 +352,9 @@ function AuthPage({
   };
 
   const handleIdentityRegistrationSubmit = async () => {
-    const fullName = buildFullLegalName(formData);
     const identityPayload = {
       ...formData,
-      fullName,
+      fullName: formData.manualFullName || '',
     };
 
     if (usesDidit) {
@@ -385,7 +367,7 @@ function AuthPage({
 
     const result = await submitManualIdentityReview({
       ...identityPayload,
-      manualFullName: formData.manualFullName || fullName,
+      manualFullName: formData.manualFullName,
     });
 
     setIdentityOutcome({
@@ -719,60 +701,6 @@ function AuthPage({
           ) : (
             <form className="auth-form" onSubmit={handleAuthSubmit}>
               {isRegisterMode && (
-                <div className="auth-register-grid">
-                  <label className="auth-field" htmlFor="firstName">
-                    <span>First Name</span>
-                    <div className="auth-input-wrap">
-                      <User size={18} aria-hidden="true" />
-                      <input
-                        id="firstName"
-                        name="firstName"
-                        type="text"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        placeholder="Juan"
-                        autoComplete="given-name"
-                        required
-                      />
-                    </div>
-                  </label>
-
-                  <label className="auth-field" htmlFor="middleName">
-                    <span>Middle Name <small>(optional)</small></span>
-                    <div className="auth-input-wrap">
-                      <User size={18} aria-hidden="true" />
-                      <input
-                        id="middleName"
-                        name="middleName"
-                        type="text"
-                        value={formData.middleName}
-                        onChange={handleInputChange}
-                        placeholder="Santos"
-                        autoComplete="additional-name"
-                      />
-                    </div>
-                  </label>
-
-                  <label className="auth-field full" htmlFor="lastName">
-                    <span>Last Name</span>
-                    <div className="auth-input-wrap">
-                      <User size={18} aria-hidden="true" />
-                      <input
-                        id="lastName"
-                        name="lastName"
-                        type="text"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        placeholder="Dela Cruz"
-                        autoComplete="family-name"
-                        required
-                      />
-                    </div>
-                  </label>
-                </div>
-              )}
-
-              {isRegisterMode && (
                 <>
                   <div className="auth-register-grid">
                     <label className="auth-field" htmlFor="accountRole">
@@ -1082,7 +1010,7 @@ function AuthPage({
 
                   <label className="auth-field" htmlFor="acceptedIdentityTerms">
                     <span>Identity consent</span>
-                    <div className="auth-input-wrap">
+                    <div className="auth-consent-control">
                       <ShieldCheck size={18} aria-hidden="true" />
                       <input
                         id="acceptedIdentityTerms"
