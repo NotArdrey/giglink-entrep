@@ -557,16 +557,6 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
     }
   };
 
-  const handleIdentityRegisterClick = () => {
-    setAuthMode(null);
-    setIsPublicBrowseOpen(false);
-    setIsIdentityRegisterOpen(true);
-    if (typeof window !== 'undefined') {
-      window.location.hash = 'identity-register';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
   const handleCloseAuthPage = () => {
     setAuthMode(null);
     setIsIdentityRegisterOpen(false);
@@ -739,7 +729,6 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
         <Navigation
           onLoginClick={handleLoginClick}
           onBrowseServices={handleBrowseServicesClick}
-          onIdentityRegister={handleIdentityRegisterClick}
         />
       )}
 
@@ -770,7 +759,6 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
         <HeroSlider
           onGetStarted={handleRegisterClick}
           onBrowseServices={handleBrowseServicesClick}
-          onIdentityRegister={handleIdentityRegisterClick}
         />
 
         <GoalsSection onLoginClick={handleLoginClick} isMobile={isMobile} isTablet={isTablet} />

@@ -1,4 +1,8 @@
 const { test, expect } = require('@playwright/test');
+const {
+  DEMO_CLIENT_EMAIL,
+  DEMO_PASSWORD,
+} = require('./helpers/supabase');
 
 function collectConsoleFailures(page, allowedPatterns = []) {
   const failures = [];
@@ -47,14 +51,33 @@ async function mockChatbot(page, handler) {
   });
 }
 
+async function loginAsClient(page) {
+  await page.goto('/');
+  await page.getByRole('button', { name: /^Login$/ }).first().click();
+  await expect(page.getByRole('heading', { name: 'Login' })).toBeVisible();
+  await page.getByLabel('Email').fill(DEMO_CLIENT_EMAIL);
+  await page.getByLabel('Password').fill(DEMO_PASSWORD);
+  await page.locator('form').getByRole('button', { name: /^Login$/ }).click();
+  await expect(page.getByTestId('client-home-dashboard')).toBeVisible({ timeout: 20_000 });
+}
+
 test.describe('floating GigLink chatbot', () => {
   const viewports = [
     { name: 'desktop', width: 1366, height: 900 },
     { name: 'mobile', width: 390, height: 844 },
   ];
 
+  test('stays hidden for logged-out users', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto('/');
+
+    await expect(page.getByRole('button', { name: /open giglink assistant/i })).toHaveCount(0);
+    await expect(page.getByTestId('floating-chatbot')).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+  });
+
   for (const viewport of viewports) {
-    test(`opens, sends, renders response, and closes on ${viewport.name}`, async ({ page }) => {
+    test(`logged-in user opens, sends, renders response, and closes on ${viewport.name}`, async ({ page }) => {
       const consoleFailures = collectConsoleFailures(page);
       let requestBody = null;
 
@@ -72,7 +95,7 @@ test.describe('floating GigLink chatbot', () => {
       });
 
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await page.goto('/');
+      await loginAsClient(page);
 
       const toggle = page.getByRole('button', { name: /open giglink assistant/i });
       await expect(toggle).toBeVisible();
@@ -89,9 +112,8 @@ test.describe('floating GigLink chatbot', () => {
       await expect(page.getByTestId('chatbot-message-assistant').filter({ hasText: /open a provider profile/i })).toBeVisible();
 
       expect(requestBody.context).toMatchObject({
-        currentView: 'landing',
-        isLoggedIn: false,
-        role: 'guest',
+        currentView: 'client-dashboard',
+        isLoggedIn: true,
       });
       expect(requestBody.messages.at(-1)).toMatchObject({
         role: 'user',
@@ -107,7 +129,7 @@ test.describe('floating GigLink chatbot', () => {
     });
   }
 
-  test('shows a sanitized error state when the Edge Function fails', async ({ page }) => {
+  test('logged-in user sees a sanitized error state when the Edge Function fails', async ({ page }) => {
     await mockChatbot(page, async (route) => {
       await route.fulfill({
         status: 500,
@@ -117,7 +139,7 @@ test.describe('floating GigLink chatbot', () => {
     });
 
     await page.setViewportSize({ width: 1366, height: 900 });
-    await page.goto('/');
+    await loginAsClient(page);
     await page.getByRole('button', { name: /open giglink assistant/i }).click();
     await page.getByLabel(/message giglink assistant/i).fill('Will this fail safely?');
     await page.getByRole('button', { name: /^send message$/i }).click();

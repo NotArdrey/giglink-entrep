@@ -222,6 +222,44 @@ test.describe('identity-first registration', () => {
     expect(consoleFailures).toEqual([]);
   });
 
+  test('all ID document options route to the correct verification path', async ({ page }) => {
+    const consoleFailures = collectConsoleFailures(page);
+
+    await page.goto('/#identity-register');
+    await expect(page.getByTestId('identity-registration-page')).toBeVisible();
+
+    const expectedModes = {
+      id_card: 'didit',
+      passport: 'didit',
+      drivers_license: 'didit',
+      umid: 'manual_review',
+      postal_id: 'manual_review',
+      voter_id: 'manual_review',
+      prc_id: 'manual_review',
+      health_insurance: 'manual_review',
+      custom_document: 'manual_review',
+    };
+
+    const options = await page.getByLabel('Identity document').locator('option').evaluateAll((nodes) =>
+      nodes.map((node) => ({ value: node.value, label: node.textContent.trim() }))
+    );
+
+    expect(options.map((option) => option.value)).toEqual(Object.keys(expectedModes));
+
+    for (const option of options) {
+      await page.getByLabel('Identity document').selectOption(option.value);
+      const manualVisible = await page.getByTestId('manual-review-fields').isVisible().catch(() => false);
+      const actualMode = manualVisible ? 'manual_review' : 'didit';
+      expect(actualMode, `${option.label} should use ${expectedModes[option.value]}`).toBe(expectedModes[option.value]);
+
+      const actionLabel = actualMode === 'manual_review' ? /Submit Manual Review/i : /Start Didit Verification/i;
+      await expect(page.getByRole('button', { name: actionLabel })).toBeVisible();
+    }
+
+    await expectNoHorizontalOverflow(page);
+    expect(consoleFailures).toEqual([]);
+  });
+
   test('identity route is responsive on mobile direct entry', async ({ page }) => {
     const consoleFailures = collectConsoleFailures(page);
 
@@ -235,5 +273,23 @@ test.describe('identity-first registration', () => {
 
     expect(consoleFailures).toEqual([]);
   });
-});
 
+  test('existing register route includes identity controls on mobile', async ({ page }) => {
+    const consoleFailures = collectConsoleFailures(page);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/#register');
+
+    await expect(page.getByRole('heading', { name: /Create Account/i })).toBeVisible();
+    await expect(page.getByLabel('First Name')).toBeVisible();
+    await expect(page.getByLabel('Account Type')).toBeVisible();
+    await expect(page.getByLabel('Identity document')).toBeVisible();
+    await expect(page.getByLabel('Account Type')).toContainText(/Client/);
+    await expect(page.getByLabel('Account Type')).toContainText(/Worker/);
+    await expect(page.getByLabel('Account Type')).not.toContainText(/fan|musician/i);
+    await expect(page.getByRole('button', { name: /Start Didit Verification/i })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    expect(consoleFailures).toEqual([]);
+  });
+});

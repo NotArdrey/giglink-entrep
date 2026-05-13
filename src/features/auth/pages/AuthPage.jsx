@@ -2,17 +2,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
+  ExternalLink,
   Eye,
   EyeOff,
+  FileText,
   Home,
   Lock,
   LogIn,
   Mail,
   MapPin,
   RefreshCw,
+  ShieldCheck,
+  Upload,
   User,
   UserPlus,
+  XCircle,
 } from 'lucide-react';
+import {
+  clearIdentitySignupState,
+  DIDIT_DOCUMENT_TYPES,
+  fetchDiditIdentitySession,
+  finishDiditIdentitySignup,
+  getDocumentType,
+  isTerminalIdentityFailure,
+  loadIdentitySignupState,
+  MANUAL_DOCUMENT_TYPES,
+  submitManualIdentityReview,
+  startDiditIdentitySession,
+} from '../../../shared/services/identityRegistrationService';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
@@ -27,6 +44,15 @@ const EMPTY_AUTH_FORM = {
   city: '',
   barangay: '',
   address: '',
+  accountRole: 'client',
+  documentTypeKey: 'id_card',
+  manualFullName: '',
+  identityDocumentNumber: '',
+  idDocumentExpiry: '',
+  frontImage: null,
+  backImage: null,
+  selfieImage: null,
+  acceptedIdentityTerms: false,
 };
 
 const getAuthErrorMessage = (error) => {
@@ -51,6 +77,11 @@ const getAuthErrorMessage = (error) => {
 
   return errorMessage;
 };
+
+const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
+
+const buildFullLegalName = ({ firstName, middleName, lastName }) =>
+  [firstName, middleName, lastName].map((part) => part.trim()).filter(Boolean).join(' ');
 
 function AuthPage({
   mode = 'login',
@@ -84,7 +115,17 @@ function AuthPage({
   const [isForgotSubmitted, setIsForgotSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [identityStep, setIdentityStep] = useState('details');
+  const [identitySession, setIdentitySession] = useState(null);
+  const [identityStatusMessage, setIdentityStatusMessage] = useState('');
+  const [identityOutcome, setIdentityOutcome] = useState(null);
   const latestEmailRef = useRef('');
+
+  const selectedDocument = useMemo(
+    () => getDocumentType(formData.documentTypeKey),
+    [formData.documentTypeKey]
+  );
+  const usesDidit = selectedDocument.mode === 'didit';
 
   const pageCopy = useMemo(() => {
     if (isForgotMode) {
@@ -140,11 +181,46 @@ function AuthPage({
   }, [formData.email]);
 
   useEffect(() => {
+    if (!isRegisterMode) return;
+
+    const storedState = loadIdentitySignupState();
+    if (!storedState?.diditSessionId) return;
+
+    setIdentitySession(storedState);
+    setIdentityStep('didit');
+    setIdentityStatusMessage('Verification session restored. You can continue checking the result.');
+    setFormData((current) => {
+      const [firstName = '', ...rest] = (storedState.fullName || '').split(' ').filter(Boolean);
+      const lastName = rest.length > 0 ? rest.pop() : '';
+      const middleName = rest.join(' ');
+
+      return {
+        ...current,
+        firstName: current.firstName || firstName,
+        middleName: current.middleName || middleName,
+        lastName: current.lastName || lastName,
+        email: storedState.email || current.email,
+        password: storedState.password || current.password,
+        confirmPassword: storedState.password || current.confirmPassword,
+        accountRole: storedState.appRole || current.accountRole,
+        documentTypeKey: storedState.documentTypeKey || current.documentTypeKey,
+        acceptedIdentityTerms: true,
+      };
+    });
+  }, [isRegisterMode]);
+
+  useEffect(() => {
     setSubmitError('');
     setForgotError('');
     setApiError('');
     setIsSignupSuccess(false);
     setIsForgotSubmitted(false);
+
+    if (mode !== 'register') {
+      setIdentityStep('details');
+      setIdentityStatusMessage('');
+      setIdentityOutcome(null);
+    }
 
     if (mode === 'forgot') {
       setForgotEmail((currentEmail) => currentEmail || latestEmailRef.current);
@@ -217,8 +293,10 @@ function AuthPage({
   };
 
   const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    const { name, value, type, checked, files } = event.target;
+    const nextValue = type === 'checkbox' ? checked : type === 'file' ? files?.[0] || null : value;
+    setFormData((current) => ({ ...current, [name]: nextValue }));
+    setIdentityStatusMessage('');
   };
 
   const handleProvinceChange = (event) => {
@@ -273,7 +351,104 @@ function AuthPage({
       return 'Please complete all service location fields.';
     }
 
+    if (!formData.acceptedIdentityTerms) {
+      return 'Confirm that you consent to identity verification before continuing.';
+    }
+
+    if (!usesDidit) {
+      if (!formData.manualFullName.trim()) return 'Enter the full name exactly as shown on the ID.';
+      if (!formData.identityDocumentNumber.trim()) return 'Enter the ID number.';
+      if (!formData.idDocumentExpiry) return 'Enter the ID expiry date.';
+      if (formData.idDocumentExpiry < getTodayInputValue()) return 'ID expiry date cannot be in the past.';
+      if (!formData.frontImage || !formData.backImage || !formData.selfieImage) {
+        return 'Upload the front ID image, back ID image, and selfie image.';
+      }
+    }
+
     return '';
+  };
+
+  const handleIdentityRegistrationSubmit = async () => {
+    const fullName = buildFullLegalName(formData);
+    const identityPayload = {
+      ...formData,
+      fullName,
+    };
+
+    if (usesDidit) {
+      const session = await startDiditIdentitySession(identityPayload);
+      setIdentitySession(session);
+      setIdentityStep('didit');
+      setIdentityStatusMessage('Didit verification session created. Open Didit to scan your ID and complete face match.');
+      return;
+    }
+
+    const result = await submitManualIdentityReview({
+      ...identityPayload,
+      manualFullName: formData.manualFullName || fullName,
+    });
+
+    setIdentityOutcome({
+      kind: 'pending',
+      title: 'Manual review submitted',
+      message: result.message || 'Your account is queued for manual identity review. Login access stays locked until approval.',
+    });
+    setIdentityStep('outcome');
+  };
+
+  const handleCheckDiditStatus = async () => {
+    if (!identitySession?.diditSessionId) {
+      setSubmitError('Open a Didit verification session first.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError('');
+      setIdentityStatusMessage('Checking Didit result...');
+
+      const diditSession = await fetchDiditIdentitySession(identitySession.diditSessionId);
+      if (diditSession.status === 'APPROVED' || diditSession.status === 'PENDING_REVIEW') {
+        const result = await finishDiditIdentitySignup(identitySession, diditSession.status);
+        const isPending = result.identityStatus === 'PENDING_REVIEW' || diditSession.status === 'PENDING_REVIEW';
+        setIdentityOutcome({
+          kind: isPending ? 'pending' : 'approved',
+          title: isPending ? 'Identity review pending' : 'Email confirmation sent',
+          message: isPending
+            ? 'Your account was created but access is held until identity review is approved.'
+            : 'Your identity was approved. Confirm your email before logging in.',
+        });
+        setIdentityStep('outcome');
+        return;
+      }
+
+      if (isTerminalIdentityFailure(diditSession.status)) {
+        clearIdentitySignupState();
+        setIdentitySession(null);
+        setIdentityOutcome({
+          kind: 'failed',
+          title: 'Verification was not completed',
+          message: 'Didit did not approve this attempt. You can retry with a valid document.',
+        });
+        setIdentityStep('outcome');
+        return;
+      }
+
+      setIdentityStatusMessage('Didit is still processing your verification. Try checking again in a moment.');
+    } catch (error) {
+      setSubmitError(getAuthErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRestartIdentityRegistration = () => {
+    clearIdentitySignupState();
+    setIdentitySession(null);
+    setIdentityOutcome(null);
+    setIdentityStatusMessage('');
+    setSubmitError('');
+    setIdentityStep('details');
   };
 
   const handleAuthSubmit = async (event) => {
@@ -288,6 +463,11 @@ function AuthPage({
 
     try {
       setIsSubmitting(true);
+      if (isRegisterMode) {
+        await handleIdentityRegistrationSubmit();
+        return;
+      }
+
       await onSubmit?.(formData, isLoginMode);
 
       if (isRegisterMode) {
@@ -352,6 +532,7 @@ function AuthPage({
     setCities([]);
     setBarangays([]);
     setIsSignupSuccess(false);
+    handleRestartIdentityRegistration();
     handleModeChange('login');
   };
 
@@ -494,6 +675,47 @@ function AuthPage({
                 Continue to Login
               </button>
             </div>
+          ) : isRegisterMode && identityStep === 'didit' ? (
+            <div className="auth-success-panel" data-testid="didit-session-panel">
+              <ShieldCheck size={40} aria-hidden="true" />
+              <h2>Continue in Didit</h2>
+              <p>
+                Open Didit to scan your ID, complete liveness, and finish face match.
+                Return here after the verification page is done.
+              </p>
+              <a className="auth-submit" href={identitySession?.verificationUrl || '#'} target="_blank" rel="noreferrer">
+                <ExternalLink size={18} aria-hidden="true" />
+                Open Didit Verification
+              </a>
+              <button type="button" className="auth-submit secondary" onClick={handleCheckDiditStatus} disabled={isSubmitting}>
+                {isSubmitting ? <RefreshCw className="gl-spin" size={18} aria-hidden="true" /> : <RefreshCw size={18} aria-hidden="true" />}
+                Check Verification Status
+              </button>
+              <button type="button" className="auth-link-button center" onClick={handleRestartIdentityRegistration}>
+                Restart registration
+              </button>
+              {identityStatusMessage && <div className="auth-alert warning">{identityStatusMessage}</div>}
+              {submitError && <div className="auth-alert error">{submitError}</div>}
+            </div>
+          ) : isRegisterMode && identityStep === 'outcome' && identityOutcome ? (
+            <div className="auth-success-panel" data-testid="identity-outcome">
+              {identityOutcome.kind === 'failed'
+                ? <XCircle size={40} aria-hidden="true" />
+                : <CheckCircle2 size={40} aria-hidden="true" />}
+              <h2>{identityOutcome.title}</h2>
+              <p>{identityOutcome.message}</p>
+              {identityOutcome.kind === 'failed' ? (
+                <button type="button" className="auth-submit" onClick={handleRestartIdentityRegistration}>
+                  <RefreshCw size={18} aria-hidden="true" />
+                  Try Again
+                </button>
+              ) : (
+                <button type="button" className="auth-submit" onClick={() => handleModeChange('login')}>
+                  <LogIn size={18} aria-hidden="true" />
+                  Continue to Login
+                </button>
+              )}
+            </div>
           ) : (
             <form className="auth-form" onSubmit={handleAuthSubmit}>
               {isRegisterMode && (
@@ -548,6 +770,157 @@ function AuthPage({
                     </div>
                   </label>
                 </div>
+              )}
+
+              {isRegisterMode && (
+                <>
+                  <div className="auth-register-grid">
+                    <label className="auth-field" htmlFor="accountRole">
+                      <span>Account Type</span>
+                      <div className="auth-input-wrap">
+                        <UserPlus size={18} aria-hidden="true" />
+                        <select
+                          id="accountRole"
+                          name="accountRole"
+                          value={formData.accountRole}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <option value="client">Client</option>
+                          <option value="worker">Worker</option>
+                        </select>
+                      </div>
+                    </label>
+
+                    <label className="auth-field" htmlFor="documentTypeKey">
+                      <span>Identity document</span>
+                      <div className="auth-input-wrap">
+                        <FileText size={18} aria-hidden="true" />
+                        <select
+                          id="documentTypeKey"
+                          name="documentTypeKey"
+                          value={formData.documentTypeKey}
+                          onChange={handleInputChange}
+                          required
+                        >
+                          <optgroup label="Automatic Didit verification">
+                            {DIDIT_DOCUMENT_TYPES.map((document) => (
+                              <option key={document.key} value={document.key}>{document.label}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Manual review">
+                            {MANUAL_DOCUMENT_TYPES.map((document) => (
+                              <option key={document.key} value={document.key}>{document.label}</option>
+                            ))}
+                          </optgroup>
+                        </select>
+                      </div>
+                    </label>
+                  </div>
+
+                  {usesDidit ? (
+                    <div className="auth-alert warning">
+                      <ShieldCheck size={16} aria-hidden="true" />
+                      {selectedDocument.label} uses Didit for ID scan, liveness, and face match before account creation.
+                    </div>
+                  ) : (
+                    <div className="auth-form" data-testid="manual-review-fields">
+                      <div className="auth-alert warning">
+                        <Upload size={16} aria-hidden="true" />
+                        {selectedDocument.label} requires manual review. Upload clear ID images and a selfie.
+                      </div>
+
+                      <label className="auth-field" htmlFor="manualFullName">
+                        <span>Name on ID</span>
+                        <div className="auth-input-wrap">
+                          <User size={18} aria-hidden="true" />
+                          <input
+                            id="manualFullName"
+                            name="manualFullName"
+                            type="text"
+                            value={formData.manualFullName}
+                            onChange={handleInputChange}
+                            placeholder="Juan Santos Dela Cruz"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="auth-field" htmlFor="identityDocumentNumber">
+                        <span>ID number</span>
+                        <div className="auth-input-wrap">
+                          <FileText size={18} aria-hidden="true" />
+                          <input
+                            id="identityDocumentNumber"
+                            name="identityDocumentNumber"
+                            type="text"
+                            value={formData.identityDocumentNumber}
+                            onChange={handleInputChange}
+                            placeholder="ID number"
+                          />
+                        </div>
+                      </label>
+
+                      <label className="auth-field" htmlFor="idDocumentExpiry">
+                        <span>ID expiry date</span>
+                        <div className="auth-input-wrap">
+                          <FileText size={18} aria-hidden="true" />
+                          <input
+                            id="idDocumentExpiry"
+                            name="idDocumentExpiry"
+                            type="date"
+                            min={getTodayInputValue()}
+                            value={formData.idDocumentExpiry}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                      </label>
+
+                      <div className="auth-register-grid">
+                        <label className="auth-field" htmlFor="manual-front-image">
+                          <span>Front image</span>
+                          <div className="auth-input-wrap">
+                            <Upload size={18} aria-hidden="true" />
+                            <input
+                              id="manual-front-image"
+                              name="frontImage"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </label>
+
+                        <label className="auth-field" htmlFor="manual-back-image">
+                          <span>Back image</span>
+                          <div className="auth-input-wrap">
+                            <Upload size={18} aria-hidden="true" />
+                            <input
+                              id="manual-back-image"
+                              name="backImage"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleInputChange}
+                            />
+                          </div>
+                        </label>
+                      </div>
+
+                      <label className="auth-field" htmlFor="manual-selfie-image">
+                        <span>Selfie image</span>
+                        <div className="auth-input-wrap">
+                          <Upload size={18} aria-hidden="true" />
+                          <input
+                            id="manual-selfie-image"
+                            name="selfieImage"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </>
               )}
 
               <label className="auth-field" htmlFor="email">
@@ -706,14 +1079,30 @@ function AuthPage({
                   </label>
 
                   {apiError && <div className="auth-alert warning">{apiError}</div>}
+
+                  <label className="auth-field" htmlFor="acceptedIdentityTerms">
+                    <span>Identity consent</span>
+                    <div className="auth-input-wrap">
+                      <ShieldCheck size={18} aria-hidden="true" />
+                      <input
+                        id="acceptedIdentityTerms"
+                        name="acceptedIdentityTerms"
+                        type="checkbox"
+                        checked={formData.acceptedIdentityTerms}
+                        onChange={handleInputChange}
+                        required
+                      />
+                      <span>I consent to identity verification before account access.</span>
+                    </div>
+                  </label>
                 </>
               )}
 
               {submitError && <div className="auth-alert error">{submitError}</div>}
 
               <button type="submit" className="auth-submit" disabled={isSubmitting}>
-                {isSubmitting ? <RefreshCw className="gl-spin" size={18} aria-hidden="true" /> : isRegisterMode ? <UserPlus size={18} aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}
-                {isSubmitting ? (isRegisterMode ? 'Creating Account...' : 'Logging in...') : (isRegisterMode ? 'Create Account' : 'Login')}
+                {isSubmitting ? <RefreshCw className="gl-spin" size={18} aria-hidden="true" /> : isRegisterMode ? (usesDidit ? <ShieldCheck size={18} aria-hidden="true" /> : <Upload size={18} aria-hidden="true" />) : <LogIn size={18} aria-hidden="true" />}
+                {isSubmitting ? (isRegisterMode ? 'Submitting...' : 'Logging in...') : (isRegisterMode ? (usesDidit ? 'Start Didit Verification' : 'Submit Manual Review') : 'Login')}
               </button>
 
               {isLoginMode && (

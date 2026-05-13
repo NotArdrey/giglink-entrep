@@ -60,12 +60,6 @@ function App() {
           onResendVerification={navigationContext.handleResendVerification}
           onForgotPasswordSubmit={navigationContext.handleForgotPasswordSubmit}
         />
-        <FloatingChatbot
-          appTheme={navigationContext.appTheme}
-          currentView="landing"
-          isLoggedIn={false}
-          role="guest"
-        />
         <SuccessNotification
           message={navigationContext.successNotification.message}
           isVisible={navigationContext.successNotification.isVisible}

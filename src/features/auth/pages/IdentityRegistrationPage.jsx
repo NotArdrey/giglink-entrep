@@ -541,8 +541,8 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
                       onChange={(event) => updateField('accountRole', event.target.value)}
                       style={styles.select}
                     >
-                      <option value="client">Client / fan</option>
-                      <option value="worker">Worker / musician</option>
+                      <option value="client">Client</option>
+                      <option value="worker">Worker</option>
                     </select>
                   </label>
 
