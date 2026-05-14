@@ -208,7 +208,7 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
 
               {/* Trust / quick-facts pills */}
               <div className="worker-modal-meta">
-                <span><CalendarCheck size={14} aria-hidden="true" /> {isInquiry ? 'Manual scheduling' : 'Bookable online'}</span>
+                <span><CalendarCheck size={14} aria-hidden="true" /> {isInquiry ? 'Request booking' : 'Time-slot booking'}</span>
                 <span><Clock size={14} aria-hidden="true" /> Responds in &lt; 15 min</span>
                 {worker.location && <span><MapPin size={14} aria-hidden="true" /> {worker.location}</span>}
                 {worker.experience ? <span>{worker.experience}+ years experience</span> : null}
@@ -227,7 +227,7 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
                 </div>
                 <p className="worker-modal-rate-note">
                   {isInquiry
-                    ? 'Final pricing confirmed after you message the provider.'
+                    ? 'Final pricing and schedule are coordinated through chat.'
                     : 'Price shown is the standard rate. Booking unlocks the schedule.'}
                 </p>
               </div>

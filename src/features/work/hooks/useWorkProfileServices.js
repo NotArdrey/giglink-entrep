@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../../shared/services/supabaseClient';
 import {
+  createEmptyAvailabilityTemplate,
+  createServiceSlotsFromAvailability,
+  getAvailabilitySlotCount,
+  normalizeAvailabilityTemplate,
+} from '../services/scheduleService';
+import {
   createWorkerService,
   getAuthenticatedWorkUser,
   loadWorkerProfileServices,
@@ -10,7 +16,7 @@ import {
   updateWorkerProfile,
 } from '../services/workerService';
 
-const DEFAULT_NEW_SERVICE = {
+const createDefaultNewService = () => ({
   title: '',
   shortDescription: '',
   description: '',
@@ -20,7 +26,8 @@ const DEFAULT_NEW_SERVICE = {
   bookingMode: 'with-slots',
   currency: 'PHP',
   durationMinutes: '',
-};
+  availability: createEmptyAvailabilityTemplate(),
+});
 
 const buildDefaultServiceForSeller = ({ sellerData, workerProfileBundle, sellerProfile }) => {
   const serviceType =
@@ -66,7 +73,7 @@ const buildDefaultServiceForSeller = ({ sellerData, workerProfileBundle, sellerP
 export const useWorkProfileServices = ({ sellerProfile } = {}) => {
   const [authUser, setAuthUser] = useState(null);
   const [workerServices, setWorkerServices] = useState([]);
-  const [activeServiceIndex] = useState(0);
+  const [activeServiceIndex, setActiveServiceIndex] = useState(0);
   const [sellerData, setSellerData] = useState(null);
   const [workerProfileBundle, setWorkerProfileBundle] = useState(null);
   const [sellerDbServices, setSellerDbServices] = useState([]);
@@ -74,7 +81,7 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
   const [sellerDataError, setSellerDataError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
-  const [newService, setNewService] = useState(DEFAULT_NEW_SERVICE);
+  const [newService, setNewService] = useState(() => createDefaultNewService());
   const sellerDataRef = useRef(null);
 
   useEffect(() => {
@@ -224,6 +231,16 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
     }
 
     try {
+      setSellerDataError(null);
+      const bookingMode = newService.bookingMode === 'calendar-only' ? 'calendar-only' : 'with-slots';
+      const availabilityTemplate = normalizeAvailabilityTemplate(newService.availability);
+      const availabilitySlotCount = getAvailabilitySlotCount(availabilityTemplate);
+
+      if (bookingMode === 'with-slots' && availabilitySlotCount === 0) {
+        setSellerDataError('Add at least one availability slot before publishing a time-slot service.');
+        return null;
+      }
+
       const payload = {
         title: newService.title,
         shortDescription: newService.shortDescription,
@@ -235,7 +252,13 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
         metadata: {
           createdVia: 'ui',
           rate_basis: newService.rateBasis || 'per-project',
-          booking_mode: newService.bookingMode || 'with-slots',
+          booking_mode: bookingMode,
+          ...(bookingMode === 'with-slots'
+            ? {
+                availability_template: availabilityTemplate,
+                availability_horizon_weeks: 7,
+              }
+            : {}),
         },
       };
 
@@ -246,10 +269,36 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
         fallbackProfile: sellerProfile,
       });
 
+      let createdSlots = [];
+      let availabilityWarning = '';
+      if (bookingMode === 'with-slots' && availabilitySlotCount > 0) {
+        try {
+          createdSlots = await createServiceSlotsFromAvailability({
+            serviceId: created.raw.id,
+            sellerId,
+            availability: availabilityTemplate,
+            weeksToCreate: 7,
+          });
+        } catch (error) {
+          console.error('Create service availability failed:', error);
+          availabilityWarning = error?.message || 'Availability slots could not be saved.';
+        }
+      }
+
       setSellerDbServices((prev) => [created.raw, ...(prev || [])]);
       setWorkerServices((prev) => [created.mapped, ...(prev || [])]);
-      setNewService(DEFAULT_NEW_SERVICE);
-      setSuccessMessage('Service created successfully');
+      setActiveServiceIndex(0);
+      setNewService(createDefaultNewService());
+      setSuccessMessage(
+        availabilityWarning
+          ? 'Service created. Availability needs attention.'
+          : createdSlots.length > 0
+            ? `Service created with ${createdSlots.length} availability slots`
+            : 'Service created successfully'
+      );
+      if (availabilityWarning) {
+        setSellerDataError(`Service created, but availability slots were not saved: ${availabilityWarning}`);
+      }
       window.setTimeout(() => setSuccessMessage(''), 3000);
       closeCreateService();
       return created.raw;
@@ -307,6 +356,7 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
     sellerDbServices,
     sellerId,
     sellerUiProfile,
+    setActiveServiceIndex,
     setIsCreateServiceOpen,
     setSellerDataError,
     setSuccessMessage,

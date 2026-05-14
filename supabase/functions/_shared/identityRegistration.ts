@@ -741,8 +741,8 @@ export const buildProfilePayload = ({
 };
 
 export const sendEmailConfirmation = async (email: string, redirectTo = "") => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const supabaseUrl = Deno.env.get("GIGLINK_SUPABASE_URL") || Deno.env.get("SUPABASE_URL") || "";
+  const anonKey = Deno.env.get("GIGLINK_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || "";
   if (!supabaseUrl || !anonKey) {
     return { sent: false, provider: "supabase_auth", error: "Missing SUPABASE_URL or SUPABASE_ANON_KEY" };
   }

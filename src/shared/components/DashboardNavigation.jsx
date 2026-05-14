@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   Bell,
   BriefcaseBusiness,
+  CalendarCheck,
   Home,
   LogOut,
   MessageCircle,
@@ -32,6 +33,7 @@ function DashboardNavigation({
   currentView,
   onOpenDashboard,
   onOpenBrowseServices,
+  onOpenChatPage,
   onToggleAdminView,
   isAdminView = false,
 }) {
@@ -69,6 +71,7 @@ function DashboardNavigation({
   const activeKey = {
     'client-dashboard': 'home',
     'browse-services': 'browse',
+    chat: 'chat',
     'my-bookings': 'bookings',
     'my-work': 'work',
     'worker-dashboard': 'work',
@@ -88,21 +91,32 @@ function DashboardNavigation({
   const unreadCount = notifications.filter((item) => !item.isRead).length;
   const isDarkMode = appTheme === 'dark';
   const ThemeIcon = isDarkMode ? Moon : Sun;
+  const normalizedRole = String(sellerProfile?.role || '').trim().toLowerCase();
+  const isAdminAccount = Boolean(sellerProfile?.isAdmin) || normalizedRole === 'admin';
+  const isWorkerAccount = normalizedRole === 'worker';
   const handleThemeToggle = () => {
     onThemeChange?.(isDarkMode ? 'light' : 'dark');
   };
 
-  const navItems = [
+  const clientNavItems = [
     { key: 'home', label: 'Home', icon: Home, onClick: onOpenDashboard },
     { key: 'browse', label: 'Browse', icon: Store, onClick: onOpenBrowseServices || onOpenDashboard },
-    { key: 'bookings', label: 'Bookings', icon: MessageCircle, onClick: onOpenMyBookings },
+    { key: 'chat', label: 'Chats', icon: MessageCircle, onClick: onOpenChatPage || onOpenMyBookings },
+    { key: 'bookings', label: 'Bookings', icon: CalendarCheck, onClick: onOpenMyBookings },
+    { key: 'profile', label: 'Profile', icon: UserRound, onClick: onOpenProfile },
+    { key: 'settings', label: 'Settings', icon: Settings, onClick: onOpenSettings },
+  ];
+  const workerNavItems = [
+    { key: 'home', label: 'Home', icon: Home, onClick: onOpenDashboard },
     { key: 'work', label: 'My Work', icon: BriefcaseBusiness, onClick: onOpenMyWork || onOpenSellerSetup },
     { key: 'profile', label: 'Profile', icon: UserRound, onClick: onOpenProfile },
     { key: 'settings', label: 'Settings', icon: Settings, onClick: onOpenSettings },
   ];
+  const navItems = isWorkerAccount && !isAdminAccount ? workerNavItems : clientNavItems;
   const mobileNavLabels = {
     home: 'Mobile home tab',
     browse: 'Mobile browse tab',
+    chat: 'Mobile chats tab',
     bookings: 'Mobile bookings tab',
     work: 'Mobile work tab',
     profile: 'Mobile profile tab',
@@ -116,6 +130,10 @@ function DashboardNavigation({
   const handleNotificationClick = (id) => {
     setNotifications((prev) => prev.map((item) => (item.id === id ? { ...item, isRead: true } : item)));
     setIsNotificationOpen(false);
+    if (isWorkerAccount && !isAdminAccount) {
+      onOpenMyWork?.();
+      return;
+    }
     onOpenMyBookings?.();
   };
 

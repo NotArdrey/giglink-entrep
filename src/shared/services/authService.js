@@ -1,4 +1,8 @@
 import { supabase } from './supabaseClient';
+import {
+  getRegistrationFormLogSnapshot,
+  logRegistrationDebug,
+} from './registrationLogger';
 
 const PROFILE_PHOTO_BUCKET = 'profile-photos';
 
@@ -427,6 +431,11 @@ export const fetchUserProfileBundle = async (userId) => {
 export const upsertClientProfile = async (user, source = {}) => {
   if (!user?.id) throw new Error('Missing authenticated user.');
 
+  logRegistrationDebug('client_profile:upsert_started', {
+    userId: user.id,
+    form: getRegistrationFormLogSnapshot(source),
+  });
+
   const { data: existingProfile, error: existingError } = await supabase
     .from('profiles')
     .select('is_worker, role, full_name, phone_number, profile_photo, bio, province, city, barangay, address')
@@ -436,6 +445,11 @@ export const upsertClientProfile = async (user, source = {}) => {
   if (existingError && existingError.code !== 'PGRST116') throw toReadableDatabaseSetupError(existingError);
 
   const payload = buildProfilePayload(user, source, existingProfile);
+  logRegistrationDebug('client_profile:payload_built', {
+    userId: user.id,
+    mode: existingProfile?.full_name || existingProfile?.email ? 'update' : 'insert',
+    payload,
+  });
 
   // If profile exists, use UPDATE; otherwise use INSERT
   if (existingProfile?.full_name || existingProfile?.email) {
@@ -446,6 +460,7 @@ export const upsertClientProfile = async (user, source = {}) => {
       .eq('user_id', user.id);
 
     if (updateError) throw toReadableDatabaseSetupError(updateError);
+    logRegistrationDebug('client_profile:updated', { userId: user.id });
   } else {
     // Profile doesn't exist, INSERT it
     const { error: insertError } = await supabase
@@ -453,9 +468,15 @@ export const upsertClientProfile = async (user, source = {}) => {
       .insert([payload]);
 
     if (insertError) throw toReadableDatabaseSetupError(insertError);
+    logRegistrationDebug('client_profile:inserted', { userId: user.id });
   }
 
-  return fetchUserProfileBundle(user.id);
+  const profile = await fetchUserProfileBundle(user.id);
+  logRegistrationDebug('client_profile:upsert_finished', {
+    userId: user.id,
+    profile,
+  });
+  return profile;
 };
 
 export const updateUserProfileFields = async (user, fields = {}) => {
@@ -804,6 +825,10 @@ export const signUpWithEmail = async (formData = {}) => {
   const normalizedEmail = normalizeEmail(formData.email);
   const cleanPassword = typeof formData.password === 'string' ? formData.password : '';
 
+  logRegistrationDebug('email_signup:start', {
+    form: getRegistrationFormLogSnapshot({ ...formData, email: normalizedEmail }),
+  });
+
   const { data, error } = await supabase.auth.signUp({
     email: normalizedEmail,
     password: cleanPassword,
@@ -831,9 +856,25 @@ export const signUpWithEmail = async (formData = {}) => {
     },
   });
 
-  if (error) throw error;
+  if (error) {
+    logRegistrationDebug('email_signup:error', {
+      message: error.message,
+      error,
+    }, 'error');
+    throw error;
+  }
+
+  logRegistrationDebug('email_signup:supabase_response', {
+    userId: data.user?.id || data.session?.user?.id || null,
+    hasUser: Boolean(data.user),
+    hasSession: Boolean(data.session),
+    requiresEmailVerification: !data.session?.user,
+  });
 
   if (!data.session?.user) {
+    logRegistrationDebug('email_signup:verification_required', {
+      userId: data.user?.id || null,
+    });
     return {
       user: data.user || null,
       profile: null,
@@ -842,6 +883,10 @@ export const signUpWithEmail = async (formData = {}) => {
   }
 
   const profile = await upsertClientProfile(data.session.user, formData);
+  logRegistrationDebug('email_signup:finished', {
+    userId: data.session.user.id,
+    profile,
+  });
   return {
     user: data.session.user,
     profile,

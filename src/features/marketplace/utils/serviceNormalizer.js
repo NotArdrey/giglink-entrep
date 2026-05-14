@@ -93,10 +93,12 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
   const rateBasis = getRateBasisFromService(service);
   const basePrice = service.base_price ?? service.basePrice ?? null;
   const pricingType = getPricingModelFromService(service);
+  const bookingMode = getBookingModeFromService(service, seller);
   const serviceType = sellerMeta.service_type || service.metadata?.service_type || service.metadata?.serviceType || 'Service';
   const city = sellerMeta.location?.city || seller.city || '';
   const province = sellerMeta.location?.province || seller.province || '';
   const location = [city, province].filter(Boolean).join(', ');
+  const isRequestBooking = pricingType === 'inquiry' || bookingMode === 'calendar-only';
 
   return {
     id: service.id,
@@ -105,7 +107,7 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
     serviceType,
     customServiceType: service.metadata?.custom_service_type || service.metadata?.customServiceType || '',
     description: service.description || service.short_description || seller.about || seller.tagline || 'Professional service available through GigLink.',
-    rating: service.rating || seller.avg_rating || 4.8,
+    rating: service.rating ?? seller.avg_rating ?? null,
     reviews: service.reviews_count || seller.rating_count || 0,
     photo: seller.profile_photo || seller.avatar_url || '',
     gallery: service.metadata?.gallery || service.metadata?.uploadedPhotos || [],
@@ -117,8 +119,8 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
     monthlyRate: rateBasis === 'per-month' ? basePrice : null,
     projectRate: rateBasis === 'per-project' ? basePrice : null,
     pricingType,
-    actionType: pricingType === 'inquiry' ? 'inquire' : 'book',
-    bookingMode: getBookingModeFromService(service, seller),
+    actionType: isRequestBooking ? 'inquire' : 'book',
+    bookingMode,
     rateBasis,
     rawService: service,
   };
@@ -126,7 +128,7 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
 
 export const createScheduleForProvider = (provider = {}) => {
   const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const isManual = provider.actionType === 'inquire';
+  const isManual = provider.actionType === 'inquire' || provider.bookingMode === 'calendar-only';
   const dayBlocks = {};
 
   defaultDays.forEach((day) => {
@@ -146,7 +148,9 @@ export const createScheduleForProvider = (provider = {}) => {
 };
 
 export const buildWeeklyScheduleFromSlots = (slots = [], provider = {}) => {
-  if (provider.actionType === 'inquire') return createScheduleForProvider(provider);
+  if (provider.actionType === 'inquire' || provider.bookingMode === 'calendar-only') {
+    return createScheduleForProvider(provider);
+  }
 
   const dayBlocks = {};
   const operatingDaysSet = new Set();

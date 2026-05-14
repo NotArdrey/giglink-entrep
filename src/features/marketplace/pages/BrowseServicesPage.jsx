@@ -10,7 +10,7 @@ import {
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
 import ErrorNotification from '../../../shared/components/ErrorNotification';
-import { createClientBooking } from '../../bookings/services/bookingService';
+import { createClientBooking, createClientBookingRequest } from '../../bookings/services/bookingService';
 import { fetchAllActiveServices } from '../../../shared/services/authService';
 import { supabase } from '../../../shared/services/supabaseClient';
 import BookingCalendarModal from '../../bookings/components/BookingCalendarModal';
@@ -27,6 +27,15 @@ import {
 } from '../utils/serviceNormalizer';
 
 const DEFAULT_CATEGORIES = ['All', 'Tutor', 'Technician', 'Cleaner', 'More Services'];
+
+const getProviderSellerId = (provider) => {
+  if (!provider) return null;
+  return provider.rawService?.seller_id
+    || provider.rawService?.sellers?.user_id
+    || provider.rawService?.seller?.user_id
+    || provider.sellerId
+    || null;
+};
 
 function BrowseServicesPage({
   mode = 'authenticated',
@@ -47,6 +56,7 @@ function BrowseServicesPage({
   onOpenSettings,
   onOpenDashboard,
   onOpenBrowseServices,
+  onOpenChatPage,
   onOpenAdminDashboard,
 }) {
   const isPublic = mode === 'public';
@@ -66,9 +76,13 @@ function BrowseServicesPage({
   const [bookingError, setBookingError] = useState('');
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
   const [reviewsTarget, setReviewsTarget] = useState(null);
+  const [reviewsBySeller, setReviewsBySeller] = useState({});
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false);
   const [schedulesByProvider, setSchedulesByProvider] = useState({});
 
   const searchQuery = isPublic ? localSearchQuery : externalSearchQuery;
+  const reviewsSellerId = getProviderSellerId(reviewsTarget);
+  const reviewsForTarget = reviewsSellerId ? (reviewsBySeller[reviewsSellerId] || []) : [];
 
   useEffect(() => {
     let mounted = true;
@@ -140,6 +154,48 @@ function BrowseServicesPage({
     };
   }, [services]);
 
+  useEffect(() => {
+    if (!reviewsTarget || !reviewsSellerId || reviewsBySeller[reviewsSellerId]) return undefined;
+
+    let mounted = true;
+
+    const loadReviews = async () => {
+      try {
+        setIsReviewsLoading(true);
+        const { data, error } = await supabase
+          .from('reviews')
+          .select('id, rating, title, body, created_at')
+          .eq('seller_id', reviewsSellerId)
+          .eq('published', true)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+        if (!mounted) return;
+
+        setReviewsBySeller((prev) => ({
+          ...prev,
+          [reviewsSellerId]: (data || []).map((review) => ({
+            id: review.id,
+            clientName: 'Client',
+            rating: review.rating,
+            comment: review.body || review.title || 'No comment provided.',
+            date: review.created_at ? String(review.created_at).slice(0, 10) : '',
+          })),
+        }));
+      } catch (error) {
+        if (mounted) setBookingError(error?.message || 'Unable to load reviews.');
+      } finally {
+        if (mounted) setIsReviewsLoading(false);
+      }
+    };
+
+    loadReviews();
+    return () => {
+      mounted = false;
+    };
+  }, [reviewsBySeller, reviewsSellerId, reviewsTarget]);
+
   const categories = useMemo(() => {
     const dynamic = services
       .map(getDisplayServiceType)
@@ -197,7 +253,7 @@ function BrowseServicesPage({
     setIsWorkerModalOpen(true);
   };
 
-  const handleBookNow = (worker) => {
+  const handleBookNow = async (worker) => {
     if (isPublic) {
       setIsWorkerModalOpen(false);
       onRequireLogin?.();
@@ -205,13 +261,43 @@ function BrowseServicesPage({
     }
 
     if (worker.actionType === 'inquire') {
-      setIsWorkerModalOpen(false);
-      setBookingMessage(`Inquiry started with ${worker.name}.`);
+      try {
+        setIsBookingSubmitting(true);
+        setBookingError('');
+        await createClientBookingRequest({ provider: worker });
+        setIsWorkerModalOpen(false);
+        setSelectedWorker(null);
+        setBookingMessage(`Request booking started with ${worker.name}. Open My Bookings to continue through chat.`);
+        onOpenChatPage?.();
+      } catch (error) {
+        setBookingError(error?.message || 'Unable to create request booking.');
+      } finally {
+        setIsBookingSubmitting(false);
+      }
       return;
     }
 
     setIsWorkerModalOpen(false);
     setIsBookingCalendarOpen(true);
+  };
+
+  const handleStartChat = async (provider) => {
+    if (isPublic) {
+      onRequireLogin?.();
+      return;
+    }
+
+    try {
+      setIsBookingSubmitting(true);
+      setBookingError('');
+      await createClientBookingRequest({ provider });
+      setBookingMessage(`Chat started with ${provider.name}.`);
+      onOpenChatPage?.();
+    } catch (error) {
+      setBookingError(error?.message || 'Unable to start chat with this worker.');
+    } finally {
+      setIsBookingSubmitting(false);
+    }
   };
 
   const handleConfirmBooking = ({ workerId, date, dayKey, blockId, manualScheduling }) => {
@@ -231,6 +317,7 @@ function BrowseServicesPage({
       workerName: worker.name,
       serviceType: getDisplayServiceType(worker),
       quoteAmount: getProviderQuoteAmount(worker),
+      bookingMode: worker.bookingMode,
       selectedSlot: {
         date,
         dateKey: date,
@@ -315,9 +402,10 @@ function BrowseServicesPage({
           searchQuery={searchQuery}
           onSearchChange={handleSearchChange}
           onLogout={onLogout}
-          onOpenSellerSetup={onOpenSellerSetup}
-          onOpenMyBookings={onOpenMyBookings}
-          sellerProfile={sellerProfile}
+        onOpenSellerSetup={onOpenSellerSetup}
+        onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
+        sellerProfile={sellerProfile}
           onOpenMyWork={onOpenMyWork}
           onOpenProfile={onOpenProfile}
           onOpenAccountSettings={onOpenAccountSettings}
@@ -359,7 +447,7 @@ function BrowseServicesPage({
         </section>
 
         <section className="browse-marketplace" aria-label="Service marketplace">
-          <aside className="browse-filter-rail gl-card" aria-label="Browse filters" style={{ gridColumn: 2, gridRow: 1 }}>
+          <aside className="browse-filter-rail gl-card" aria-label="Browse filters">
             <div className="browse-filter-head">
               <Filter size={17} aria-hidden="true" />
               <strong>Filters</strong>
@@ -411,7 +499,7 @@ function BrowseServicesPage({
             </button>
           </aside>
 
-          <section className="browse-results-panel" style={{ gridColumn: 1, gridRow: 1 }}>
+          <section className="browse-results-panel">
             <div className="browse-toolbar gl-card">
               <div className="browse-search">
                 <Search size={18} aria-hidden="true" />
@@ -467,6 +555,7 @@ function BrowseServicesPage({
                     provider={provider}
                     onViewProfile={handleViewProfile}
                     onViewReviews={setReviewsTarget}
+                    onChat={handleStartChat}
                   />
                 ))}
               </section>
@@ -514,10 +603,8 @@ function BrowseServicesPage({
         isOpen={Boolean(reviewsTarget)}
         provider={reviewsTarget}
         onClose={() => setReviewsTarget(null)}
-        reviews={reviewsTarget ? [
-          { clientName: 'Client A', rating: 5, comment: 'Excellent service, on time and professional.', date: '2026-02-11' },
-          { clientName: 'Client B', rating: 4, comment: 'Good quality and easy to coordinate with.', date: '2026-01-22' },
-        ] : []}
+        reviews={reviewsForTarget}
+        isLoading={isReviewsLoading && Boolean(reviewsTarget)}
         appTheme={appTheme}
       />
 

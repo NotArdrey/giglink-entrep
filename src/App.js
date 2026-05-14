@@ -103,7 +103,7 @@ function App() {
         currentView={navigationContext.currentView}
         isLoggedIn={navigationContext.isLoggedIn}
         role={navigationContext.sellerProfile?.role || 'client'}
-        isHidden={navigationContext.isSellerOnboardingOpen}
+        isHidden={navigationContext.isSellerOnboardingOpen || navigationContext.currentView === 'chat'}
       />
       <SuccessNotification
         message={navigationContext.successNotification.message}

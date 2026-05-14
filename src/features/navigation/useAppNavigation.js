@@ -643,6 +643,10 @@ export const useAppNavigation = () => {
     setCurrentView('my-bookings');
   };
 
+  const handleOpenChatPage = () => {
+    setCurrentView('chat');
+  };
+
   const handleOpenBrowseServices = () => {
     setCurrentView('browse-services');
   };
@@ -743,6 +747,7 @@ export const useAppNavigation = () => {
     handleBackToClientDashboard,
     handleOpenAdminDashboard,
     handleOpenMyBookings,
+    handleOpenChatPage,
     handleOpenBrowseServices,
     handleOpenMyWork,
     handleOpenProfile,

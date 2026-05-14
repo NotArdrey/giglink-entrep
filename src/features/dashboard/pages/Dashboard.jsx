@@ -53,6 +53,7 @@ function Dashboard({
   onLogout,
   onBecomeSeller,
   onOpenMyBookings,
+  onOpenChatPage,
   sellerProfile,
   onOpenMyWork,
   onOpenProfile,
@@ -101,6 +102,7 @@ function Dashboard({
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup || onBecomeSeller}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}

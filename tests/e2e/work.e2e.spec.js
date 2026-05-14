@@ -47,20 +47,19 @@ async function createService(page, { title, bookingMode = 'with-slots' }) {
   await modal.getByPlaceholder('Title').fill(title);
   await modal.getByPlaceholder('Short description').fill(`Created by Playwright for ${bookingMode}`);
   await modal.getByPlaceholder('Price').fill('650');
-  await modal.getByLabel('Booking mode').selectOption(bookingMode);
+  await modal.getByRole('radio', { name: bookingMode === 'with-slots' ? 'Time-slot booking' : 'Request booking' }).click();
   await modal.getByPlaceholder('Duration (min)').fill('90');
+
+  if (bookingMode === 'with-slots') {
+    await modal.getByRole('button', { name: 'Add Time' }).first().click();
+    await modal.getByLabel('Start').first().fill('09:00');
+    await modal.getByLabel('End').first().fill('11:00');
+    await modal.getByLabel('Capacity').first().fill('2');
+  }
+
   await modal.getByRole('button', { name: 'Create' }).click();
   await expect(modal).toHaveCount(0, { timeout: 20_000 });
-  await expect(page.getByText(title).first()).toBeVisible({ timeout: 20_000 });
-}
-
-function currentWeekIsoDate(dayOffsetFromMonday = 2) {
-  const date = new Date();
-  const day = date.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  date.setDate(date.getDate() + diff + dayOffsetFromMonday);
-  date.setHours(12, 0, 0, 0);
-  return date.toISOString().slice(0, 10);
+  await expect(page.locator('p').filter({ hasText: title }).first()).toBeVisible({ timeout: 20_000 });
 }
 
 async function expectPrimarySectionsUsable(page) {
@@ -124,7 +123,7 @@ test('My Work loads profile data and manages service slots end to end', async ({
   await openMyWork(page);
 
   await expect(page.getByTestId('work-schedule-section')).toBeVisible();
-  await expect(page.getByText('Weekly Schedule')).toBeVisible();
+  await expect(page.getByText('Service Availability')).toBeVisible();
 
   await page.getByLabel('Add service').click();
   await expect(page.getByTestId('create-service-modal')).toBeVisible();
@@ -157,7 +156,7 @@ test('My Work loads profile data and manages service slots end to end', async ({
   expect(consoleFailures).toEqual([]);
 });
 
-test('My Work supports calendar-only service availability', async ({ page }) => {
+test('My Work supports request-booking services without standalone availability setup', async ({ page }) => {
   await prepareWorkerDemoData({ bookingMode: 'calendar-only' });
   const consoleFailures = collectConsoleFailures(page);
 
@@ -166,26 +165,8 @@ test('My Work supports calendar-only service availability', async ({ page }) => 
 
   const serviceTitle = `E2E Calendar Service ${Date.now()}`;
   await createService(page, { title: serviceTitle, bookingMode: 'calendar-only' });
-  await expect(page.getByText('Calendar Availability')).toBeVisible({ timeout: 20_000 });
-
-  const date = currentWeekIsoDate(2);
-  await page.getByRole('button', { name: /\+ Add Available Date/ }).click();
-  await page.getByLabel('Available Date').fill(date);
-  await page.getByLabel('Max Bookings').fill('3');
-  await page.getByLabel('Note (Optional)').fill('Calendar-only E2E note');
-  await page.getByRole('button', { name: 'Add Date' }).click();
-  await expect(page.getByText('Calendar-only E2E note')).toBeVisible({ timeout: 20_000 });
-
-  await page.getByTitle('Edit date').first().click();
-  await page.getByLabel('Max Bookings').fill('5');
-  await page.getByLabel('Note (Optional)').fill('Updated calendar-only E2E note');
-  await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.getByText('Updated calendar-only E2E note')).toBeVisible({ timeout: 20_000 });
-
-  await page.getByTitle('Delete date').first().click();
-  await expect(page.getByRole('heading', { name: 'Confirm Deletion' })).toBeVisible();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByText('Updated calendar-only E2E note')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByText('Booking: Request booking')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('work-schedule-section')).toHaveCount(0);
 
   expect(consoleFailures).toEqual([]);
 });

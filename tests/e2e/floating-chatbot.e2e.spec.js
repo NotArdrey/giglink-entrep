@@ -103,6 +103,7 @@ test.describe('floating GigLink chatbot', () => {
 
       await expect(page.getByRole('dialog', { name: /giglink assistant/i })).toBeVisible();
       await expect(page.getByText(/marketplace and booking help/i)).toBeVisible();
+      await expect(page.getByRole('button', { name: /book a provider/i })).toBeVisible();
 
       await page.getByLabel(/message giglink assistant/i).fill('How do I book a service?');
       await page.getByRole('button', { name: /^send message$/i }).click();
@@ -128,6 +129,34 @@ test.describe('floating GigLink chatbot', () => {
       expect(consoleFailures).toEqual([]);
     });
   }
+
+  test('logged-in user gets a short clarification for accidental input', async ({ page }) => {
+    let chatbotCalls = 0;
+
+    await mockChatbot(page, async (route) => {
+      chatbotCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: 'This should not be needed for low-signal input.',
+          model: 'llama-3.1-8b-instant',
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await loginAsClient(page);
+    await page.getByRole('button', { name: /open giglink assistant/i }).click();
+    await page.getByLabel(/message giglink assistant/i).fill('ww');
+    await page.getByRole('button', { name: /^send message$/i }).click();
+
+    await expect(page.getByTestId('chatbot-message-user').filter({ hasText: 'ww' })).toBeVisible();
+    await expect(page.getByTestId('chatbot-message-assistant').filter({ hasText: /did not catch/i })).toBeVisible();
+    await expect(page.getByText(/examples include/i)).toHaveCount(0);
+    expect(chatbotCalls).toBe(0);
+    await expectNoHorizontalOverflow(page);
+  });
 
   test('logged-in user sees a sanitized error state when the Edge Function fails', async ({ page }) => {
     await mockChatbot(page, async (route) => {

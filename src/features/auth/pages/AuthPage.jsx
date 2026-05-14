@@ -30,6 +30,10 @@ import {
   submitManualIdentityReview,
   startDiditIdentitySession,
 } from '../../../shared/services/identityRegistrationService';
+import {
+  getRegistrationFormLogSnapshot,
+  logRegistrationDebug,
+} from '../../../shared/services/registrationLogger';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
@@ -357,11 +361,22 @@ function AuthPage({
       fullName: formData.manualFullName || '',
     };
 
+    logRegistrationDebug('auth_page:identity_submit_started', {
+      usesDidit,
+      selectedDocument,
+      step: identityStep,
+      form: getRegistrationFormLogSnapshot(formData),
+    });
+
     if (usesDidit) {
       const session = await startDiditIdentitySession(identityPayload);
       setIdentitySession(session);
       setIdentityStep('didit');
       setIdentityStatusMessage('Didit verification session created. Open Didit to scan your ID and complete face match.');
+      logRegistrationDebug('auth_page:didit_step_ready', {
+        session,
+        nextStep: 'didit',
+      });
       return;
     }
 
@@ -376,10 +391,18 @@ function AuthPage({
       message: result.message || 'Your account is queued for manual identity review. Login access stays locked until approval.',
     });
     setIdentityStep('outcome');
+    logRegistrationDebug('auth_page:manual_review_outcome_ready', {
+      result,
+      nextStep: 'outcome',
+    });
   };
 
   const handleCheckDiditStatus = async () => {
     if (!identitySession?.diditSessionId) {
+      logRegistrationDebug('auth_page:didit_status_check_blocked', {
+        reason: 'missing_identity_session',
+        identityStep,
+      }, 'warn');
       setSubmitError('Open a Didit verification session first.');
       return;
     }
@@ -388,8 +411,15 @@ function AuthPage({
       setIsSubmitting(true);
       setSubmitError('');
       setIdentityStatusMessage('Checking Didit result...');
+      logRegistrationDebug('auth_page:didit_status_check_started', {
+        identitySession,
+        identityStep,
+      });
 
       const diditSession = await fetchDiditIdentitySession(identitySession.diditSessionId);
+      logRegistrationDebug('auth_page:didit_status_check_result', {
+        diditSession,
+      });
       if (diditSession.status === 'APPROVED' || diditSession.status === 'PENDING_REVIEW') {
         const result = await finishDiditIdentitySignup(identitySession, diditSession.status);
         const isPending = result.identityStatus === 'PENDING_REVIEW' || diditSession.status === 'PENDING_REVIEW';
@@ -401,6 +431,12 @@ function AuthPage({
             : 'Your identity was approved. Confirm your email before logging in.',
         });
         setIdentityStep('outcome');
+        logRegistrationDebug('auth_page:didit_signup_outcome_ready', {
+          result,
+          diditStatus: diditSession.status,
+          pendingReview: isPending,
+          nextStep: 'outcome',
+        });
         return;
       }
 
@@ -413,11 +449,22 @@ function AuthPage({
           message: 'Didit did not approve this attempt. You can retry with a valid document.',
         });
         setIdentityStep('outcome');
+        logRegistrationDebug('auth_page:didit_terminal_failure', {
+          diditStatus: diditSession.status,
+          nextStep: 'outcome',
+        }, 'warn');
         return;
       }
 
       setIdentityStatusMessage('Didit is still processing your verification. Try checking again in a moment.');
+      logRegistrationDebug('auth_page:didit_still_processing', {
+        diditStatus: diditSession.status,
+      });
     } catch (error) {
+      logRegistrationDebug('auth_page:didit_status_check_error', {
+        message: error?.message,
+        error,
+      }, 'error');
       setSubmitError(getAuthErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -425,6 +472,11 @@ function AuthPage({
   };
 
   const handleRestartIdentityRegistration = () => {
+    logRegistrationDebug('auth_page:identity_restart', {
+      previousStep: identityStep,
+      hadSession: Boolean(identitySession?.diditSessionId),
+      hadOutcome: Boolean(identityOutcome),
+    });
     clearIdentitySignupState();
     setIdentitySession(null);
     setIdentityOutcome(null);
@@ -437,8 +489,20 @@ function AuthPage({
     event.preventDefault();
     setSubmitError('');
 
+    logRegistrationDebug('auth_page:submit_started', {
+      mode,
+      isRegisterMode,
+      identityStep,
+      form: isRegisterMode ? getRegistrationFormLogSnapshot(formData) : undefined,
+    });
+
     const validationError = validateAuthForm();
     if (validationError) {
+      logRegistrationDebug('auth_page:validation_failed', {
+        mode,
+        validationError,
+        form: isRegisterMode ? getRegistrationFormLogSnapshot(formData) : undefined,
+      }, 'warn');
       setSubmitError(validationError);
       return;
     }
@@ -447,6 +511,10 @@ function AuthPage({
       setIsSubmitting(true);
       if (isRegisterMode) {
         await handleIdentityRegistrationSubmit();
+        logRegistrationDebug('auth_page:submit_finished', {
+          mode,
+          nextStep: usesDidit ? 'didit' : 'outcome',
+        });
         return;
       }
 
@@ -456,6 +524,11 @@ function AuthPage({
         setIsSignupSuccess(true);
       }
     } catch (error) {
+      logRegistrationDebug('auth_page:submit_error', {
+        mode,
+        message: error?.message,
+        error,
+      }, 'error');
       setSubmitError(getAuthErrorMessage(error));
     } finally {
       setIsSubmitting(false);

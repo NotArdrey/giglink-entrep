@@ -25,6 +25,10 @@ import {
   startDiditIdentitySession,
   submitManualIdentityReview,
 } from '../../../shared/services/identityRegistrationService';
+import {
+  getRegistrationFormLogSnapshot,
+  logRegistrationDebug,
+} from '../../../shared/services/registrationLogger';
 
 const EMPTY_FORM = {
   accountRole: 'client',
@@ -68,8 +72,16 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
 
   useEffect(() => {
     const storedState = loadIdentitySignupState();
-    if (!storedState?.diditSessionId) return;
+    if (!storedState?.diditSessionId) {
+      logRegistrationDebug('identity_page:restore_skipped', {
+        reason: 'no_saved_didit_session',
+      });
+      return;
+    }
 
+    logRegistrationDebug('identity_page:session_restored', {
+      storedState,
+    });
     setSavedSession(storedState);
     setFormData((current) => ({
       ...current,
@@ -109,8 +121,18 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
   };
 
   const handleStartDidit = async () => {
+    logRegistrationDebug('identity_page:didit_start_clicked', {
+      usesDidit,
+      selectedDocument,
+      form: getRegistrationFormLogSnapshot(formData),
+    });
     const validationError = validateDetails();
     if (validationError) {
+      logRegistrationDebug('identity_page:validation_failed', {
+        action: 'start_didit',
+        validationError,
+        form: getRegistrationFormLogSnapshot(formData),
+      }, 'warn');
       setErrorMessage(validationError);
       return;
     }
@@ -122,7 +144,15 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
       setSavedSession(session);
       setStep('didit');
       setStatusMessage('Didit verification session created. Open the secure verification page to continue.');
+      logRegistrationDebug('identity_page:didit_session_ready', {
+        session,
+        nextStep: 'didit',
+      });
     } catch (error) {
+      logRegistrationDebug('identity_page:didit_start_error', {
+        message: error?.message,
+        error,
+      }, 'error');
       setErrorMessage(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -130,8 +160,17 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
   };
 
   const handleManualSubmit = async () => {
+    logRegistrationDebug('identity_page:manual_submit_clicked', {
+      selectedDocument,
+      form: getRegistrationFormLogSnapshot(formData),
+    });
     const validationError = validateDetails();
     if (validationError) {
+      logRegistrationDebug('identity_page:validation_failed', {
+        action: 'submit_manual_review',
+        validationError,
+        form: getRegistrationFormLogSnapshot(formData),
+      }, 'warn');
       setErrorMessage(validationError);
       return;
     }
@@ -146,7 +185,15 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
         message: data.message || 'Your account was created for manual identity review. We will email you after the review decision.',
       });
       setStep('outcome');
+      logRegistrationDebug('identity_page:manual_review_outcome_ready', {
+        result: data,
+        nextStep: 'outcome',
+      });
     } catch (error) {
+      logRegistrationDebug('identity_page:manual_submit_error', {
+        message: error?.message,
+        error,
+      }, 'error');
       setErrorMessage(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -156,6 +203,10 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
   const handleCheckDidit = async () => {
     const session = savedSession || loadIdentitySignupState();
     if (!session?.diditSessionId) {
+      logRegistrationDebug('identity_page:didit_check_blocked', {
+        reason: 'missing_saved_session',
+        step,
+      }, 'warn');
       setErrorMessage('No verification session was found. Please restart identity registration.');
       setStep('details');
       return;
@@ -164,8 +215,16 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
     try {
       setIsSubmitting(true);
       setStatusMessage('Checking Didit verification status...');
+      logRegistrationDebug('identity_page:didit_check_started', {
+        session,
+        step,
+      });
       const diditSession = await fetchDiditIdentitySession(session.diditSessionId);
       const normalizedStatus = normalizeIdentityStatus(diditSession.status);
+      logRegistrationDebug('identity_page:didit_check_result', {
+        diditSession,
+        normalizedStatus,
+      });
 
       if (normalizedStatus === 'APPROVED' || normalizedStatus === 'PENDING_REVIEW') {
         const result = await finishDiditIdentitySignup(session, normalizedStatus);
@@ -178,6 +237,12 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
             : 'Your identity was approved. Check your inbox and confirm your email before logging in.',
         });
         setStep('outcome');
+        logRegistrationDebug('identity_page:didit_signup_outcome_ready', {
+          result,
+          normalizedStatus,
+          pendingReview,
+          nextStep: 'outcome',
+        });
         return;
       }
 
@@ -190,16 +255,30 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
           message: 'Didit returned a terminal verification result. You can restart registration and try again.',
         });
         setStep('outcome');
+        logRegistrationDebug('identity_page:didit_terminal_failure', {
+          normalizedStatus,
+          nextStep: 'outcome',
+        }, 'warn');
         return;
       }
 
       if (isActiveIdentityStatus(normalizedStatus)) {
         setStatusMessage('Didit is still processing this verification. Try again in a moment.');
+        logRegistrationDebug('identity_page:didit_active_status', {
+          normalizedStatus,
+        });
         return;
       }
 
       setStatusMessage(`Current verification status: ${normalizedStatus}.`);
+      logRegistrationDebug('identity_page:didit_unhandled_status', {
+        normalizedStatus,
+      });
     } catch (error) {
+      logRegistrationDebug('identity_page:didit_check_error', {
+        message: error?.message,
+        error,
+      }, 'error');
       setErrorMessage(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
@@ -207,6 +286,11 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
   };
 
   const handleRestart = () => {
+    logRegistrationDebug('identity_page:restart', {
+      previousStep: step,
+      hadSession: Boolean(savedSession?.diditSessionId),
+      hadOutcome: Boolean(outcome),
+    });
     clearIdentitySignupState();
     setSavedSession(null);
     setOutcome(null);

@@ -27,6 +27,7 @@ import {
 } from "../_shared/identityRegistration.ts";
 
 const DIDIT_SESSION_URL = "https://verification.didit.me/v3/session/";
+const DIDIT_WORKFLOWS_URL = "https://verification.didit.me/v3/workflows/";
 
 const isHttpUrl = (value: unknown) => /^https?:\/\//i.test(cleanString(value));
 
@@ -82,6 +83,116 @@ const fetchDiditSession = async (sessionId: string, apiKey: string) => {
 
   return merged;
 };
+
+const parseDiditErrorDetails = async (response: Response) => {
+  const text = await response.text().catch(() => "");
+  if (!text) return "";
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+};
+
+const hasInvalidWorkflowError = (details: unknown) => {
+  const text = typeof details === "string" ? details : JSON.stringify(details || {});
+  return /workflow_id/i.test(text) && /invalid/i.test(text);
+};
+
+const fetchDiditWorkflows = async (apiKey: string) => {
+  const response = await fetch(DIDIT_WORKFLOWS_URL, {
+    method: "GET",
+    headers: { "x-api-key": apiKey },
+  });
+
+  if (!response.ok) {
+    const details = await parseDiditErrorDetails(response);
+    console.error("didit_workflows_fetch_failed", {
+      status: response.status,
+      details,
+    });
+    return [];
+  }
+
+  const payload = await response.json().catch(() => []);
+  return Array.isArray(payload) ? payload : [];
+};
+
+const selectDiditWorkflow = (workflows: any[], configuredWorkflowId = "") => {
+  const activeWorkflows = workflows.filter((workflow) => workflow?.uuid && !workflow?.is_archived);
+  if (activeWorkflows.length === 0) return null;
+
+  return activeWorkflows.find((workflow) => workflow.is_default && workflow.uuid !== configuredWorkflowId)
+    || activeWorkflows.find((workflow) => workflow.workflow_type === "kyc" && workflow.uuid !== configuredWorkflowId)
+    || activeWorkflows.find((workflow) => workflow.uuid !== configuredWorkflowId)
+    || activeWorkflows[0];
+};
+
+const createDefaultDiditWorkflow = async (apiKey: string) => {
+  const response = await fetch(DIDIT_WORKFLOWS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      workflow_label: "GigLink Standard KYC",
+      features: [
+        {
+          feature: "OCR",
+          config: {
+            duplicated_user_action: "REVIEW",
+          },
+        },
+        {
+          feature: "LIVENESS",
+          config: {
+            face_liveness_method: "PASSIVE",
+          },
+        },
+        {
+          feature: "FACE_MATCH",
+          config: {
+            face_match_score_decline_threshold: 40,
+            face_match_score_review_threshold: 60,
+          },
+        },
+      ],
+    }),
+  });
+
+  const details = await parseDiditErrorDetails(response);
+
+  if (!response.ok) {
+    console.error("didit_workflow_create_failed", {
+      status: response.status,
+      details,
+    });
+    return { workflow: null, status: response.status, details };
+  }
+
+  return { workflow: details, status: response.status, details: "" };
+};
+
+const sanitizeWorkflowForLog = (workflow: any) => ({
+  uuid: workflow?.uuid,
+  workflow_label: workflow?.workflow_label,
+  workflow_type: workflow?.workflow_type,
+  is_default: workflow?.is_default,
+  is_archived: workflow?.is_archived,
+  features: workflow?.features,
+});
+
+const createDiditSession = async (apiKey: string, payload: Record<string, unknown>) =>
+  fetch(DIDIT_SESSION_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify(payload),
+  });
 
 const handleGetSession = async (body: any) => {
   const sessionId = cleanString(body?.session_id || body?.sessionId);
@@ -148,8 +259,8 @@ serve(async (req: Request) => {
 
     const diditApiKey = Deno.env.get("DIDIT_API_KEY") || "";
     const workflowId = Deno.env.get("DIDIT_WORKFLOW_ID") || "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const supabaseUrl = Deno.env.get("GIGLINK_SUPABASE_URL") || Deno.env.get("SUPABASE_URL") || "";
+    const anonKey = Deno.env.get("GIGLINK_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || "";
 
     if (!diditApiKey || !workflowId || !supabaseUrl || !anonKey) {
       return jsonResponse({
@@ -209,36 +320,93 @@ serve(async (req: Request) => {
     redirectBridge.searchParams.set("apikey", anonKey);
     if (redirectTo) redirectBridge.searchParams.set("redirect_to", redirectTo);
 
-    const diditResponse = await fetch(DIDIT_SESSION_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": diditApiKey,
+    const buildSessionPayload = (nextWorkflowId: string) => ({
+      workflow_id: nextWorkflowId,
+      vendor_data: vendorData,
+      callback: redirectBridge.toString(),
+      callback_method: "both",
+      language: "en",
+      metadata: {
+        signup_attempt_ref: userId.startsWith("TEMP_") ? userId : undefined,
+        signup_role: identityRole,
+        app_role: appRole,
+        document_type: documentType,
       },
-      body: JSON.stringify({
-        workflow_id: workflowId,
-        vendor_data: vendorData,
-        callback: redirectBridge.toString(),
-        metadata: {
-          signup_attempt_ref: userId.startsWith("TEMP_") ? userId : undefined,
-          signup_role: identityRole,
-          app_role: appRole,
-          document_type: documentType,
-        },
-        contact_details: {
-          email,
-          send_notification_emails: false,
-        },
-      }),
+      contact_details: {
+        email,
+        send_notification_emails: false,
+      },
     });
 
+    let resolvedWorkflowId = workflowId;
+    const diditDiagnostics: Record<string, unknown> = {
+      configuredWorkflowId: workflowId,
+      fallbackAttempted: false,
+    };
+    let diditResponse = await createDiditSession(diditApiKey, buildSessionPayload(resolvedWorkflowId));
+
     if (!diditResponse.ok) {
-      const details = await diditResponse.text().catch(() => "");
+      const details = await parseDiditErrorDetails(diditResponse);
+      diditDiagnostics.initialStatus = diditResponse.status;
+      diditDiagnostics.initialDetails = details;
+
+      if (hasInvalidWorkflowError(details)) {
+        const workflows = await fetchDiditWorkflows(diditApiKey);
+        const fallbackWorkflow = selectDiditWorkflow(workflows, workflowId);
+        diditDiagnostics.availableWorkflowCount = workflows.length;
+        diditDiagnostics.fallbackAttempted = Boolean(fallbackWorkflow?.uuid);
+        diditDiagnostics.fallbackWorkflow = sanitizeWorkflowForLog(fallbackWorkflow);
+
+        if (fallbackWorkflow?.uuid) {
+          resolvedWorkflowId = fallbackWorkflow.uuid;
+          console.warn("didit_configured_workflow_invalid_using_fallback", {
+            configuredWorkflowId: workflowId,
+            fallbackWorkflow: sanitizeWorkflowForLog(fallbackWorkflow),
+          });
+          diditResponse = await createDiditSession(diditApiKey, buildSessionPayload(resolvedWorkflowId));
+        } else if (workflows.length === 0) {
+          const createdWorkflow = await createDefaultDiditWorkflow(diditApiKey);
+          diditDiagnostics.workflowCreateStatus = createdWorkflow.status;
+          diditDiagnostics.workflowCreateDetails = createdWorkflow.details;
+          diditDiagnostics.createdWorkflow = sanitizeWorkflowForLog(createdWorkflow.workflow);
+
+          if (createdWorkflow.workflow?.uuid) {
+            resolvedWorkflowId = createdWorkflow.workflow.uuid;
+            console.warn("didit_created_default_workflow", {
+              configuredWorkflowId: workflowId,
+              createdWorkflow: sanitizeWorkflowForLog(createdWorkflow.workflow),
+            });
+            diditResponse = await createDiditSession(diditApiKey, buildSessionPayload(resolvedWorkflowId));
+          }
+        }
+      }
+
+      if (diditResponse.ok) {
+        console.warn("didit_session_created_with_fallback_workflow", {
+          configuredWorkflowId: workflowId,
+          resolvedWorkflowId,
+        });
+      } else {
+        const finalDetails = diditResponse === undefined ? details : await parseDiditErrorDetails(diditResponse);
+        diditDiagnostics.finalStatus = diditResponse.status;
+        diditDiagnostics.finalDetails = finalDetails;
+        await updateRegistrationAttempt(supabaseAdmin, attemptId, {
+          success: false,
+          reason: `didit_create_failed_${diditResponse.status}`,
+        });
+        return jsonResponse({ success: false, error: "Failed to create verification session.", details: diditDiagnostics });
+      }
+    }
+
+    if (!diditResponse.ok) {
+      const details = await parseDiditErrorDetails(diditResponse);
+      diditDiagnostics.finalStatus = diditResponse.status;
+      diditDiagnostics.finalDetails = details;
       await updateRegistrationAttempt(supabaseAdmin, attemptId, {
         success: false,
         reason: `didit_create_failed_${diditResponse.status}`,
       });
-      return jsonResponse({ success: false, error: "Failed to create verification session.", details });
+      return jsonResponse({ success: false, error: "Failed to create verification session.", details: diditDiagnostics });
     }
 
     const diditData = await diditResponse.json();
@@ -280,7 +448,8 @@ serve(async (req: Request) => {
         signup_role: identityRole,
         app_role: appRole,
         document_type: documentType,
-        workflow_id: workflowId,
+        workflow_id: resolvedWorkflowId,
+        configured_workflow_id: workflowId,
         session_url: verificationUrl,
         session_nonce_hash: sessionNonceHash,
         session_nonce: sessionNonce,
@@ -292,14 +461,14 @@ serve(async (req: Request) => {
     await updateRegistrationAttempt(supabaseAdmin, attemptId, {
       success: true,
       didit_session_id: sessionId,
-      metadata: { identityRole, appRole, documentType, workflowId },
+      metadata: { identityRole, appRole, documentType, workflowId: resolvedWorkflowId, configuredWorkflowId: workflowId },
     });
 
     return jsonResponse({
       success: true,
       sessionId,
       sessionNonce,
-      workflowId,
+      workflowId: resolvedWorkflowId,
       verificationUrl,
     });
   } catch (error) {

@@ -3,6 +3,7 @@ const { requireEnv } = require('./env');
 
 const DEMO_CLIENT_EMAIL = 'demo.user@giglink.test';
 const DEMO_ADMIN_EMAIL = 'demo.admin@giglink.test';
+const DEMO_WORKER_EMAIL = 'demo.worker@giglink.test';
 const DEMO_PASSWORD = 'pass123';
 
 function createTestSupabaseClient() {
@@ -105,6 +106,7 @@ async function prepareWorkerDemoData({ bookingMode = 'with-slots' } = {}) {
 module.exports = {
   DEMO_ADMIN_EMAIL,
   DEMO_CLIENT_EMAIL,
+  DEMO_WORKER_EMAIL,
   DEMO_PASSWORD,
   createTestSupabaseClient,
   prepareWorkerDemoData,

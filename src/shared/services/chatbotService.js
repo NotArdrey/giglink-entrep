@@ -47,5 +47,6 @@ export const sendChatbotMessage = async ({ messages, context }) => {
   return {
     message,
     model: data?.model || '',
+    matches: Array.isArray(data?.matches) ? data.matches : [],
   };
 };

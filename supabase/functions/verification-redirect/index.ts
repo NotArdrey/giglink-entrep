@@ -8,12 +8,15 @@ Deno.serve(async (req: Request) => {
 
   if (redirectTo) {
     const target = decodeURIComponent(redirectTo);
-    const separator = target.includes("?") ? "&" : "?";
     const suffix = params.toString();
+    const [baseTarget, hashFragment] = target.split("#", 2);
+    const separator = baseTarget.includes("?") ? "&" : "?";
+    const nextTarget = suffix ? `${baseTarget}${separator}${suffix}` : baseTarget;
+
     return new Response(null, {
       status: 302,
       headers: {
-        Location: suffix ? `${target}${separator}${suffix}` : target,
+        Location: hashFragment ? `${nextTarget}#${hashFragment}` : nextTarget,
       },
     });
   }

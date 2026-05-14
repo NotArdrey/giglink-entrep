@@ -767,7 +767,8 @@ textarea {
 
 .gl-chatbot-panel {
   width: min(380px, calc(100vw - 32px));
-  max-height: min(620px, calc(100svh - 116px));
+  height: min(620px, calc(100svh - 116px));
+  max-height: calc(100svh - 24px);
   border: 1px solid var(--gl-border);
   border-radius: 8px;
   background: var(--gl-surface);
@@ -786,6 +787,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
 }
 
 .gl-chatbot-header-icon {
@@ -849,9 +851,10 @@ textarea {
 }
 
 .gl-chatbot-messages {
-  flex: 1;
-  min-height: 220px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -890,6 +893,11 @@ textarea {
   color: var(--gl-text-2);
 }
 
+.gl-chatbot-scroll-anchor {
+  height: 1px;
+  flex: 0 0 auto;
+}
+
 .gl-chatbot-error {
   margin: 10px 12px 0;
   border: 1px solid rgba(220, 38, 38, 0.3);
@@ -907,23 +915,60 @@ textarea {
   border-top: 1px solid var(--gl-border);
   background: var(--gl-surface);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 46px;
   gap: 8px;
   align-items: end;
+  flex: 0 0 auto;
+}
+
+.gl-chatbot-suggestions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.gl-chatbot-suggestion {
+  min-height: 30px;
+  border: 1px solid var(--gl-border);
+  border-radius: 8px;
+  background: var(--gl-surface-2);
+  color: var(--gl-text-2);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.gl-chatbot-suggestion:hover:not(:disabled) {
+  border-color: var(--gl-blue);
+  color: var(--gl-blue);
+  background: color-mix(in srgb, var(--gl-blue) 9%, var(--gl-surface));
+}
+
+.gl-chatbot-suggestion:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .gl-chatbot-form textarea {
   width: 100%;
-  min-height: 42px;
-  max-height: 104px;
+  min-height: 46px;
+  max-height: 116px;
   border: 1px solid var(--gl-border-strong);
   border-radius: 8px;
   background: var(--gl-surface);
   color: var(--gl-text);
-  padding: 10px 12px;
+  padding: 12px;
   resize: none;
   outline: none;
   line-height: 1.35;
+  overflow-y: auto;
 }
 
 .gl-chatbot-form textarea:focus {
@@ -932,8 +977,8 @@ textarea {
 }
 
 .gl-chatbot-send {
-  width: 42px;
-  height: 42px;
+  width: 46px;
+  height: 46px;
   background: var(--gl-blue);
   border-color: var(--gl-blue);
   color: #ffffff;
@@ -1066,6 +1111,8 @@ textarea {
 }
 
 .browse-filter-rail {
+  grid-column: 2;
+  grid-row: 1;
   padding: 14px;
   display: grid;
   gap: 16px;
@@ -1135,6 +1182,8 @@ textarea {
 }
 
 .browse-results-panel {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
 }
 
@@ -2817,6 +2866,22 @@ textarea {
     grid-template-columns: 1fr !important;
   }
 
+  .gl-app-shell-active .browse-marketplace {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .gl-app-shell-active .browse-filter-rail,
+  .gl-app-shell-active .browse-results-panel {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    width: 100% !important;
+  }
+
+  .gl-app-shell-active .browse-filter-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
   .gl-app-shell-active .dashboard-action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
@@ -2880,7 +2945,8 @@ textarea {
 
   .gl-chatbot-panel {
     width: min(420px, calc(100vw - 28px));
-    max-height: min(560px, calc(100svh - 184px));
+    height: min(560px, calc(100svh - 184px));
+    max-height: calc(100svh - 112px);
   }
 
   .gl-app-shell-active .gl-page,
@@ -3057,16 +3123,13 @@ textarea {
 
   .gl-chatbot-panel {
     width: calc(100vw - 24px);
-    max-height: calc(100svh - 176px);
+    height: calc(100svh - 176px);
+    max-height: calc(100svh - 112px);
   }
 
   .gl-chatbot-toggle {
     width: 54px;
     height: 54px;
-  }
-
-  .gl-chatbot-messages {
-    min-height: 180px;
   }
 
   .gl-shell {
@@ -3404,5 +3467,31 @@ textarea {
 
   .service-result-actions {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Keep the full-screen booking chat reachable above the mobile app nav. */
+@media (max-width: 760px) {
+  .gl-app-shell-active [data-testid="my-bookings-page"].booking-chat-page {
+    height: 100svh !important;
+    min-height: 100svh !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .gl-app-shell-active [data-testid="my-bookings-page"].booking-chat-page .booking-workspace {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .gl-app-shell-active [data-testid="my-bookings-page"].booking-chat-page .booking-workspace-grid {
+    height: auto !important;
+    min-height: 0 !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .gl-app-shell-active [data-testid="my-bookings-page"].booking-chat-page .booking-chat-thread {
+    min-height: 0 !important;
   }
 }

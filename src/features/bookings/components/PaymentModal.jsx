@@ -37,6 +37,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
   const afterServicePaymentType = booking?.afterServicePaymentType || 'both';
   const allowsAfterServiceCash = allowsAfterService && (afterServicePaymentType === 'both' || afterServicePaymentType === 'cash-only');
   const allowsAfterServiceGcash = allowsAfterService && (afterServicePaymentType === 'both' || afterServicePaymentType === 'gcash-only');
+  const isRequestBooking = booking?.bookingMode === 'calendar-only' || booking?.isRequestBooking;
 
   useEffect(() => {
     const availableMethods = [];
@@ -240,9 +241,11 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
             <span style={{ ...styles.value, ...styles.amount }}>PHP {booking.quoteAmount}</span>
           </div>
           <div style={styles.row}>
-            <span style={styles.label}>Scheduled:</span>
+            <span style={styles.label}>{isRequestBooking ? 'Schedule:' : 'Scheduled:'}</span>
             <span style={styles.value}>
-              {booking.selectedSlot?.date} at {booking.selectedSlot?.timeBlock.startTime}
+              {isRequestBooking
+                ? 'Coordinated through chat'
+                : `${booking.selectedSlot?.date || 'Pending'} at ${booking.selectedSlot?.timeBlock?.startTime || 'TBD'}`}
             </span>
           </div>
         </div>
@@ -288,7 +291,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 </div>
 
                 <p style={styles.desc}>
-                  Pay now via GCash, immediately securing your booking slot
+                  {isRequestBooking
+                    ? 'Pay now via GCash after agreeing on the details in chat.'
+                    : 'Pay now via GCash, immediately securing your booking slot'}
                 </p>
 
                 <ul style={styles.list}>

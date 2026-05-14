@@ -1,4 +1,4 @@
-import { CalendarCheck, MapPin, MessageSquareText, Star, UserRound } from 'lucide-react';
+import { CalendarCheck, MapPin, MessageCircle, MessageSquareText, Star, UserRound } from 'lucide-react';
 import { getDisplayServiceType, getProviderQuoteAmount } from '../utils/serviceNormalizer';
 
 const formatPrice = (provider = {}) => {
@@ -18,9 +18,10 @@ const formatPrice = (provider = {}) => {
   return `PHP ${amount}/${suffixMap[provider.rateBasis] || 'service'}`;
 };
 
-function ServiceCard({ provider, onViewProfile, onViewReviews }) {
+function ServiceCard({ provider, onViewProfile, onViewReviews, onChat }) {
   const displayServiceType = getDisplayServiceType(provider);
   const providerName = provider.name || 'Service Provider';
+  const isRequestBooking = provider.actionType === 'inquire' || provider.bookingMode === 'calendar-only';
 
   return (
     <article className="service-result-card gl-card">
@@ -45,7 +46,7 @@ function ServiceCard({ provider, onViewProfile, onViewReviews }) {
 
         <div className="service-result-meta">
           <span><Star size={14} fill="currentColor" aria-hidden="true" /> {provider.rating || 'New'} ({provider.reviews || 0})</span>
-          <span><CalendarCheck size={14} aria-hidden="true" /> {provider.actionType === 'inquire' ? 'Manual schedule' : 'Bookable'}</span>
+          <span><CalendarCheck size={14} aria-hidden="true" /> {isRequestBooking ? 'Request booking' : 'Time-slot booking'}</span>
           {provider.location && <span><MapPin size={14} aria-hidden="true" /> {provider.location}</span>}
           <span>{provider.experience ? `${provider.experience}+ years` : 'Verified local provider'}</span>
         </div>
@@ -54,6 +55,15 @@ function ServiceCard({ provider, onViewProfile, onViewReviews }) {
       <div className="service-result-actions">
         <button type="button" className="gl-button primary" onClick={() => onViewProfile?.(provider)}>
           View Service
+        </button>
+        <button
+          type="button"
+          className="gl-button secondary"
+          onClick={() => onChat?.(provider)}
+          aria-label={`Chat with ${providerName}`}
+        >
+          <MessageCircle size={16} aria-hidden="true" />
+          Chat
         </button>
         <button
           type="button"

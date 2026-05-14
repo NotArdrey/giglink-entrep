@@ -79,14 +79,17 @@ export function useBookingListController(initialBookings = [], options = {}) {
     }
   }, [getBooking, replaceBooking]);
 
-  const handleApproveQuote = useCallback((bookingId) => (
-    persistBookingUpdate(bookingId, {
+  const handleApproveQuote = useCallback((bookingId) => {
+    const booking = getBooking(bookingId);
+    const isRequestBooking = booking?.bookingMode === 'calendar-only' || booking?.isRequestBooking;
+
+    return persistBookingUpdate(bookingId, {
       quoteApproved: true,
       quoteRejectionReason: null,
-      status: 'Awaiting Slot Selection',
+      status: isRequestBooking ? 'Payment Pending' : 'Awaiting Slot Selection',
       dbStatus: 'pending',
-    })
-  ), [persistBookingUpdate]);
+    });
+  }, [getBooking, persistBookingUpdate]);
 
   const handleRejectQuote = useCallback((bookingId, reason) => (
     persistBookingUpdate(bookingId, {

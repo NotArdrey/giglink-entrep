@@ -1,4 +1,9 @@
 import { supabase } from './supabaseClient';
+import {
+  getRegistrationFormLogSnapshot,
+  logRegistrationDebug,
+  sanitizeRegistrationLogValue,
+} from './registrationLogger';
 
 const STORAGE_KEY = 'giglink.identitySignup.v1';
 
@@ -96,17 +101,70 @@ export const clearIdentitySignupState = () => {
   window.sessionStorage.removeItem(STORAGE_KEY);
 };
 
+const formatEdgeFunctionDetails = (details) => {
+  if (!details) return '';
+
+  if (typeof details === 'string') {
+    try {
+      return formatEdgeFunctionDetails(JSON.parse(details));
+    } catch {
+      return details;
+    }
+  }
+
+  if (details && typeof details === 'object') {
+    return Object.entries(details)
+      .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+      .join('; ');
+  }
+
+  return String(details);
+};
+
+const createEdgeFunctionError = (functionName, data) => {
+  const baseMessage = data?.error || `Unable to complete ${functionName}.`;
+  const detailMessage = formatEdgeFunctionDetails(data?.details);
+  const message = detailMessage ? `${baseMessage} Details: ${detailMessage}` : baseMessage;
+  const error = new Error(message);
+  error.functionName = functionName;
+  error.details = data?.details;
+  error.response = data;
+  return error;
+};
+
 const invokeFunction = async (functionName, body) => {
+  const startedAt = Date.now();
+  logRegistrationDebug('edge_function:start', {
+    functionName,
+    request: body,
+  });
+
   const { data, error } = await supabase.functions.invoke(functionName, { body });
 
   if (error) {
+    logRegistrationDebug('edge_function:error', {
+      functionName,
+      durationMs: Date.now() - startedAt,
+      message: error.message,
+      error,
+    }, 'error');
     throw new Error(error.message || `Unable to call ${functionName}.`);
   }
 
   if (data?.success === false || data?.error) {
-    throw new Error(data.error || `Unable to complete ${functionName}.`);
+    logRegistrationDebug('edge_function:rejected', {
+      functionName,
+      durationMs: Date.now() - startedAt,
+      response: data,
+    }, 'warn');
+    throw createEdgeFunctionError(functionName, data);
   }
 
+  logRegistrationDebug('edge_function:success', {
+    functionName,
+    durationMs: Date.now() - startedAt,
+    response: data,
+  });
   return data || {};
 };
 
@@ -116,6 +174,14 @@ export const startDiditIdentitySession = async (formData) => {
   const identityRole = getIdentityRoleFromAppRole(appRole);
   const documentType = getDocumentType(formData.documentTypeKey);
   const tempUserRef = formData.tempUserRef || buildTempSignupRef();
+
+  logRegistrationDebug('didit_session:create_requested', {
+    form: getRegistrationFormLogSnapshot({ ...formData, email: normalizedEmail }),
+    appRole,
+    identityRole,
+    documentType,
+    tempUserRef,
+  });
 
   const data = await invokeFunction('create-didit-session', {
     userId: tempUserRef,
@@ -132,6 +198,11 @@ export const startDiditIdentitySession = async (formData) => {
   const verificationUrl = data.verificationUrl || data.verification_url || data.url;
 
   if (!sessionId || !verificationUrl) {
+    logRegistrationDebug('didit_session:missing_response_fields', {
+      response: data,
+      hasSessionId: Boolean(sessionId),
+      hasVerificationUrl: Boolean(verificationUrl),
+    }, 'error');
     throw new Error('Didit did not return a usable verification session.');
   }
 
@@ -151,12 +222,17 @@ export const startDiditIdentitySession = async (formData) => {
   };
 
   saveIdentitySignupState(nextState);
+  logRegistrationDebug('didit_session:created', {
+    session: nextState,
+    responseKeys: Object.keys(data || {}),
+  });
   return nextState;
 };
 
 export const fetchDiditIdentitySession = async (sessionId) => {
   if (!sessionId) throw new Error('Missing Didit session.');
 
+  logRegistrationDebug('didit_session:status_check_requested', { sessionId });
   const data = await invokeFunction('create-didit-session', {
     action: 'get_session',
     session_id: sessionId,
@@ -170,11 +246,26 @@ export const fetchDiditIdentitySession = async (sessionId) => {
       || data.rawDiditStatus
   );
 
+  logRegistrationDebug('didit_session:status_resolved', {
+    sessionId,
+    status,
+    rawStatusFields: sanitizeRegistrationLogValue({
+      businessStatus: data.businessStatus,
+      diditResolvedStatus: data.diditResolvedStatus,
+      status: data.status,
+      rawDiditStatus: data.rawDiditStatus,
+    }),
+  });
   return { ...data, status };
 };
 
 export const finishDiditIdentitySignup = async (state, status) => {
   if (!state?.diditSessionId) throw new Error('Missing Didit session.');
+
+  logRegistrationDebug('didit_signup:finish_requested', {
+    session: state,
+    status: normalizeIdentityStatus(status),
+  });
 
   const data = await invokeFunction('create-unverified-user', {
     email: state.email,
@@ -192,6 +283,10 @@ export const finishDiditIdentitySignup = async (state, status) => {
   });
 
   clearIdentitySignupState();
+  logRegistrationDebug('didit_signup:finished', {
+    diditSessionId: state.diditSessionId,
+    result: data,
+  });
   return data;
 };
 
@@ -220,11 +315,24 @@ export const submitManualIdentityReview = async (formData) => {
   const appRole = formData.accountRole === 'worker' ? 'worker' : 'client';
   const identityRole = getIdentityRoleFromAppRole(appRole);
   const documentType = getDocumentType(formData.documentTypeKey);
+  logRegistrationDebug('manual_review:submit_requested', {
+    form: getRegistrationFormLogSnapshot(formData),
+    appRole,
+    identityRole,
+    documentType,
+  });
+
   const [frontImage, backImage, selfieImage] = await Promise.all([
     fileToImagePayload(formData.frontImage),
     fileToImagePayload(formData.backImage),
     fileToImagePayload(formData.selfieImage),
   ]);
+
+  logRegistrationDebug('manual_review:files_encoded', {
+    frontImage,
+    backImage,
+    selfieImage,
+  });
 
   const data = await invokeFunction('manual-identity-review', {
     action: 'submit_manual_review_signup',
@@ -244,5 +352,6 @@ export const submitManualIdentityReview = async (formData) => {
   });
 
   clearIdentitySignupState();
+  logRegistrationDebug('manual_review:submitted', { result: data });
   return data;
 };

@@ -79,6 +79,23 @@ const getRateAmount = (service = {}, metadata = {}) =>
   ?? getNumberOrNull(service?.monthlyRate)
   ?? 0;
 
+const getServiceBookingMode = (service = {}, seller = {}, metadata = {}) => {
+  const mode = getCleanString(
+    metadata.booking_mode
+    || metadata.bookingMode
+    || service?.metadata?.booking_mode
+    || service?.metadata?.bookingMode
+    || seller?.booking_mode
+    || seller?.search_meta?.booking_mode
+    || ''
+  ).toLowerCase();
+
+  return mode === 'calendar-only' ? 'calendar-only' : 'with-slots';
+};
+
+export const getBookingModeLabel = (bookingMode) =>
+  bookingMode === 'calendar-only' ? 'Request booking' : 'Time-slot booking';
+
 const formatDate = (value) => {
   if (!value) return '';
   return String(value).slice(0, 10);
@@ -142,6 +159,7 @@ const uiStatusFromDb = (booking = {}, metadata = {}) => {
 const dbStatusFromUiStatus = (status, fallback = 'pending') => {
   switch (status) {
     case 'Awaiting Slot Selection':
+    case 'Payment Pending':
     case 'Slot Selected - Payment Pending':
     case 'Quote Rejected':
     case 'Negotiating':
@@ -182,6 +200,7 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
   const refundStatus = metadata.refund_status || metadata.refundStatus || null;
   const uiStatus = uiStatusFromDb(booking, metadata);
   const totalAmount = getRateAmount(service, { ...metadata, quote_amount: booking.total_amount ?? metadata.quote_amount });
+  const bookingMode = getServiceBookingMode(service, seller, metadata);
 
   return {
     id: booking.id,
@@ -194,6 +213,9 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
     requestDate: formatDate(booking.created_at) || formatDate(nowIso()),
     description: metadata.description || service.short_description || service.description || seller.about || 'Service booking',
     quoteAmount: totalAmount,
+    bookingMode,
+    bookingModeLabel: getBookingModeLabel(bookingMode),
+    isRequestBooking: bookingMode === 'calendar-only',
     quoteApproved: metadata.quote_approved !== undefined ? Boolean(metadata.quote_approved) : booking.status !== 'pending',
     quoteRejectionReason: metadata.quote_rejection_reason || metadata.quoteRejectionReason || null,
     selectedSlot,
@@ -530,9 +552,14 @@ export const createClientBooking = async ({ provider, pendingBooking, paymentMet
   const totalAmount = getNumberOrNull(pendingBooking?.quoteAmount) ?? getRateAmount(rawService);
   const uiStatus = paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled';
   const cashStatus = paymentMethod === 'after-service-cash' ? 'awaiting-client-scan' : null;
+  const bookingMode = provider?.bookingMode === 'calendar-only' || pendingBooking?.bookingMode === 'calendar-only'
+    ? 'calendar-only'
+    : 'with-slots';
   const metadata = {
     ui_status: uiStatus,
     quote_approved: true,
+    booking_mode: bookingMode,
+    booking_mode_label: getBookingModeLabel(bookingMode),
     worker_name: pendingBooking?.workerName || getSellerName(rawService, seller),
     client_name: getProfileNameFromUser(user),
     service_type: pendingBooking?.serviceType || getServiceType(rawService, seller),
@@ -558,6 +585,87 @@ export const createClientBooking = async ({ provider, pendingBooking, paymentMet
     p_total_amount: totalAmount,
     p_metadata: metadata,
   });
+
+  if (error) throw mapDatabaseError(error);
+  const [mapped] = await hydrateBookingRows([data]);
+  return mapped;
+};
+
+export const createClientBookingRequest = async ({ provider } = {}) => {
+  const user = await getAuthUser();
+  if (!user?.id) throw new Error('Please sign in before requesting a booking.');
+
+  const rawService = provider?.rawService || {};
+  const seller = getServiceSeller(rawService);
+  const sellerId = rawService.seller_id || seller.user_id;
+  const serviceId = rawService.id || provider?.serviceId;
+
+  if (!serviceId || !sellerId) {
+    throw new Error('Unable to create request because the selected service is missing database IDs.');
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('service_id', serviceId)
+    .eq('seller_id', sellerId)
+    .eq('buyer_id', user.id)
+    .eq('status', 'pending')
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (existingError) throw mapDatabaseError(existingError);
+  if (existingRows?.[0]) {
+    const [mapped] = await hydrateBookingRows([existingRows[0]]);
+    return mapped;
+  }
+
+  const totalAmount = getRateAmount(rawService)
+    || getNumberOrNull(provider?.hourlyRate)
+    || getNumberOrNull(provider?.dailyRate)
+    || getNumberOrNull(provider?.weeklyRate)
+    || getNumberOrNull(provider?.monthlyRate)
+    || getNumberOrNull(provider?.projectRate)
+    || 0;
+  const bookingMode = provider?.bookingMode === 'calendar-only' ? 'calendar-only' : 'with-slots';
+  const metadata = {
+    ui_status: 'Negotiating',
+    quote_approved: false,
+    booking_mode: bookingMode,
+    booking_mode_label: getBookingModeLabel(bookingMode),
+    booking_flow: bookingMode === 'calendar-only' ? 'request-booking' : 'worker-chat',
+    worker_name: provider?.name || getSellerName(rawService, seller),
+    client_name: getProfileNameFromUser(user),
+    service_type: provider?.serviceType || getServiceType(rawService, seller),
+    description: provider?.description || rawService.short_description || rawService.description || '',
+    quote_amount: totalAmount,
+    selected_slot: null,
+    payment_method: null,
+    allow_gcash_advance: true,
+    allow_after_service: true,
+    after_service_payment_type: 'both',
+    refund_eligible: false,
+    can_rate: false,
+    created_via: 'marketplace-request',
+  };
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .insert([{
+      service_id: serviceId,
+      seller_id: sellerId,
+      buyer_id: user.id,
+      slot_id: null,
+      start_ts: null,
+      end_ts: null,
+      status: 'pending',
+      total_amount: totalAmount || null,
+      currency: rawService.currency || 'PHP',
+      payment_reference: null,
+      metadata,
+    }])
+    .select('*')
+    .single();
 
   if (error) throw mapDatabaseError(error);
   const [mapped] = await hydrateBookingRows([data]);
@@ -745,6 +853,7 @@ export const bookingService = {
   buildRefundReference,
   confirmBookingRefundReceived,
   createClientBooking,
+  createClientBookingRequest,
   fetchBookingById,
   fetchBookingMessages,
   fetchClientBookings,

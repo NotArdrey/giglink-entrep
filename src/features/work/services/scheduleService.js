@@ -1,15 +1,18 @@
 import { supabase } from '../../../shared/services/supabaseClient';
 
-export const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-export const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4 };
+export const DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const WEEKDAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+export const DAY_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
 export const createEmptyWeeklySchedule = () =>
   DAY_ORDER.reduce((schedule, dayKey) => {
     schedule[dayKey] = [];
     return schedule;
   }, {});
+export const createEmptyAvailabilityTemplate = createEmptyWeeklySchedule;
 export const INITIAL_WEEKLY_SCHEDULE = createEmptyWeeklySchedule();
 export const INITIAL_CALENDAR_AVAILABILITY = [];
 const SLOT_TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
+const DEFAULT_AVAILABILITY_WEEKS = 7;
 
 export const addDays = (date, days) => {
   const next = new Date(date);
@@ -33,6 +36,12 @@ export const formatDateLong = (date) =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
 const pad = (value) => String(value).padStart(2, '0');
+
+const toMinutes = (timeValue) => {
+  const [hours, minutes] = String(timeValue || '').split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+};
 
 export const formatDateOnly = (date) => {
   const year = date.getFullYear();
@@ -72,6 +81,80 @@ export const buildSlotTimestamps = ({ date, startTime = '00:00', endTime = '23:5
   startTs: `${date}T${startTime.length === 5 ? `${startTime}:00` : startTime}+08`,
   endTs: `${date}T${endTime.length === 5 ? `${endTime}:00` : endTime}+08`,
 });
+
+export const normalizeAvailabilityTemplate = (availability = {}) =>
+  DAY_ORDER.reduce((schedule, dayKey) => {
+    const slots = Array.isArray(availability?.[dayKey]) ? availability[dayKey] : [];
+    schedule[dayKey] = slots
+      .map((slot, index) => ({
+        id: slot.id || `${dayKey.toLowerCase()}-${index}`,
+        startTime: String(slot.startTime || '').slice(0, 5),
+        endTime: String(slot.endTime || '').slice(0, 5),
+        capacity: Math.max(1, Number(slot.capacity) || 1),
+      }))
+      .filter((slot) => {
+        const startMinutes = toMinutes(slot.startTime);
+        const endMinutes = toMinutes(slot.endTime);
+        return startMinutes != null && endMinutes != null && endMinutes > startMinutes;
+      })
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return schedule;
+  }, {});
+
+export const getAvailabilitySlotCount = (availability = {}) => {
+  const normalized = normalizeAvailabilityTemplate(availability);
+  return DAY_ORDER.reduce((total, dayKey) => total + normalized[dayKey].length, 0);
+};
+
+export const buildServiceSlotRowsFromAvailability = ({
+  serviceId,
+  sellerId,
+  availability,
+  weekMonday = getMonday(new Date()),
+  weeksToCreate = DEFAULT_AVAILABILITY_WEEKS,
+} = {}) => {
+  if (!serviceId || !sellerId) return [];
+
+  const normalized = normalizeAvailabilityTemplate(availability);
+  const weekCount = Math.max(1, Math.min(12, Number(weeksToCreate) || DEFAULT_AVAILABILITY_WEEKS));
+  const nowMs = Date.now();
+  const rows = [];
+
+  for (let weekIndex = 0; weekIndex < weekCount; weekIndex += 1) {
+    const weekStart = addDays(weekMonday, weekIndex * 7);
+
+    DAY_ORDER.forEach((dayKey) => {
+      const date = formatDateForDay(weekStart, dayKey);
+      (normalized[dayKey] || []).forEach((slot) => {
+        const { startTs, endTs } = buildSlotTimestamps({
+          date,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+        });
+
+        const startMs = Date.parse(startTs.replace(/\+08$/, '+08:00'));
+        if (Number.isFinite(startMs) && startMs < nowMs) return;
+
+        rows.push({
+          service_id: serviceId,
+          seller_id: sellerId,
+          start_ts: startTs,
+          end_ts: endTs,
+          capacity: slot.capacity,
+          status: 'available',
+          metadata: {
+            createdVia: 'service-create-availability',
+            template_day: dayKey,
+            template_start_time: slot.startTime,
+            template_end_time: slot.endTime,
+          },
+        });
+      });
+    });
+  }
+
+  return rows;
+};
 
 export const mapSlotRowToCalendarEntry = (slot) => ({
   id: slot.id,
@@ -184,6 +267,32 @@ export const createServiceSlot = async ({ serviceId, sellerId, date, startTime, 
   return data;
 };
 
+export const createServiceSlotsFromAvailability = async ({
+  serviceId,
+  sellerId,
+  availability,
+  weekMonday,
+  weeksToCreate = DEFAULT_AVAILABILITY_WEEKS,
+}) => {
+  const rows = buildServiceSlotRowsFromAvailability({
+    serviceId,
+    sellerId,
+    availability,
+    weekMonday,
+    weeksToCreate,
+  });
+
+  if (rows.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('service_slots')
+    .insert(rows)
+    .select('*');
+
+  if (error) throw error;
+  return data || [];
+};
+
 export const updateServiceSlot = async ({ slotId, updates }) => {
   const { data, error } = await supabase
     .from('service_slots')
@@ -215,11 +324,15 @@ export const getSlotStatusColor = (slotsLeft, capacity) => {
 const scheduleService = {
   DAY_INDEX,
   DAY_ORDER,
+  WEEKDAY_ORDER,
   INITIAL_CALENDAR_AVAILABILITY,
   INITIAL_WEEKLY_SCHEDULE,
   addDays,
+  buildServiceSlotRowsFromAvailability,
   buildSlotTimestamps,
+  createServiceSlotsFromAvailability,
   createServiceSlot,
+  createEmptyAvailabilityTemplate,
   createEmptyWeeklySchedule,
   deleteServiceSlot,
   fetchSellerSlots,
@@ -227,10 +340,12 @@ const scheduleService = {
   formatDateForDay,
   formatDateLabel,
   formatDateLong,
+  getAvailabilitySlotCount,
   getSlotDateKey,
   getMonday,
   getSlotStatusColor,
   mapSlotsToSchedule,
+  normalizeAvailabilityTemplate,
   updateServiceSlot,
 };
 

@@ -68,7 +68,7 @@ export const useWorkSchedule = ({ sellerId, currentProfile } = {}) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayDateKey = formatDateOnly(today);
-    const dayKey = DAY_ORDER[today.getDay() - 1];
+    const dayKey = today.getDay() === 0 ? 'Sun' : DAY_ORDER[today.getDay() - 1];
     const isVisibleWeekday = Boolean(dayKey) && getDateForDay(dayKey) === todayDateKey;
     return isVisibleWeekday ? dayKey : 'Mon';
   }, [getDateForDay]);

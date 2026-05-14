@@ -220,6 +220,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
   );
 
   const {
+    activeServiceIndex,
     closeCreateService,
     currentProfile,
     handleCreateServiceChange,
@@ -233,11 +234,13 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     sellerDataError,
     sellerDbServices,
     sellerId,
+    setActiveServiceIndex,
     setIsCreateServiceOpen,
     setSellerDataError,
     setSuccessMessage,
     showSetupBanner,
     successMessage,
+    workerServices,
   } = useWorkProfileServices({ sellerProfile });
 
   const {
@@ -286,6 +289,20 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     transactions,
     weekTransactions,
   } = useWorkPayments({ sellerId, weekOffset });
+
+  const supportsAvailabilitySchedule = scheduleMode === 'with-slots';
+
+  useEffect(() => {
+    if (activeServiceIndex >= (workerServices || []).length) {
+      setActiveServiceIndex(Math.max(0, (workerServices || []).length - 1));
+    }
+  }, [activeServiceIndex, setActiveServiceIndex, workerServices]);
+
+  useEffect(() => {
+    if (!supportsAvailabilitySchedule && workSectionFilter === 'schedule') {
+      setWorkSectionFilter('all');
+    }
+  }, [supportsAvailabilitySchedule, workSectionFilter]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -901,6 +918,8 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     : currentProfile?.paymentAdvance
       ? 'Advance payment'
       : 'After service';
+  const normalizedSellerRole = String(sellerProfile?.role || '').trim().toLowerCase();
+  const canShowAddServiceButton = normalizedSellerRole === 'worker';
   const cashQrId = currentProfile?.cashQrId || `CASHQR-${(currentProfile?.fullName || 'WORKER').replace(/\s+/g, '-').toUpperCase()}`;
   const gcashQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`GCash-${gcashNumber}`)}`;
   const cashConfirmQrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`CASH-CONFIRM-${currentProfile?.fullName || 'Worker'}-${gcashNumber}`)}`;
@@ -909,12 +928,14 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
   const showCashApprovalSection = workSectionFilter === 'all' || workSectionFilter === 'cash-approvals';
   const showRefundSection = workSectionFilter === 'all' || workSectionFilter === 'refunds';
   const showCancelledSection = workSectionFilter === 'all' || workSectionFilter === 'cancelled';
-  const showScheduleSection = workSectionFilter === 'all' || workSectionFilter === 'schedule';
+  const showScheduleSection = supportsAvailabilitySchedule && (workSectionFilter === 'all' || workSectionFilter === 'schedule');
   const visibleCalendarAvailability = calendarAvailability.filter((entry) => {
     const entryDate = new Date(`${entry.date}T00:00:00`);
     return entryDate >= currentWeekMonday && entryDate <= currentWeekSunday;
   });
-  const scheduledDurationLabel = scheduleMode === 'calendar-only'
+  const scheduledDurationLabel = !supportsAvailabilitySchedule
+    ? 'Requests'
+    : scheduleMode === 'calendar-only'
     ? `${visibleCalendarAvailability.length} ${visibleCalendarAvailability.length === 1 ? 'date' : 'dates'}`
     : weeklyScheduledMinutes >= 60
       ? `${Number((weeklyScheduledMinutes / 60).toFixed(weeklyScheduledMinutes % 60 === 0 ? 0 : 1))} hours`
@@ -929,7 +950,9 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     { label: 'Payment Confirmations', value: 'cash-approvals', description: 'Cash payment review queue' },
     { label: 'Refund Cases', value: 'refunds', description: 'GCash refund tracking' },
     { label: 'Cancelled Bookings', value: 'cancelled', description: 'Cancelled cash bookings' },
-    { label: 'Weekly Schedule', value: 'schedule', description: 'Weekly availability and booking blocks' },
+    ...(supportsAvailabilitySchedule
+      ? [{ label: 'Service Availability', value: 'schedule', description: 'Time slots for the selected service' }]
+      : []),
   ];
   const activeWorkSectionLabel = workSectionOptions.find((option) => option.value === workSectionFilter)?.label || 'Show All';
   
@@ -1027,6 +1050,54 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
           </p>
         )}
 
+        {!isLoadingSellerData && hasSellerRecord && (workerServices || []).length > 1 && (
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '1100px',
+              margin: '0 auto 16px',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${themeTokens.border}`,
+              background: themeTokens.surface,
+              boxShadow: themeTokens.shadowSoft,
+              boxSizing: 'border-box',
+            }}
+          >
+            <label
+              style={{
+                display: 'grid',
+                gap: '6px',
+                color: themeTokens.textPrimary,
+                fontSize: '13px',
+                fontWeight: 800,
+              }}
+            >
+              Active Service
+              <select
+                aria-label="Active service"
+                value={activeServiceIndex}
+                onChange={(event) => setActiveServiceIndex(Number(event.target.value))}
+                style={{
+                  width: '100%',
+                  borderRadius: '8px',
+                  border: `1px solid ${themeTokens.inputBorder}`,
+                  background: themeTokens.inputBg,
+                  color: themeTokens.inputText,
+                  padding: '10px 12px',
+                  fontWeight: 700,
+                }}
+              >
+                {(workerServices || []).map((service, index) => (
+                  <option key={service.raw?.id || `${service.serviceType}-${index}`} value={index}>
+                    {service.serviceType || service.raw?.title || `Service ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
         {showSetupBanner && (
           <div style={sx('empty-state-banner')}>
             <h2 style={{ fontSize: '28px', fontWeight: 700, color: isDarkMode ? '#fde68a' : '#78350f', margin: '0 0 8px 0' }}>Welcome! Setup your profile</h2>
@@ -1077,7 +1148,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                     {currentProfile?.location?.address || currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
                   </p>
                   <p style={sx('service-mode-tag')}>
-                    Scheduling: {scheduleMode === 'calendar-only' ? 'Calendar Only' : 'With Slots'}
+                    Booking: {supportsAvailabilitySchedule ? 'Time-slot booking' : 'Request booking'}
                   </p>
                   <button
                     style={{ ...sx('gcash-qr-btn', 'profile-gcash-btn'), ...(isHovered('profile-gcash-btn') ? hoverStyles.gcashButton : {}) }}
@@ -1466,20 +1537,18 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
             {showScheduleSection && <section style={sx('schedule-section')} data-testid="work-schedule-section">
               <div style={sx('section-header', 'section-header-with-action')}>
                 <div style={sx('section-heading-copy')}>
-                  <h2 style={sectionTitleStyle}>{scheduleMode === 'calendar-only' ? 'Calendar Availability' : 'Weekly Schedule'}</h2>
+                  <h2 style={sectionTitleStyle}>Service Availability</h2>
                   <p style={sx('section-subtitle')}>
-                    {scheduleMode === 'calendar-only'
-                      ? 'Manage available dates for manual coordination'
-                      : 'Manage your availability and time-slot bookings'}
+                    Manage time-slot availability for {currentProfile?.serviceType || 'this service'}
                   </p>
                 </div>
                 <button
                   style={{ ...sx('btn-add-slot', 'section-add-slot-btn'), ...(isHovered('schedule-header-add') ? hoverStyles.addSlot : {}) }}
                   onMouseEnter={() => setHoverKey('schedule-header-add')}
                   onMouseLeave={() => setHoverKey('')}
-                  onClick={() => handleAddSlot(scheduleMode === 'calendar-only' ? 'calendar' : undefined)}
+                  onClick={() => handleAddSlot(undefined)}
                 >
-                  {scheduleMode === 'calendar-only' ? '+ Add Available Date' : '+ Add Slot'}
+                  + Add Slot
                 </button>
               </div>
 
@@ -1757,7 +1826,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
               <div style={sx('stat-card')}>
                 <h4 style={statTitleStyle}>This Week</h4>
                 <p style={sx('stat-value')}>{scheduledDurationLabel}</p>
-                <p style={sx('stat-desc')}>{scheduleMode === 'calendar-only' ? 'Available dates' : 'Total scheduled time'}</p>
+                <p style={sx('stat-desc')}>{supportsAvailabilitySchedule ? 'Total scheduled time' : 'Request-based service'}</p>
               </div>
               <div style={sx('stat-card')}>
                 <h4 style={statTitleStyle}>Earnings</h4>
@@ -1917,8 +1986,8 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
         appTheme={appTheme}
       />
 
-      {/* Floating Add Service button (visible when seller exists) */}
-      {sellerData && (
+      {/* Floating Add Service button */}
+      {canShowAddServiceButton && sellerData && (
         <button onClick={() => setIsCreateServiceOpen(true)} aria-label="Add service" style={{ position: 'fixed', right: isMobile ? 14 : 20, bottom: isMobile ? 112 : 28, zIndex: 2500, background: themeTokens.accent, color: '#fff', border: 'none', borderRadius: 999, width: 56, height: 56, fontSize: 20 }}>+</button>
       )}
 

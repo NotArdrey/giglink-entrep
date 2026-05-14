@@ -12,7 +12,7 @@ import {
   useRatingController,
 } from '../hooks';
 
-const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
+const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenChatPage, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
   // ========================================================================
   // CONTROLLER HOOKS INITIALIZATION
   // ========================================================================
@@ -354,7 +354,11 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   // ========================================================================
 
   return (
-    <div style={styles.myBookings} data-testid="my-bookings-page">
+    <div
+      className={uiState === 'chat' ? 'booking-chat-page' : undefined}
+      style={styles.myBookings}
+      data-testid="my-bookings-page"
+    >
       <DashboardNavigation
         appTheme={appTheme}
         themeMode={themeMode}
@@ -365,6 +369,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}
@@ -433,8 +438,24 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
               <div style={styles.detailRow}><span style={styles.detailLabel}>Worker:</span><span style={styles.detailValue}>{currentBooking.workerName}</span></div>
               <div style={styles.detailRow}><span style={styles.detailLabel}>Service:</span><span style={styles.detailValue}>{currentBooking.serviceType}</span></div>
               <div style={styles.detailRow}><span style={styles.detailLabel}>Amount:</span><span style={styles.detailValue}>{`\u20B1${currentBooking.quoteAmount}`}</span></div>
-              <div style={styles.detailRow}><span style={styles.detailLabel}>Scheduled Date:</span><span style={styles.detailValue}>{currentBooking.selectedSlot?.date}</span></div>
-              <div style={styles.detailRow}><span style={styles.detailLabel}>Time Slot:</span><span style={styles.detailValue}>{currentBooking.selectedSlot?.timeBlock.startTime} - {currentBooking.selectedSlot?.timeBlock.endTime}</span></div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Booking Setup:</span>
+                <span style={styles.detailValue}>
+                  {currentBooking.bookingMode === 'calendar-only' ? 'Request booking - through chat' : 'Time-slot booking'}
+                </span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Scheduled Date:</span>
+                <span style={styles.detailValue}>{currentBooking.selectedSlot?.date || 'Coordinated through chat'}</span>
+              </div>
+              <div style={styles.detailRow}>
+                <span style={styles.detailLabel}>Time Slot:</span>
+                <span style={styles.detailValue}>
+                  {currentBooking.selectedSlot?.timeBlock
+                    ? `${currentBooking.selectedSlot.timeBlock.startTime} - ${currentBooking.selectedSlot.timeBlock.endTime}`
+                    : 'Coordinated through chat'}
+                </span>
+              </div>
               <div style={{ ...styles.detailRow, borderBottom: 'none' }}>
                 <span style={styles.detailLabel}>Payment Method:</span>
                 <span style={{
