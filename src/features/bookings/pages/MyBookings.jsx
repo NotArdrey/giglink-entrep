@@ -24,6 +24,16 @@ const isWorkerProfile = (profile = {}) => {
   return !normalizedRole && Boolean(profile?.isWorker || profile?.is_worker || profile?.sellerId || profile?.workerProfileId);
 };
 
+const isBookingNavigationMatch = (booking = {}, navigationId = null) => {
+  if (!navigationId) return false;
+  const targetId = String(navigationId);
+  return [
+    booking.id,
+    booking.conversationId,
+    booking.raw?.conversation?.id,
+  ].some((candidate) => candidate && String(candidate) === targetId);
+};
+
 const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, selectedChatBookingId = null, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenChatPage, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
   // ========================================================================
   // CONTROLLER HOOKS INITIALIZATION
@@ -278,16 +288,22 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   // ========================================================================
 
   useEffect(() => {
-    const hasSelectedBooking = selectedBookingId
-      && bookingListCtrl.bookings.some((booking) => String(booking.id) === String(selectedBookingId));
+    const selectedBooking = selectedBookingId
+      ? bookingListCtrl.bookings.find((booking) => isBookingNavigationMatch(booking, selectedBookingId))
+      : null;
 
-    if (hasSelectedBooking) return;
+    if (selectedBooking) {
+      if (String(selectedBooking.id) !== String(selectedBookingId)) {
+        setSelectedBookingId(selectedBooking.id);
+      }
+      return;
+    }
     if (selectedChatBookingId && isChatRoute && bookingListCtrl.bookings.length === 0) return;
 
     setSelectedBookingId(bookingListCtrl.bookings[0]?.id || null);
   }, [bookingListCtrl.bookings, isChatRoute, selectedBookingId, selectedChatBookingId]);
 
-  const currentBooking = bookingListCtrl.bookings.find((b) => String(b.id) === String(selectedBookingId));
+  const currentBooking = bookingListCtrl.bookings.find((b) => isBookingNavigationMatch(b, selectedBookingId));
   const formatPhp = (value) => `\u20B1${Number(value || 0).toLocaleString('en-PH', {
     minimumFractionDigits: Number(value || 0) % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,

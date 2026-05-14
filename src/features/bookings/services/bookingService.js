@@ -87,6 +87,11 @@ const isConversationHiddenForUser = (conversation = {}, userId = '') => {
   return hasUserFlag(metadata, ['archived_by', 'archivedBy', 'deleted_by', 'deletedBy'], userId);
 };
 
+const isConversationDeletedForUser = (conversation = {}, userId = '') => {
+  const metadata = conversation.metadata || {};
+  return hasUserFlag(metadata, ['deleted_by', 'deletedBy'], userId);
+};
+
 const addUserFlag = (metadata = {}, snakeKey, camelKey, userId = '') => {
   const existing = new Set([
     ...toStringArray(metadata[snakeKey]),
@@ -664,12 +669,13 @@ export const startServiceConversation = async ({ provider, assistantContext = nu
     .eq('buyer_id', user.id)
     .is('booking_id', null)
     .order('created_at', { ascending: false })
-    .limit(1);
+    .limit(20);
 
   if (existingError) throw mapDatabaseError(existingError);
 
-  if (existingRows?.[0]) {
-    const existing = existingRows[0];
+  const existing = (existingRows || []).find((row) => !isConversationDeletedForUser(row, user.id));
+
+  if (existing) {
     const { data: updated, error: updateError } = await supabase
       .from('conversations')
       .update({
