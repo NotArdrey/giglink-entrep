@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 // ============================================================================
 
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
+import { getProfilePhotoUrl } from '../utils/profilePhoto';
 
 
 function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onGoHome, onOpenProfile, onOpenAccountSettings, onOpenSettings, externalNotifications = [], searchPlaceholder = 'Search for services...' }) {
@@ -80,6 +81,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       type: 'work',
     },
   ]);
+  const profilePhotoUrl = getProfilePhotoUrl(sellerProfile?.profilePhoto);
   const [hoveredKey, setHoveredKey] = useState('');
   const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200));
 
@@ -232,10 +234,16 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       height: '40px',
       borderRadius: '999px',
       border: 'none',
-      backgroundColor: '#0f172a',
-      color: '#ffffff',
-      fontWeight: 700,
+      backgroundColor: 'transparent',
       cursor: 'pointer',
+      padding: 0,
+      overflow: 'hidden',
+    },
+    avatarImage: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
     },
     profileMenu: {
       position: 'absolute',
@@ -484,7 +492,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
               onClick={toggleProfileMenu}
               aria-label="Profile menu"
             >
-              JL
+              <img src={profilePhotoUrl} alt="Profile" style={styles.avatarImage} />
             </button>
 
             {isProfileMenuOpen && (

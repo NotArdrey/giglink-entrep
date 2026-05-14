@@ -1,4 +1,5 @@
 import { supabase } from '../../../shared/services/supabaseClient';
+import { getProfilePhotoUrl } from '../../../shared/utils/profilePhoto';
 import {
   createSellerService,
   fetchSellerProfile,
@@ -38,14 +39,15 @@ export const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, 
     sellerRow?.search_meta?.service_type ||
     fallbackProfile?.serviceType ||
     'Service Type';
-  const profilePhoto =
+  const profilePhoto = getProfilePhotoUrl(
     workerProfile?.profilePhoto ||
     workerProfile?.profile_photo ||
     sellerRow?.profile_photo ||
     sellerRow?.avatar_url ||
     fallbackProfile?.profilePhoto ||
     fallbackProfile?.profile_photo ||
-    '';
+    ''
+  );
   const location = {
     address: workerProfile?.address || sellerRow?.search_meta?.location?.address || fallbackProfile?.location?.address || '',
     barangay: workerProfile?.barangay || sellerRow?.search_meta?.location?.barangay || fallbackProfile?.location?.barangay || '',
@@ -85,12 +87,13 @@ export const mapServiceRowToWorkerService = (service, sellerRow = null, fallback
     fallbackProfile?.full_name ||
     service?.title ||
     'Service';
-  const profilePhoto =
+  const profilePhoto = getProfilePhotoUrl(
     sellerRow?.profile_photo ||
     sellerRow?.avatar_url ||
     fallbackProfile?.profilePhoto ||
     fallbackProfile?.profile_photo ||
-    '';
+    ''
+  );
 
   return {
     fullName: sellerDisplayName,

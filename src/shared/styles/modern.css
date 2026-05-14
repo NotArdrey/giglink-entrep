@@ -99,6 +99,19 @@ textarea {
   font: inherit;
 }
 
+select:not([multiple]) {
+  appearance: none;
+  padding-right: 44px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 16px center !important;
+  background-size: 16px 16px !important;
+}
+
+[data-theme="dark"] select:not([multiple]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+}
+
 .gl-app-sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -609,6 +622,25 @@ textarea {
 }
 
 .gl-app-shell-active :where(
+  [data-testid="profile-page"] > main input:not([type="checkbox"]):not([type="radio"]),
+  [data-testid="settings-page"] > main input:not([type="checkbox"]):not([type="radio"]),
+  .gl-settings-card-modern input:not([type="checkbox"]):not([type="radio"]),
+  [data-testid="my-work-page"] > main input:not([type="checkbox"]):not([type="radio"])
+) {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+.gl-app-shell-active :where(
+  [data-testid="profile-page"] > main textarea,
+  [data-testid="settings-page"] > main textarea,
+  .gl-settings-card-modern textarea,
+  [data-testid="my-work-page"] > main textarea
+) {
+  padding: 10px 14px !important;
+}
+
+.gl-app-shell-active :where(
   [data-testid="profile-page"] > main button,
   [data-testid="settings-page"] > main button,
   .gl-settings-card-modern button,
@@ -655,6 +687,11 @@ textarea {
 
 .gl-admin-page :where(nav, article, section, table, input, select, button) {
   border-radius: min(8px, var(--gl-radius)) !important;
+}
+
+.gl-admin-page :where(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
 }
 
 .gl-admin-page :where(article, section) {
@@ -1333,13 +1370,17 @@ textarea {
   border-radius: var(--gl-radius);
   background: var(--gl-surface);
   color: var(--gl-text);
-  padding: 0 12px;
+  padding: 0 14px;
   outline: none;
+}
+
+.gl-select {
+  padding-right: 44px;
 }
 
 .gl-textarea {
   min-height: 104px;
-  padding: 10px 12px;
+  padding: 10px 14px;
 }
 
 .gl-input:focus,
@@ -1480,14 +1521,22 @@ textarea {
   border-radius: 8px;
   background: var(--gl-surface);
   color: var(--gl-text-2);
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 0 10px;
+  padding: 8px 10px;
   cursor: pointer;
   font-size: 13px;
   font-weight: 800;
+  text-align: left;
+}
+
+.browse-filter-option > span {
+  min-width: 0;
+  line-height: 1.2;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .browse-filter-option small {
@@ -1500,6 +1549,7 @@ textarea {
   background: var(--gl-surface-2);
   color: var(--gl-text-3);
   font-size: 11px;
+  justify-self: end;
 }
 
 .browse-filter-option.active {
@@ -1767,10 +1817,21 @@ textarea {
   font-weight: 850;
 }
 
+.dashboard-status-panel .gl-kpi-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
 .dashboard-status-panel .gl-kpi {
   background: rgba(255, 255, 255, 0.48);
   border: 1px solid var(--gl-border);
   border-radius: var(--gl-radius);
+  min-width: 0;
+}
+
+.dashboard-status-panel .gl-kpi-value {
+  line-height: 1.05;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 [data-theme="dark"] .dashboard-status-panel .gl-kpi {
@@ -2817,7 +2878,7 @@ textarea {
 }
 
 .auth-input-wrap select {
-  padding-right: 34px;
+  padding-right: 44px;
   text-overflow: ellipsis;
 }
 

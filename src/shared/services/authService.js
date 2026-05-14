@@ -3,31 +3,11 @@ import {
   getRegistrationFormLogSnapshot,
   logRegistrationDebug,
 } from './registrationLogger';
+import { DEFAULT_PROFILE_PHOTO_URL, getProfilePhotoUrl } from '../utils/profilePhoto';
 
 const PROFILE_PHOTO_BUCKET = 'profile-photos';
 
-const DEFAULT_PROFILE_PHOTOS = [
-  'https://images.pexels.com/photos/18166927/pexels-photo-18166927.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/20687407/pexels-photo-20687407.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/18924728/pexels-photo-18924728.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/5363274/pexels-photo-5363274.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/2411795/pexels-photo-2411795.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/10501790/pexels-photo-10501790.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/8840560/pexels-photo-8840560.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/36130657/pexels-photo-36130657.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/6445627/pexels-photo-6445627.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-  'https://images.pexels.com/photos/13883040/pexels-photo-13883040.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=256&w=256',
-];
-
-const buildDefaultProfileImageUrl = (userId) => {
-  if (!userId) return '';
-
-  const hash = String(userId)
-    .split('')
-    .reduce((total, character) => total + character.charCodeAt(0), 0);
-
-  return DEFAULT_PROFILE_PHOTOS[hash % DEFAULT_PROFILE_PHOTOS.length];
-};
+const buildDefaultProfileImageUrl = () => DEFAULT_PROFILE_PHOTO_URL;
 
 const getCleanString = (value) => {
   if (typeof value !== 'string') return '';
@@ -218,8 +198,10 @@ const buildProfilePayload = (user, source = {}, existingProfile = null) => {
     full_name: getNullableString(fullName) || 'GigLink User',
     email: user.email,
     phone_number: getNullableString(source.phoneNumber ?? metadata.phone_number ?? existingProfile?.phone_number),
-    profile_photo: getNullableString(source.profilePhoto ?? metadata.profile_photo ?? existingProfile?.profile_photo)
-      || buildDefaultProfileImageUrl(user.id),
+    profile_photo: getProfilePhotoUrl(
+      getNullableString(source.profilePhoto ?? metadata.profile_photo ?? existingProfile?.profile_photo)
+        || buildDefaultProfileImageUrl(user.id)
+    ),
     bio: getNullableString(source.bio ?? metadata.bio ?? existingProfile?.bio),
     province: location.province,
     city: location.city,
@@ -349,7 +331,7 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
     }) || profileRow?.full_name || '',
     email: profileRow?.email || '',
     phoneNumber: profileRow?.phone_number || '',
-    profilePhoto: profileRow?.profile_photo || buildDefaultProfileImageUrl(profileRow?.user_id || workerRow?.user_id),
+    profilePhoto: getProfilePhotoUrl(profileRow?.profile_photo || buildDefaultProfileImageUrl()),
     bio: profileRow?.bio || '',
     province: location.province,
     city: location.city,
@@ -872,7 +854,7 @@ export const signUpWithEmail = async (formData = {}) => {
         barangay: formData.barangay || '',
         address: formData.address || '',
         bio: formData.bio || '',
-        profile_photo: formData.profilePhoto || '',
+        profile_photo: getProfilePhotoUrl(formData.profilePhoto),
         is_client: true,
         is_worker: false,
         role: 'client',
@@ -995,13 +977,13 @@ const buildSellerPayload = (userId, onboardingData = {}, existingSeller = null) 
   const city = getNullableString(onboardingData.city || existingSeller?.search_meta?.location?.city || '');
   const province = getNullableString(onboardingData.province || existingSeller?.search_meta?.location?.province || '');
   const bookingMode = getCleanString(onboardingData.bookingMode || existingSeller?.search_meta?.booking_mode || '');
-  const profilePhoto = getNullableString(
+  const profilePhoto = getProfilePhotoUrl(getNullableString(
     onboardingData.profilePhoto
     || onboardingData.profile_photo
     || existingSeller?.profile_photo
     || existingSeller?.avatar_url
     || ''
-  ) || buildDefaultProfileImageUrl(userId);
+  ) || buildDefaultProfileImageUrl(userId));
 
   return {
     user_id: userId,
@@ -1120,7 +1102,7 @@ export const fetchAllActiveServices = async (limit = 50) => {
 
   return rows.map((row) => {
     const aggregate = aggregatesBySeller[row.seller_id] || {};
-    const sellerPhoto = row.sellers?.profile_photo || row.sellers?.avatar_url || buildDefaultProfileImageUrl(row.seller_id);
+    const sellerPhoto = getProfilePhotoUrl(row.sellers?.profile_photo || row.sellers?.avatar_url || buildDefaultProfileImageUrl(row.seller_id));
 
     return {
       ...row,
@@ -1132,7 +1114,7 @@ export const fetchAllActiveServices = async (limit = 50) => {
             avg_rating: aggregate.avg_rating ?? row.sellers.avg_rating ?? null,
             rating_count: aggregate.rating_count ?? row.sellers.rating_count ?? 0,
             profile_photo: sellerPhoto,
-            avatar_url: row.sellers.avatar_url || sellerPhoto,
+            avatar_url: sellerPhoto,
           }
         : row.sellers,
     };
@@ -1257,7 +1239,7 @@ export const syncWorkerSetup = async (userId, source = {}) => {
   // STEP 3: Update sellers table (public seller profile)
   // ============================================================================
   // Map onboarding data directly to sellers columns
-  const sellerPhoto = getNullableString(source.profilePhoto || source.profile_photo) || buildDefaultProfileImageUrl(userId);
+  const sellerPhoto = getProfilePhotoUrl(getNullableString(source.profilePhoto || source.profile_photo) || buildDefaultProfileImageUrl(userId));
   const sellerPayload = {
     user_id: userId,
     display_name: getNullableString(source.fullName || source.full_name) || 'Service Provider',

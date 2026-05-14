@@ -1,5 +1,6 @@
-import { CalendarCheck, MapPin, MessageCircle, MessageSquareText, Star, UserRound } from 'lucide-react';
+import { CalendarCheck, MapPin, MessageCircle, MessageSquareText, Star } from 'lucide-react';
 import { getDisplayServiceType, getProviderQuoteAmount } from '../utils/serviceNormalizer';
+import { getProfilePhotoUrl } from '../../../shared/utils/profilePhoto';
 
 const formatPrice = (provider = {}) => {
   if (provider.pricingType === 'inquiry') return 'Price on inquiry';
@@ -21,16 +22,13 @@ const formatPrice = (provider = {}) => {
 function ServiceCard({ provider, onViewProfile, onViewReviews, onChat }) {
   const displayServiceType = getDisplayServiceType(provider);
   const providerName = provider.name || 'Service Provider';
+  const providerPhoto = getProfilePhotoUrl(provider.photo);
   const isRequestBooking = provider.actionType === 'inquire' || provider.bookingMode === 'calendar-only';
 
   return (
     <article className="service-result-card gl-card">
       <div className="service-result-avatar">
-        {provider.photo ? (
-          <img src={provider.photo} alt={providerName} />
-        ) : (
-          <UserRound size={22} aria-hidden="true" />
-        )}
+        <img src={providerPhoto} alt={providerName} />
       </div>
 
       <div className="service-result-main">

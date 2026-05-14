@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
+import { getProfilePhotoUrl, hasUploadedProfilePhoto } from '../../../shared/utils/profilePhoto';
 
 function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, onOpenChatPage, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile, onOpenAdminDashboard }) {
   const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
   const fallbackName = 'Juan Dela Cruz';
   const fallbackBio = 'Dedicated service provider focused on quality, punctuality, and client satisfaction.';
-  const fallbackPhoto = '';
+  const fallbackPhoto = getProfilePhotoUrl('');
   const splitNameParts = (value = '') => {
     const parts = String(value).trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
@@ -23,7 +24,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
   const [middleName, setMiddleName] = useState(sellerProfile?.middleName || initialNameParts.middleName);
   const [lastName, setLastName] = useState(sellerProfile?.lastName || initialNameParts.lastName);
   const [displayBio, setDisplayBio] = useState(sellerProfile?.bio || fallbackBio);
-  const [profilePhoto, setProfilePhoto] = useState(sellerProfile?.profilePhoto || fallbackPhoto);
+  const [profilePhoto, setProfilePhoto] = useState(getProfilePhotoUrl(sellerProfile?.profilePhoto || fallbackPhoto));
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [draftFirstName, setDraftFirstName] = useState(firstName);
@@ -58,7 +59,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
       }
       : splitNameParts(sellerProfile?.fullName || fallbackName);
     const nextBio = sellerProfile?.bio || fallbackBio;
-    const nextPhoto = sellerProfile?.profilePhoto || fallbackPhoto;
+    const nextPhoto = getProfilePhotoUrl(sellerProfile?.profilePhoto || fallbackPhoto);
     setFirstName(nextNameParts.firstName);
     setMiddleName(nextNameParts.middleName);
     setLastName(nextNameParts.lastName);
@@ -68,7 +69,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
     setDraftMiddleName(nextNameParts.middleName);
     setDraftLastName(nextNameParts.lastName);
     setDraftBio(nextBio);
-  }, [sellerProfile?.firstName, sellerProfile?.middleName, sellerProfile?.lastName, sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
+  }, [fallbackPhoto, sellerProfile?.firstName, sellerProfile?.middleName, sellerProfile?.lastName, sellerProfile?.fullName, sellerProfile?.bio, sellerProfile?.profilePhoto]);
 
   useEffect(() => {
     setIsProfileLoading(true);
@@ -97,12 +98,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
 
   const isVerifiedWorker = Boolean(sellerProfile?.serviceType);
   const displayName = buildDisplayName({ firstName, middleName, lastName }) || fallbackName;
-  const profileInitials = [firstName, lastName]
-    .map((part) => String(part || '').trim())
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase())
-    .slice(0, 2)
-    .join('') || 'U';
+  const hasCustomProfilePhoto = hasUploadedProfilePhoto(profilePhoto);
 
   const saveName = async () => {
     const nextFirstName = draftFirstName.trim();
@@ -170,7 +166,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
         setIsSavingPhoto(true);
         const mergedProfile = await onUpdateProfile({ profilePhotoFile: selectedFile });
         if (mergedProfile?.profilePhoto) {
-          setProfilePhoto(mergedProfile.profilePhoto);
+          setProfilePhoto(getProfilePhotoUrl(mergedProfile.profilePhoto));
         }
       } catch (error) {
         setSaveError(error?.message || 'Unable to save profile photo right now. Please try again.');
@@ -189,7 +185,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
       setSaveError('');
       setIsSavingPhoto(true);
       const merged = await onUpdateProfile({ profilePhoto: '' });
-      setProfilePhoto(merged?.profilePhoto || '');
+      setProfilePhoto(getProfilePhotoUrl(merged?.profilePhoto));
       setIsPhotoSourceOpen(false);
     } catch (error) {
       setSaveError(error?.message || 'Unable to remove profile photo right now. Please try again.');
@@ -290,25 +286,8 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
               </div>
             ) : (
               <button style={styles.profilePhotoButton} onClick={() => setIsPhotoSourceOpen(true)}>
-                {profilePhoto ? (
-                  <img src={profilePhoto} alt={displayName} style={styles.profilePhoto} />
-                ) : (
-                  <div
-                    style={{
-                      ...styles.profilePhoto,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: themeTokens.surfaceSoft,
-                      color: themeTokens.textPrimary,
-                      fontWeight: 800,
-                      fontSize: isMobile ? '34px' : '42px',
-                    }}
-                  >
-                    {profileInitials}
-                  </div>
-                )}
-                <span style={styles.profilePhotoEdit}>{isSavingPhoto ? 'Saving Photo...' : (profilePhoto ? 'Change Photo' : 'Add Photo')}</span>
+                <img src={profilePhoto} alt={displayName} style={styles.profilePhoto} />
+                <span style={styles.profilePhotoEdit}>{isSavingPhoto ? 'Saving Photo...' : (hasCustomProfilePhoto ? 'Change Photo' : 'Add Photo')}</span>
               </button>
             )}
 
@@ -423,7 +402,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
                 <div style={styles.photoSourceActions}>
                   <button style={styles.photoActionBtn} onClick={() => cameraInputRef.current && cameraInputRef.current.click()}>Use Camera</button>
                   <button style={styles.photoActionBtn} onClick={() => deviceInputRef.current && deviceInputRef.current.click()}>From Device</button>
-                  {profilePhoto && (
+                  {hasCustomProfilePhoto && (
                     <button
                       style={{ ...styles.cancelBtn }}
                       onClick={handleRemovePhoto}

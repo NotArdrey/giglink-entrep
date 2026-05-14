@@ -1,4 +1,5 @@
 import { supabase } from '../../../shared/services/supabaseClient';
+import { getProfilePhotoUrl } from '../../../shared/utils/profilePhoto';
 
 const getCleanString = (value) => (typeof value === 'string' ? value.trim() : '');
 const getNullableString = (value) => {
@@ -209,7 +210,7 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
     workerId: booking.seller_id,
     workerName: metadata.worker_name || metadata.workerName || getSellerName(service, seller),
     clientName: buyerProfile.full_name || metadata.client_name || metadata.clientName || 'Client',
-    clientPhoto: buyerProfile.profile_photo || '',
+    clientPhoto: getProfilePhotoUrl(buyerProfile.profile_photo),
     serviceType: getServiceType(service, seller) || metadata.service_type || metadata.serviceType,
     status: uiStatus,
     requestDate: formatDate(booking.created_at) || formatDate(nowIso()),

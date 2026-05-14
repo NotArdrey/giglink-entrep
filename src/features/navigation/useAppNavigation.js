@@ -15,6 +15,7 @@ import {
   isAccountBlockedForLogin,
 } from '../../shared/services/authService';
 import { getThemeTokens } from '../../shared/styles/themeTokens';
+import { getProfilePhotoUrl } from '../../shared/utils/profilePhoto';
 
 const getSystemTheme = () => {
   if (typeof window === 'undefined' || !window.matchMedia) {
@@ -83,7 +84,7 @@ const buildAuthOnlyProfile = (user, source = {}) => {
     fullName,
     email,
     phoneNumber: source?.phoneNumber || metadata?.phone_number || '',
-    profilePhoto: source?.profilePhoto || metadata?.profile_photo || '',
+    profilePhoto: getProfilePhotoUrl(source?.profilePhoto || metadata?.profile_photo),
     bio: source?.bio || metadata?.bio || '',
     province,
     city,

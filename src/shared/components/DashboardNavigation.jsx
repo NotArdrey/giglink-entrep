@@ -15,6 +15,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
+import { getProfilePhotoUrl } from '../utils/profilePhoto';
 
 function DashboardNavigation({
   appTheme = 'light',
@@ -80,14 +81,7 @@ function DashboardNavigation({
     settings: 'settings',
   }[currentView] || 'home';
 
-  const fullName = sellerProfile?.fullName || sellerProfile?.full_name || sellerProfile?.email || 'GigLink User';
-  const profileInitials = String(fullName)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((segment) => segment.charAt(0).toUpperCase())
-    .join('') || 'U';
+  const profilePhotoUrl = getProfilePhotoUrl(sellerProfile?.profilePhoto);
   const unreadCount = notifications.filter((item) => !item.isRead).length;
   const isDarkMode = appTheme === 'dark';
   const ThemeIcon = isDarkMode ? Moon : Sun;
@@ -251,11 +245,7 @@ function DashboardNavigation({
 
           <div ref={profileRef} className="gl-app-menu-anchor">
             <button type="button" className="gl-app-icon-btn avatar" aria-label="Profile menu" onClick={() => setIsProfileMenuOpen((value) => !value)}>
-              {sellerProfile?.profilePhoto ? (
-                <img src={sellerProfile.profilePhoto} alt="Profile" />
-              ) : (
-                <span>{profileInitials}</span>
-              )}
+              <img src={profilePhotoUrl} alt="Profile" />
             </button>
 
             {isProfileMenuOpen && (

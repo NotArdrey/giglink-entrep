@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { getDisplayServiceType, getProviderQuoteAmount } from '../utils/serviceNormalizer';
+import { getProfilePhotoUrl, hasUploadedProfilePhoto } from '../../../shared/utils/profilePhoto';
 
 const formatRate = (worker = {}) => {
   if (worker.pricingType === 'inquiry' || worker.actionType === 'inquire') {
@@ -84,13 +85,14 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
       ? worker.uploadedPhotos
       : (worker.photos && worker.photos.length > 0)
         ? worker.photos
-        : (worker.photo ? [worker.photo] : []);
+        : (hasUploadedProfilePhoto(worker.photo) ? [worker.photo] : []);
 
   const serviceType = getDisplayServiceType(worker);
   const isInquiry = worker.actionType === 'inquire';
   const rating = worker.rating || 'New';
   const reviews = worker.reviews || 0;
   const providerName = worker.name || 'Service Provider';
+  const providerPhoto = getProfilePhotoUrl(worker.photo);
   const selectedImage = gallery[galleryIndex];
 
   const showPrev = () => setGalleryIndex((index) => (index - 1 + gallery.length) % gallery.length);
@@ -178,11 +180,7 @@ function WorkerDetailModal({ isOpen, worker, onClose, onBookNow }) {
               {/* Provider header card */}
               <div className="worker-provider-header">
                 <div className="worker-provider-avatar">
-                  {worker.photo ? (
-                    <img src={worker.photo} alt={providerName} />
-                  ) : (
-                    <UserRound size={28} aria-hidden="true" />
-                  )}
+                  <img src={providerPhoto} alt={providerName} />
                 </div>
                 <div className="worker-provider-info">
                   <div className="worker-provider-name-row">

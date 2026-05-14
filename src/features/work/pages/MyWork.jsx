@@ -10,6 +10,7 @@ import SuccessNotification from '../../../shared/components/SuccessNotification'
 import ErrorNotification from '../../../shared/components/ErrorNotification';
 import { updateBookingWorkflow } from '../../bookings/services/bookingService';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
+import { getProfilePhotoUrl } from '../../../shared/utils/profilePhoto';
 import { useWorkPayments, useWorkProfileServices, useWorkSchedule } from '../hooks';
 import {
   CalendarDays,
@@ -26,12 +27,6 @@ import {
 
 const formatDateLong = (date) =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-const getInitials = (value = '') => {
-  const parts = String(value).trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'GL';
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
-};
 
 const normalizeRateBasis = (value) => {
   const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
@@ -1140,15 +1135,11 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
             <div style={sx('profile-summary-card')}>
               <div style={sx('profile-info')}>
                 <div style={sx('profile-avatar')}>
-                  {currentProfile?.profilePhoto ? (
-                    <img
-                      src={currentProfile.profilePhoto}
-                      alt={`${currentProfile?.fullName || 'Service provider'} profile`}
-                      style={sx('profile-avatar-image')}
-                    />
-                  ) : (
-                    currentProfile?.fullName?.charAt(0) || '?'
-                  )}
+                  <img
+                    src={getProfilePhotoUrl(currentProfile?.profilePhoto)}
+                    alt={`${currentProfile?.fullName || 'Service provider'} profile`}
+                    style={sx('profile-avatar-image')}
+                  />
                 </div>
                 <div>
                   <button
@@ -1316,17 +1307,11 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                   >
                     <div style={sx('inquiry-header')}>
                       <div style={sx('client-info')}>
-                        {inquiry.clientPhoto ? (
-                          <img
-                            src={inquiry.clientPhoto}
-                            alt={inquiry.clientName}
-                            style={sx('client-photo')}
-                          />
-                        ) : (
-                          <span style={sx('client-photo-fallback')} aria-hidden="true">
-                            {getInitials(inquiry.clientName)}
-                          </span>
-                        )}
+                        <img
+                          src={getProfilePhotoUrl(inquiry.clientPhoto)}
+                          alt={inquiry.clientName}
+                          style={sx('client-photo')}
+                        />
                         <div style={{ minWidth: 0 }}>
                           <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, ...cardStrongTextStyle }}>{inquiry.clientName}</h3>
                           {inquiry.clientRating ? (

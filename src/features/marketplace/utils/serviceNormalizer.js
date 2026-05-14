@@ -1,3 +1,5 @@
+import { getProfilePhotoUrl } from '../../../shared/utils/profilePhoto';
+
 const CORE_CATEGORIES = ['Tutor', 'Technician', 'Cleaner'];
 
 export const normalizeRateBasis = (value) => {
@@ -109,7 +111,7 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
     description: service.description || service.short_description || seller.about || seller.tagline || 'Professional service available through GigLink.',
     rating: service.rating ?? seller.avg_rating ?? null,
     reviews: service.reviews_count || seller.rating_count || 0,
-    photo: seller.profile_photo || seller.avatar_url || '',
+    photo: getProfilePhotoUrl(seller.profile_photo || seller.avatar_url),
     gallery: service.metadata?.gallery || service.metadata?.uploadedPhotos || [],
     experience: seller.years_experience || service.metadata?.experience_years || service.metadata?.experienceYears || 0,
     location,
