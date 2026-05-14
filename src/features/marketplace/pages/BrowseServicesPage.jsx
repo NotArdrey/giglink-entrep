@@ -10,11 +10,12 @@ import {
 import DashboardNavigation from '../../../shared/components/DashboardNavigation';
 import SuccessNotification from '../../../shared/components/SuccessNotification';
 import ErrorNotification from '../../../shared/components/ErrorNotification';
-import { createClientBooking, createClientBookingRequest } from '../../bookings/services/bookingService';
+import { createClientBooking, startServiceConversation } from '../../bookings/services/bookingService';
 import { fetchAllActiveServices } from '../../../shared/services/authService';
 import { supabase } from '../../../shared/services/supabaseClient';
 import BookingCalendarModal from '../../bookings/components/BookingCalendarModal';
 import PaymentModal from '../../bookings/components/PaymentModal';
+import BookingTermsModal from '../../bookings/components/BookingTermsModal';
 import ServiceCard from '../components/ServiceCard';
 import WorkerDetailModal from '../components/WorkerDetailModal';
 import ReviewsModal from '../components/ReviewsModal';
@@ -35,6 +36,18 @@ const getProviderSellerId = (provider) => {
     || provider.rawService?.seller?.user_id
     || provider.sellerId
     || null;
+};
+
+const compareBoostPriority = (a, b) => {
+  if (a.isBoosted !== b.isBoosted) return a.isBoosted ? -1 : 1;
+  if (!a.isBoosted || !b.isBoosted) return 0;
+
+  const budgetDelta = (b.boostBudget || 0) - (a.boostBudget || 0);
+  if (budgetDelta !== 0) return budgetDelta;
+
+  const aStartedAt = new Date(a.adBooster?.starts_at || a.adBooster?.startsAt || 0).getTime() || 0;
+  const bStartedAt = new Date(b.adBooster?.starts_at || b.adBooster?.startsAt || 0).getTime() || 0;
+  return bStartedAt - aStartedAt;
 };
 
 function BrowseServicesPage({
@@ -75,6 +88,7 @@ function BrowseServicesPage({
   const [bookingMessage, setBookingMessage] = useState('');
   const [bookingError, setBookingError] = useState('');
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
+  const [pendingTermsAction, setPendingTermsAction] = useState(null);
   const [reviewsTarget, setReviewsTarget] = useState(null);
   const [reviewsBySeller, setReviewsBySeller] = useState({});
   const [isReviewsLoading, setIsReviewsLoading] = useState(false);
@@ -233,6 +247,8 @@ function BrowseServicesPage({
     });
 
     return filtered.sort((a, b) => {
+      const boostOrder = compareBoostPriority(a, b);
+      if (boostOrder !== 0) return boostOrder;
       if (sortMode === 'price-low') return getProviderQuoteAmount(a) - getProviderQuoteAmount(b);
       if (sortMode === 'rating') return (b.rating || 0) - (a.rating || 0);
       if (sortMode === 'newest') return new Date(b.rawService?.created_at || 0) - new Date(a.rawService?.created_at || 0);
@@ -253,7 +269,7 @@ function BrowseServicesPage({
     setIsWorkerModalOpen(true);
   };
 
-  const handleBookNow = async (worker) => {
+  const executeBookNow = async (worker) => {
     if (isPublic) {
       setIsWorkerModalOpen(false);
       onRequireLogin?.();
@@ -264,13 +280,13 @@ function BrowseServicesPage({
       try {
         setIsBookingSubmitting(true);
         setBookingError('');
-        await createClientBookingRequest({ provider: worker });
+        const conversation = await startServiceConversation({ provider: worker });
         setIsWorkerModalOpen(false);
         setSelectedWorker(null);
-        setBookingMessage(`Request booking started with ${worker.name}. Open My Bookings to continue through chat.`);
-        onOpenChatPage?.();
+        setBookingMessage(`Chat started with ${worker.name}.`);
+        onOpenChatPage?.(conversation?.id);
       } catch (error) {
-        setBookingError(error?.message || 'Unable to create request booking.');
+        setBookingError(error?.message || 'Unable to start chat with this worker.');
       } finally {
         setIsBookingSubmitting(false);
       }
@@ -281,7 +297,16 @@ function BrowseServicesPage({
     setIsBookingCalendarOpen(true);
   };
 
-  const handleStartChat = async (provider) => {
+  const handleBookNow = (worker) => {
+    if (isPublic) {
+      executeBookNow(worker);
+      return;
+    }
+
+    setPendingTermsAction({ type: 'book', worker });
+  };
+
+  const executeStartChat = async (provider) => {
     if (isPublic) {
       onRequireLogin?.();
       return;
@@ -290,14 +315,31 @@ function BrowseServicesPage({
     try {
       setIsBookingSubmitting(true);
       setBookingError('');
-      await createClientBookingRequest({ provider });
+      const conversation = await startServiceConversation({ provider });
       setBookingMessage(`Chat started with ${provider.name}.`);
-      onOpenChatPage?.();
+      onOpenChatPage?.(conversation?.id);
     } catch (error) {
       setBookingError(error?.message || 'Unable to start chat with this worker.');
     } finally {
       setIsBookingSubmitting(false);
     }
+  };
+
+  const handleStartChat = (provider) => {
+    executeStartChat(provider);
+  };
+
+  const handleConfirmTermsAction = async () => {
+    const action = pendingTermsAction;
+    setPendingTermsAction(null);
+    if (!action) return;
+
+    if (action.type === 'chat') {
+      await executeStartChat(action.provider);
+      return;
+    }
+
+    await executeBookNow(action.worker);
   };
 
   const handleConfirmBooking = ({ workerId, date, dayKey, blockId, manualScheduling }) => {
@@ -336,7 +378,7 @@ function BrowseServicesPage({
     setIsPaymentModalOpen(true);
   };
 
-  const handleSelectPayment = async (selectedPaymentMethod) => {
+  const handleSelectPayment = async (selectedPaymentMethod, mockPayment) => {
     if (!pendingBooking) return;
 
     const { workerId, selectedSlot } = pendingBooking;
@@ -350,6 +392,7 @@ function BrowseServicesPage({
         provider: worker,
         pendingBooking,
         paymentMethod: selectedPaymentMethod,
+        mockPayment,
       });
     } catch (error) {
       setBookingError(error?.message || 'Unable to create booking.');
@@ -598,6 +641,15 @@ function BrowseServicesPage({
           }}
         />
       )}
+
+      <BookingTermsModal
+        isOpen={Boolean(pendingTermsAction)}
+        appTheme={appTheme}
+        title="Agree Before Booking"
+        confirmLabel="Agree and Continue"
+        onCancel={() => setPendingTermsAction(null)}
+        onConfirm={handleConfirmTermsAction}
+      />
 
       <ReviewsModal
         isOpen={Boolean(reviewsTarget)}

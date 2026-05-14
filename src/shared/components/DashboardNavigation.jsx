@@ -16,6 +16,17 @@ import {
 } from 'lucide-react';
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
 import { getProfilePhotoUrl } from '../utils/profilePhoto';
+import BrandWordmark from './BrandWordmark';
+
+const WORKER_ROLE_VALUES = new Set(['worker', 'workers', 'seller', 'sellers']);
+const CLIENT_ROLE_VALUES = new Set(['client', 'clients', 'buyer', 'buyers', 'customer', 'customers']);
+
+const isWorkerProfile = (profile = {}) => {
+  const normalizedRole = String(profile?.role || '').trim().toLowerCase();
+  if (CLIENT_ROLE_VALUES.has(normalizedRole)) return false;
+  if (WORKER_ROLE_VALUES.has(normalizedRole)) return true;
+  return !normalizedRole && Boolean(profile?.isWorker || profile?.is_worker || profile?.sellerId || profile?.workerProfileId);
+};
 
 function DashboardNavigation({
   appTheme = 'light',
@@ -87,8 +98,7 @@ function DashboardNavigation({
   const ThemeIcon = isDarkMode ? Moon : Sun;
   const normalizedRole = String(sellerProfile?.role || '').trim().toLowerCase();
   const isAdminAccount = Boolean(sellerProfile?.isAdmin) || normalizedRole === 'admin';
-  const isWorkerAccount = normalizedRole === 'worker'
-    || (!normalizedRole && Boolean(sellerProfile?.isWorker));
+  const isWorkerAccount = isWorkerProfile(sellerProfile);
   const handleThemeToggle = () => {
     onThemeChange?.(isDarkMode ? 'light' : 'dark');
   };
@@ -157,7 +167,7 @@ function DashboardNavigation({
       <aside className="gl-app-sidebar">
         <button type="button" className="gl-app-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" />
-          <strong>GigLink</strong>
+          <strong><BrandWordmark /></strong>
         </button>
 
         <div className="gl-app-sidebar-search">
@@ -193,7 +203,7 @@ function DashboardNavigation({
       <header className="gl-app-topbar">
         <button type="button" className="gl-app-mobile-brand" onClick={() => onOpenDashboard?.()} aria-label="Open home">
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" />
-          <strong>GigLink</strong>
+          <strong><BrandWordmark /></strong>
         </button>
 
         <div className="gl-app-topbar-search">

@@ -43,6 +43,67 @@ const getAuthUser = async () => {
   return data?.user || null;
 };
 
+const getRequiredAuthUser = async () => {
+  const user = await getAuthUser();
+  if (!user?.id) throw new Error('Please sign in to access your bookings.');
+  return user;
+};
+
+const participantFilter = (userId) => `buyer_id.eq.${userId},seller_id.eq.${userId}`;
+
+const isBookingParticipant = (booking = {}, userId = '') => {
+  const row = booking.raw?.booking || booking;
+  return Boolean(
+    userId
+      && (
+        String(row.buyer_id || booking.buyerId || '') === String(userId)
+        || String(row.seller_id || booking.workerId || '') === String(userId)
+      )
+  );
+};
+
+const isConversationParticipant = (conversation = {}, userId = '') => (
+  Boolean(
+    userId
+      && (
+        String(conversation.buyer_id || '') === String(userId)
+        || String(conversation.seller_id || '') === String(userId)
+      )
+  )
+);
+
+const toStringArray = (value) => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+};
+
+const hasUserFlag = (metadata = {}, keys = [], userId = '') => (
+  keys.some((key) => toStringArray(metadata?.[key]).some((value) => String(value) === String(userId)))
+);
+
+const isConversationHiddenForUser = (conversation = {}, userId = '') => {
+  const metadata = conversation.metadata || {};
+  return hasUserFlag(metadata, ['archived_by', 'archivedBy', 'deleted_by', 'deletedBy'], userId);
+};
+
+const addUserFlag = (metadata = {}, snakeKey, camelKey, userId = '') => {
+  const existing = new Set([
+    ...toStringArray(metadata[snakeKey]),
+    ...toStringArray(metadata[camelKey]),
+  ]);
+  if (userId) existing.add(String(userId));
+  return Array.from(existing);
+};
+
+const removeUserFlag = (metadata = {}, snakeKey, camelKey, userId = '') => {
+  const userIdString = String(userId);
+  return Array.from(new Set([
+    ...toStringArray(metadata[snakeKey]),
+    ...toStringArray(metadata[camelKey]),
+  ].filter((value) => String(value) !== userIdString)));
+};
+
 const getProfileNameFromUser = (user) => {
   const metadata = user?.user_metadata || {};
   return (
@@ -200,16 +261,21 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
   const paymentMethod = metadata.payment_method || metadata.paymentMethod || null;
   const cashStatus = metadata.cash_confirmation_status || metadata.cashConfirmationStatus || null;
   const refundStatus = metadata.refund_status || metadata.refundStatus || null;
+  const mockPayment = metadata.mock_payment || metadata.mockPayment || null;
   const uiStatus = uiStatusFromDb(booking, metadata);
   const totalAmount = getRateAmount(service, { ...metadata, quote_amount: booking.total_amount ?? metadata.quote_amount });
+  const transactionFeeAmount = getNumberOrNull(mockPayment?.transactionFeeAmount);
+  const totalChargedAmount = getNumberOrNull(mockPayment?.totalChargedAmount);
   const bookingMode = getServiceBookingMode(service, seller, metadata);
 
   return {
     id: booking.id,
+    buyerId: booking.buyer_id,
+    sellerId: booking.seller_id,
     serviceId: booking.service_id,
     workerId: booking.seller_id,
-    workerName: metadata.worker_name || metadata.workerName || getSellerName(service, seller),
-    clientName: buyerProfile.full_name || metadata.client_name || metadata.clientName || 'Client',
+    workerName: metadata.worker_name || metadata.workerName || metadata.seller_name || metadata.sellerName || getSellerName(service, seller),
+    clientName: buyerProfile.full_name || metadata.client_name || metadata.clientName || metadata.buyer_name || metadata.buyerName || 'Client',
     clientPhoto: getProfilePhotoUrl(buyerProfile.profile_photo),
     serviceType: getServiceType(service, seller) || metadata.service_type || metadata.serviceType,
     status: uiStatus,
@@ -231,10 +297,15 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
     paymentProofSubmitted: Boolean(metadata.payment_proof_submitted || metadata.paymentProofSubmitted),
     paymentReference: booking.payment_reference || metadata.payment_reference || '',
     transactionId: metadata.transaction_id || booking.payment_reference || '',
+    mockPayment,
+    transactionFeeRate: getNumberOrNull(mockPayment?.transactionFeeRate) ?? 0,
+    transactionFeePercent: mockPayment?.transactionFeePercent || '',
+    transactionFeeAmount: transactionFeeAmount ?? 0,
+    totalChargedAmount: totalChargedAmount ?? totalAmount,
     cashConfirmationStatus: cashStatus,
     cashVerifierQrId: metadata.cash_verifier_qr_id || metadata.cashVerifierQrId || (booking.id ? `CASHQR-${booking.id}` : ''),
     submittedCashAmount: metadata.submitted_cash_amount ?? metadata.submittedCashAmount ?? null,
-    expectedCashAmount: metadata.expected_cash_amount ?? metadata.expectedCashAmount ?? totalAmount,
+    expectedCashAmount: metadata.expected_cash_amount ?? metadata.expectedCashAmount ?? totalChargedAmount ?? totalAmount,
     refundEligible: metadata.refund_eligible ?? (paymentMethod === 'gcash-advance' && booking.status === 'completed'),
     refundStatus,
     refundAmount: metadata.refund_amount ?? metadata.refundAmount ?? null,
@@ -293,6 +364,53 @@ export const hydrateBookingRows = async (bookingRows = []) => {
   return rows.map((row) => mapBookingRowToUiBooking(row, { servicesById, sellersById, profilesById, reviews }));
 };
 
+export const hydrateConversationRows = async (conversationRows = []) => {
+  const rows = toArray(conversationRows);
+  if (rows.length === 0) return [];
+
+  const sellerIds = unique(rows.map((row) => row.seller_id));
+  const buyerIds = unique(rows.map((row) => row.buyer_id));
+
+  const [sellers, buyerProfiles] = await Promise.all([
+    fetchRowsByIds('sellers', 'user_id', sellerIds, '*'),
+    fetchRowsByIds('profiles', 'user_id', buyerIds, 'user_id, full_name, profile_photo'),
+  ]);
+
+  const sellersById = Object.fromEntries(sellers.map((row) => [row.user_id, row]));
+  const profilesById = Object.fromEntries(buyerProfiles.map((row) => [row.user_id, row]));
+
+  return rows.map((row) => mapConversationRowToUiChat(row, { sellersById, profilesById }));
+};
+
+const isReadByUser = (readBy, userId) => {
+  if (!userId) return false;
+  const userIdString = String(userId);
+
+  if (Array.isArray(readBy)) {
+    return readBy.some((value) => String(value) === userIdString);
+  }
+
+  if (typeof readBy === 'string') {
+    try {
+      return isReadByUser(JSON.parse(readBy), userId);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  if (readBy && typeof readBy === 'object') {
+    return Object.values(readBy).some((value) => String(value) === userIdString);
+  }
+
+  return false;
+};
+
+const isUnreadForUser = (message = {}, userId) => (
+  Boolean(userId)
+  && String(message.sender_id || '') !== String(userId)
+  && !isReadByUser(message.read_by, userId)
+);
+
 export const fetchBookingsForUser = async ({ userId, role = 'buyer' } = {}) => {
   if (!userId) return [];
 
@@ -307,29 +425,315 @@ export const fetchBookingsForUser = async ({ userId, role = 'buyer' } = {}) => {
   return hydrateBookingRows(data || []);
 };
 
-export const fetchClientBookings = async () => {
-  const user = await getAuthUser();
-  if (!user?.id) return [];
-  return fetchBookingsForUser({ userId: user.id, role: 'buyer' });
+export const fetchStandaloneConversationsForUser = async ({ userId, role = 'buyer' } = {}) => {
+  if (!userId) return [];
+
+  const column = role === 'seller' ? 'seller_id' : 'buyer_id';
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq(column, userId)
+    .is('booking_id', null)
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapDatabaseError(error);
+  return hydrateConversationRows((data || []).filter((row) => !isConversationHiddenForUser(row, userId)));
 };
 
-export const fetchSellerBookings = async (sellerId) => {
-  if (!sellerId) return [];
-  return fetchBookingsForUser({ userId: sellerId, role: 'seller' });
+export const fetchClientBookings = async ({ includeStandaloneChats = false } = {}) => {
+  const user = await getAuthUser();
+  if (!user?.id) return [];
+  const bookings = await fetchBookingsForUser({ userId: user.id, role: 'buyer' });
+  if (!includeStandaloneChats) return bookings;
+
+  const bookingIds = unique(bookings.map((booking) => booking.id));
+  let hiddenBookingIds = new Set();
+
+  if (bookingIds.length > 0) {
+    const { data: bookingConversations, error: conversationError } = await supabase
+      .from('conversations')
+      .select('booking_id, metadata')
+      .in('booking_id', bookingIds)
+      .or(participantFilter(user.id));
+
+    if (conversationError) throw mapDatabaseError(conversationError);
+    hiddenBookingIds = new Set((bookingConversations || [])
+      .filter((row) => row.booking_id && isConversationHiddenForUser(row, user.id))
+      .map((row) => String(row.booking_id)));
+  }
+
+  const conversations = await fetchStandaloneConversationsForUser({ userId: user.id, role: 'buyer' });
+  return [...conversations, ...bookings.filter((booking) => !hiddenBookingIds.has(String(booking.id)))];
+};
+
+export const fetchClientDashboardSnapshot = async () => {
+  const user = await getAuthUser();
+  if (!user?.id) {
+    return {
+      user: null,
+      bookings: [],
+      conversations: [],
+      messages: [],
+      unreadMessageCount: 0,
+    };
+  }
+
+  const bookings = await fetchBookingsForUser({ userId: user.id, role: 'buyer' });
+  const bookingIds = unique(bookings.map((booking) => booking.id));
+
+  if (bookingIds.length === 0) {
+    return {
+      user,
+      bookings,
+      conversations: [],
+      messages: [],
+      unreadMessageCount: 0,
+    };
+  }
+
+  const { data: recentMessageRows, error: recentMessagesError } = await supabase
+    .from('messages')
+    .select('*, conversation:conversations!inner(*)')
+    .in('conversation.booking_id', bookingIds)
+    .order('created_at', { ascending: false })
+    .limit(80);
+
+  if (recentMessagesError) throw mapDatabaseError(recentMessagesError);
+
+  const conversationsById = new Map();
+  const messages = (recentMessageRows || []).map((row) => {
+    const { conversation, conversations, ...message } = row;
+    const embeddedConversation = conversation || conversations || null;
+
+    if (embeddedConversation?.id) {
+      conversationsById.set(String(embeddedConversation.id), embeddedConversation);
+    }
+
+    return message;
+  });
+  const conversations = Array.from(conversationsById.values());
+  let unreadMessageCount = messages.filter((message) => isUnreadForUser(message, user.id)).length;
+
+  const { count, error: unreadCountError } = await supabase
+    .from('messages')
+    .select('id, conversation:conversations!inner(id, booking_id)', { count: 'exact', head: true })
+    .in('conversation.booking_id', bookingIds)
+    .neq('sender_id', user.id)
+    .not('read_by', 'cs', JSON.stringify([user.id]));
+
+  if (!unreadCountError && typeof count === 'number') {
+    unreadMessageCount = count;
+  }
+
+  return {
+    user,
+    bookings,
+    conversations,
+    messages,
+    unreadMessageCount,
+  };
+};
+
+export const mapConversationRowToUiChat = (conversation = {}, context = {}) => {
+  const metadata = conversation.metadata || {};
+  const seller = context.sellersById?.[conversation.seller_id] || {};
+  const buyerProfile = context.profilesById?.[conversation.buyer_id] || {};
+
+  return {
+    id: `conversation:${conversation.id}`,
+    conversationId: conversation.id,
+    isStandaloneChat: true,
+    buyerId: conversation.buyer_id,
+    sellerId: conversation.seller_id,
+    serviceId: metadata.service_id || null,
+    workerId: conversation.seller_id,
+    workerName: metadata.worker_name || metadata.workerName || metadata.seller_name || metadata.sellerName || seller.display_name || seller.search_meta?.name || 'Service Provider',
+    clientName: buyerProfile.full_name || metadata.client_name || metadata.clientName || metadata.buyer_name || metadata.buyerName || 'Client',
+    clientPhoto: getProfilePhotoUrl(buyerProfile.profile_photo),
+    serviceType: metadata.service_type || metadata.serviceType || metadata.service_title || metadata.serviceTitle || seller.search_meta?.service_type || seller.headline || 'Conversation',
+    status: metadata.ui_status || 'Chat',
+    requestDate: formatDate(conversation.created_at) || formatDate(nowIso()),
+    description: metadata.description || seller.about || 'Provider conversation',
+    quoteAmount: getNumberOrNull(metadata.quote_amount) ?? 0,
+    bookingMode: 'conversation',
+    bookingModeLabel: 'Chat only',
+    isRequestBooking: true,
+    quoteApproved: false,
+    quoteRejectionReason: null,
+    selectedSlot: null,
+    paymentMethod: null,
+    allowGcashAdvance: false,
+    allowAfterService: false,
+    afterServicePaymentType: 'both',
+    refundEligible: false,
+    canRate: false,
+    raw: {
+      conversation,
+      seller,
+      metadata,
+    },
+  };
+};
+
+export const fetchSellerBookings = async (sellerId, { includeStandaloneChats = false } = {}) => {
+  const userId = sellerId || (await getAuthUser())?.id;
+  if (!userId) return [];
+  const bookings = await fetchBookingsForUser({ userId, role: 'seller' });
+  if (!includeStandaloneChats) return bookings;
+
+  const bookingIds = unique(bookings.map((booking) => booking.id));
+  let hiddenBookingIds = new Set();
+
+  if (bookingIds.length > 0) {
+    const { data: bookingConversations, error: conversationError } = await supabase
+      .from('conversations')
+      .select('booking_id, metadata')
+      .in('booking_id', bookingIds)
+      .or(participantFilter(userId));
+
+    if (conversationError) throw mapDatabaseError(conversationError);
+    hiddenBookingIds = new Set((bookingConversations || [])
+      .filter((row) => row.booking_id && isConversationHiddenForUser(row, userId))
+      .map((row) => String(row.booking_id)));
+  }
+
+  const conversations = await fetchStandaloneConversationsForUser({ userId, role: 'seller' });
+  return [...conversations, ...bookings.filter((booking) => !hiddenBookingIds.has(String(booking.id)))];
 };
 
 export const fetchBookingById = async (bookingId) => {
   if (!bookingId) return null;
+  const user = await getRequiredAuthUser();
 
   const { data, error } = await supabase
     .from('bookings')
     .select('*')
     .eq('id', bookingId)
+    .or(participantFilter(user.id))
     .maybeSingle();
 
   if (error && !maybeSingleOrNull(error)) throw mapDatabaseError(error);
   const [mapped] = await hydrateBookingRows(data ? [data] : []);
   return mapped || null;
+};
+
+export const fetchConversationById = async (conversationId) => {
+  if (!conversationId) return null;
+  const user = await getRequiredAuthUser();
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', conversationId)
+    .or(participantFilter(user.id))
+    .maybeSingle();
+
+  if (error && !maybeSingleOrNull(error)) throw mapDatabaseError(error);
+  const [mapped] = await hydrateConversationRows(data ? [data] : []);
+  return mapped || null;
+};
+
+export const startServiceConversation = async ({ provider, assistantContext = null } = {}) => {
+  const user = await getRequiredAuthUser();
+  const rawService = provider?.rawService || {};
+  const seller = getServiceSeller(rawService);
+  const sellerId = rawService.seller_id || provider?.sellerId || seller.user_id;
+  const serviceId = rawService.id || provider?.serviceId;
+
+  if (!sellerId) {
+    throw new Error('Unable to start chat because the selected worker is missing a seller ID.');
+  }
+
+  const metadata = {
+    source: 'marketplace-chat',
+    service_id: serviceId || null,
+    worker_name: provider?.name || getSellerName(rawService, seller),
+    client_name: getProfileNameFromUser(user),
+    service_type: provider?.serviceType || getServiceType(rawService, seller),
+    description: provider?.description || rawService.short_description || rawService.description || '',
+    quote_amount: getRateAmount(rawService),
+    booking_mode: provider?.bookingMode || getServiceBookingMode(rawService, seller, rawService.metadata || {}),
+    assistant_context: assistantContext || null,
+    ui_status: 'Chat',
+  };
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('seller_id', sellerId)
+    .eq('buyer_id', user.id)
+    .is('booking_id', null)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (existingError) throw mapDatabaseError(existingError);
+
+  if (existingRows?.[0]) {
+    const existing = existingRows[0];
+    const { data: updated, error: updateError } = await supabase
+      .from('conversations')
+      .update({
+        metadata: {
+          ...(existing.metadata || {}),
+          ...metadata,
+          archived_by: removeUserFlag(existing.metadata || {}, 'archived_by', 'archivedBy', user.id),
+          deleted_by: removeUserFlag(existing.metadata || {}, 'deleted_by', 'deletedBy', user.id),
+          reopened_at: nowIso(),
+        },
+      })
+      .eq('id', existing.id)
+      .select('*')
+      .single();
+
+    if (updateError) throw mapDatabaseError(updateError);
+    const [mapped] = await hydrateConversationRows([updated]);
+    return mapped;
+  }
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert([{
+      booking_id: null,
+      seller_id: sellerId,
+      buyer_id: user.id,
+      metadata,
+    }])
+    .select('*')
+    .single();
+
+  if (error) throw mapDatabaseError(error);
+  const [mapped] = await hydrateConversationRows([data]);
+  return mapped;
+};
+
+export const startServiceConversationByServiceId = async ({
+  serviceId,
+  assistantContext = null,
+} = {}) => {
+  if (!serviceId) throw new Error('Select a worker before starting a chat.');
+
+  const { data, error } = await supabase
+    .from('services')
+    .select('*, sellers(*)')
+    .eq('id', serviceId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error && !maybeSingleOrNull(error)) throw mapDatabaseError(error);
+  if (!data) throw new Error('This worker listing is no longer available.');
+
+  const seller = getServiceSeller(data);
+  const provider = {
+    id: data.id,
+    serviceId: data.id,
+    rawService: data,
+    name: getSellerName(data, seller),
+    serviceType: getServiceType(data, seller),
+    description: data.short_description || data.description || seller.about || '',
+    bookingMode: getServiceBookingMode(data, seller, data.metadata || {}),
+  };
+
+  return startServiceConversation({ provider, assistantContext });
 };
 
 const getBookingParticipantIds = (booking = {}, userId = '') => {
@@ -349,18 +753,26 @@ const getMessageSenderRole = (message = {}, booking = {}) => {
 
 export const mapMessageRowToUiMessage = (message = {}, booking = {}) => {
   const attachments = message.attachments || {};
+  const body = message.body ?? message.content ?? '';
   const sender = getMessageSenderRole(message, booking);
 
-  if (attachments?.type === 'quote') {
+  if (attachments?.type === 'quote' || message.message_type === 'quote') {
+    const quotePayload = attachments?.type === 'quote'
+      ? attachments
+      : {
+          amount: booking.quoteAmount,
+          description: body,
+          note: message.attachment_url || '',
+        };
     return {
       id: message.id,
       sender,
       type: 'quote',
       content: {
-        amount: attachments.amount,
-        description: attachments.description || message.body || booking.description,
-        deliveryTime: attachments.deliveryTime || '',
-        note: attachments.note || '',
+        amount: quotePayload.amount,
+        description: quotePayload.description || body || booking.description,
+        deliveryTime: quotePayload.deliveryTime || '',
+        note: quotePayload.note || '',
       },
       timestamp: message.created_at
         ? new Date(message.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -373,7 +785,7 @@ export const mapMessageRowToUiMessage = (message = {}, booking = {}) => {
     id: message.id,
     sender,
     type: 'text',
-    content: message.body || '',
+    content: body || '',
     timestamp: message.created_at
       ? new Date(message.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       : '',
@@ -382,11 +794,30 @@ export const mapMessageRowToUiMessage = (message = {}, booking = {}) => {
 };
 
 export const ensureBookingConversation = async (bookingOrId) => {
+  if (typeof bookingOrId === 'object' && bookingOrId?.isStandaloneChat) {
+    const user = await getRequiredAuthUser();
+    const conversation = bookingOrId.raw?.conversation || null;
+
+    if (!conversation?.id || !isConversationParticipant(conversation, user.id)) {
+      throw new Error('You can only open conversations for your own chats.');
+    }
+
+    return { conversation, booking: bookingOrId, user };
+  }
+
+  if (typeof bookingOrId === 'string' && bookingOrId.startsWith('conversation:')) {
+    const chat = await fetchConversationById(bookingOrId.replace(/^conversation:/, ''));
+    if (!chat) throw new Error('Missing conversation.');
+    return ensureBookingConversation(chat);
+  }
+
   const booking = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
   if (!booking?.id) throw new Error('Missing booking for conversation.');
 
-  const user = await getAuthUser();
-  if (!user?.id) throw new Error('Please sign in to open this conversation.');
+  const user = await getRequiredAuthUser();
+  if (!isBookingParticipant(booking, user.id)) {
+    throw new Error('You can only open conversations for your own bookings.');
+  }
 
   const { data: existing, error: selectError } = await supabase
     .from('conversations')
@@ -435,19 +866,83 @@ export const sendBookingMessage = async (bookingOrId, body, attachments = null) 
   if (!cleanBody && !attachments) throw new Error('Enter a message before sending.');
 
   const { conversation, booking, user } = await ensureBookingConversation(bookingOrId);
-  const { data, error } = await supabase
+  const insertPayload = {
+    conversation_id: conversation.id,
+    sender_id: user.id,
+    body: cleanBody,
+    attachments,
+  };
+
+  let { data, error } = await supabase
     .from('messages')
-    .insert([{
+    .insert([insertPayload])
+    .select('*')
+    .single();
+
+  if (error && /body|attachments|Could not find.*column|schema cache/i.test(String(error.message || ''))) {
+    const fallbackPayload = {
       conversation_id: conversation.id,
       sender_id: user.id,
-      body: cleanBody,
-      attachments,
-    }])
+      content: cleanBody || attachments?.description || '',
+      message_type: attachments?.type === 'quote' ? 'quote' : 'text',
+      attachment_url: attachments?.public_url || attachments?.url || null,
+    };
+
+    const fallbackResult = await supabase
+      .from('messages')
+      .insert([fallbackPayload])
+      .select('*')
+      .single();
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
+
+  if (error) throw mapDatabaseError(error);
+  return mapMessageRowToUiMessage(data, booking);
+};
+
+export const archiveConversationThread = async (bookingOrChat, mode = 'archive') => {
+  const { conversation, booking, user } = await ensureBookingConversation(bookingOrChat);
+  const currentMetadata = conversation.metadata || {};
+  const isDelete = mode === 'delete';
+  const nextMetadata = {
+    ...currentMetadata,
+    ...(isDelete
+      ? {
+        deleted_by: addUserFlag(currentMetadata, 'deleted_by', 'deletedBy', user.id),
+        deleted_at_by: {
+          ...(currentMetadata.deleted_at_by || currentMetadata.deletedAtBy || {}),
+          [user.id]: nowIso(),
+        },
+      }
+      : {
+        archived_by: addUserFlag(currentMetadata, 'archived_by', 'archivedBy', user.id),
+        archived_at_by: {
+          ...(currentMetadata.archived_at_by || currentMetadata.archivedAtBy || {}),
+          [user.id]: nowIso(),
+        },
+      }),
+  };
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({ metadata: nextMetadata })
+    .eq('id', conversation.id)
+    .or(participantFilter(user.id))
     .select('*')
     .single();
 
   if (error) throw mapDatabaseError(error);
-  return mapMessageRowToUiMessage(data, booking);
+
+  return {
+    ...booking,
+    raw: {
+      ...(booking.raw || {}),
+      conversation: data,
+      metadata: data?.metadata || nextMetadata,
+    },
+  };
 };
 
 const snakeMetadataFromUpdates = (updates = {}) => {
@@ -476,6 +971,7 @@ const snakeMetadataFromUpdates = (updates = {}) => {
   if (updates.workerStopApproved !== undefined) metadata.worker_stop_approved = Boolean(updates.workerStopApproved);
   if (updates.rating !== undefined) metadata.rating = updates.rating;
   if (updates.review !== undefined) metadata.review = updates.review || '';
+  if (updates.mockPayment !== undefined) metadata.mock_payment = updates.mockPayment || null;
 
   return metadata;
 };
@@ -483,6 +979,10 @@ const snakeMetadataFromUpdates = (updates = {}) => {
 export const updateBookingWorkflow = async (bookingOrId, updates = {}) => {
   const current = typeof bookingOrId === 'object' ? bookingOrId : await fetchBookingById(bookingOrId);
   if (!current?.id) throw new Error('Missing booking to update.');
+  const user = await getRequiredAuthUser();
+  if (!isBookingParticipant(current, user.id)) {
+    throw new Error('You can only update your own bookings.');
+  }
 
   const currentRow = current.raw?.booking || {};
   const currentMetadata = current.raw?.metadata || currentRow.metadata || {};
@@ -531,6 +1031,7 @@ export const updateBookingWorkflow = async (bookingOrId, updates = {}) => {
     .from('bookings')
     .update(payload)
     .eq('id', current.id)
+    .or(participantFilter(user.id))
     .select('*')
     .single();
 
@@ -539,7 +1040,7 @@ export const updateBookingWorkflow = async (bookingOrId, updates = {}) => {
   return mapped;
 };
 
-export const createClientBooking = async ({ provider, pendingBooking, paymentMethod } = {}) => {
+export const createClientBooking = async ({ provider, pendingBooking, paymentMethod, mockPayment = null } = {}) => {
   const user = await getAuthUser();
   if (!user?.id) throw new Error('Please sign in before booking a service.');
 
@@ -556,6 +1057,7 @@ export const createClientBooking = async ({ provider, pendingBooking, paymentMet
   const rawSlot = selectedSlot?.timeBlock?.rawSlot || selectedSlot?.rawSlot || null;
   const slotId = rawSlot?.id || selectedSlot?.slotId || null;
   const totalAmount = getNumberOrNull(pendingBooking?.quoteAmount) ?? getRateAmount(rawService);
+  const totalChargedAmount = getNumberOrNull(mockPayment?.totalChargedAmount) ?? totalAmount;
   const uiStatus = paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled';
   const cashStatus = paymentMethod === 'after-service-cash' ? 'awaiting-client-scan' : null;
   const bookingMode = provider?.bookingMode === 'calendar-only' || pendingBooking?.bookingMode === 'calendar-only'
@@ -578,10 +1080,11 @@ export const createClientBooking = async ({ provider, pendingBooking, paymentMet
     allow_gcash_advance: pendingBooking?.allowGcashAdvance !== false,
     allow_after_service: pendingBooking?.allowAfterService !== false,
     after_service_payment_type: pendingBooking?.afterServicePaymentType || 'both',
-    expected_cash_amount: totalAmount,
+    expected_cash_amount: totalChargedAmount,
     refund_eligible: paymentMethod === 'gcash-advance',
     can_rate: false,
     created_via: 'marketplace',
+    mock_payment: mockPayment,
   };
 
   const { data, error } = await supabase.rpc('create_service_booking', {
@@ -589,7 +1092,11 @@ export const createClientBooking = async ({ provider, pendingBooking, paymentMet
     p_slot_id: slotId,
     p_payment_method: paymentMethod,
     p_total_amount: totalAmount,
-    p_metadata: metadata,
+    p_metadata: {
+      ...metadata,
+      payment_reference: mockPayment?.mockPaymentReference || null,
+      transaction_id: mockPayment?.mockPaymentReference || null,
+    },
   });
 
   if (error) throw mapDatabaseError(error);
@@ -897,6 +1404,7 @@ export const buildRefundReference = (bookingId) => {
 export const bookingService = {
   addDaysToDate,
   approveBookingRefund,
+  archiveConversationThread,
   buildTransactionId,
   buildRefundReference,
   confirmBookingRefundReceived,
@@ -906,18 +1414,25 @@ export const bookingService = {
   fetchBookingById,
   fetchBookingMessages,
   fetchClientBookings,
+  fetchClientDashboardSnapshot,
+  fetchConversationById,
   fetchSellerBookings,
+  fetchStandaloneConversationsForUser,
   getBillingLabel,
   hydrateBookingRows,
+  hydrateConversationRows,
   isBookingStopped,
   isRecurringBilling,
   isRecurringChargeDue,
   mapBookingRowToUiBooking,
+  mapConversationRowToUiChat,
   mapMessageRowToUiMessage,
   parseDateOnly,
   requestBookingRefund,
   reviewCashConfirmation,
   sendBookingMessage,
+  startServiceConversation,
+  startServiceConversationByServiceId,
   submitBookingReview,
   submitCashConfirmation,
   updateBookingWorkflow,

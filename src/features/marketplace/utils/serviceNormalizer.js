@@ -60,6 +60,24 @@ export const getBookingModeFromService = (service = {}, seller = {}) => {
   return mode === 'calendar-only' ? 'calendar-only' : 'with-slots';
 };
 
+export const getActiveAdBooster = (service = {}) => {
+  const adBooster = service.metadata?.ad_booster || service.metadata?.adBooster || null;
+  const boostEndsAt = adBooster?.ends_at || adBooster?.endsAt || null;
+  const boostEndsTime = boostEndsAt ? new Date(boostEndsAt).getTime() : null;
+  const hasValidEnd = boostEndsTime === null || Number.isFinite(boostEndsTime);
+  const isBoosted = Boolean(adBooster?.active)
+    && hasValidEnd
+    && (boostEndsTime === null || boostEndsTime > Date.now());
+  const boostBudget = Number(adBooster?.budget_php ?? adBooster?.budgetPhp ?? 0) || 0;
+
+  return {
+    adBooster,
+    boostBudget,
+    boostEndsAt,
+    isBoosted,
+  };
+};
+
 export const resolveProviderName = (service = {}, seller = {}, sellerProfile = {}) => {
   const sellerMeta = seller.search_meta || {};
   const sellerDisplayName = seller.display_name || sellerMeta.name || '';
@@ -101,6 +119,7 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
   const province = sellerMeta.location?.province || seller.province || '';
   const location = [city, province].filter(Boolean).join(', ');
   const isRequestBooking = pricingType === 'inquiry' || bookingMode === 'calendar-only';
+  const boostState = getActiveAdBooster(service);
 
   return {
     id: service.id,
@@ -124,6 +143,10 @@ export const normalizeServiceRecord = (service = {}, sellerProfile = {}) => {
     actionType: isRequestBooking ? 'inquire' : 'book',
     bookingMode,
     rateBasis,
+    adBooster: boostState.adBooster,
+    boostBudget: boostState.boostBudget,
+    boostEndsAt: boostState.boostEndsAt,
+    isBoosted: boostState.isBoosted,
     rawService: service,
   };
 };

@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 // ============================================================================
 
 import LogoutConfirmModal from '../../features/auth/components/LogoutConfirmModal';
+import BrandWordmark from './BrandWordmark';
 import { getProfilePhotoUrl } from '../utils/profilePhoto';
 
 
@@ -394,7 +395,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
           }}
         >
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.logoImg} />
-          GigLink
+          <BrandWordmark />
         </a>
 
         {isDesktop && <div style={styles.searchWrap}>

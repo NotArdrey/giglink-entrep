@@ -25,6 +25,23 @@ export const getPricingModelFromService = (service) => {
   return model === 'inquiry' ? 'inquiry' : 'fixed';
 };
 
+export const getActiveAdBoosterFromService = (service = {}) => {
+  const adBooster = service?.metadata?.ad_booster || service?.metadata?.adBooster || null;
+  const boostEndsAt = adBooster?.ends_at || adBooster?.endsAt || null;
+  const boostEndsTime = boostEndsAt ? new Date(boostEndsAt).getTime() : null;
+  const hasValidEnd = boostEndsTime === null || Number.isFinite(boostEndsTime);
+  const isBoosted = Boolean(adBooster?.active)
+    && hasValidEnd
+    && (boostEndsTime === null || boostEndsTime > Date.now());
+
+  return {
+    adBooster,
+    boostBudget: Number(adBooster?.budget_php ?? adBooster?.budgetPhp ?? 0) || 0,
+    boostEndsAt,
+    isBoosted,
+  };
+};
+
 export const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, fallbackProfile = null) => {
   const sellerName =
     sellerRow?.display_name ||
@@ -80,6 +97,7 @@ export const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, 
 
 export const mapServiceRowToWorkerService = (service, sellerRow = null, fallbackProfile = null) => {
   const rateBasis = normalizeRateBasis(service?.metadata?.rate_basis || service?.rate_basis || service?.price_type) || 'per-project';
+  const boostState = getActiveAdBoosterFromService(service);
   const sellerDisplayName =
     sellerRow?.display_name ||
     sellerRow?.search_meta?.name ||
@@ -113,6 +131,10 @@ export const mapServiceRowToWorkerService = (service, sellerRow = null, fallback
     afterServicePaymentType: sellerRow?.after_service_payment_type || 'both',
     gcashNumber: sellerRow?.gcash_number || '',
     bookingMode: service?.metadata?.booking_mode || sellerRow?.booking_mode || sellerRow?.search_meta?.booking_mode || 'with-slots',
+    adBooster: boostState.adBooster,
+    boostBudget: boostState.boostBudget,
+    boostEndsAt: boostState.boostEndsAt,
+    isBoosted: boostState.isBoosted,
     location: {
       barangay: sellerRow?.search_meta?.location?.barangay || sellerRow?.location?.barangay || '',
       city: sellerRow?.search_meta?.location?.city || sellerRow?.location?.city || '',
@@ -158,7 +180,7 @@ export const loadWorkerProfileServices = async ({ userId, fallbackProfile = null
     };
   }
 
-  const sellerId = seller.id || seller.user_id || userId;
+  const sellerId = seller.user_id || seller.id || userId;
   const [services, ratingAggregateResult] = await Promise.all([
     fetchSellerServices(sellerId),
     supabase

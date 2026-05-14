@@ -1,5 +1,6 @@
 import React from 'react';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
+import BrandWordmark from '../../../shared/components/BrandWordmark';
 
 function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSectionChange, onOpenDashboard, onOpenLogoutConfirm }) {
   const themeTokens = getThemeTokens(appTheme);
@@ -102,7 +103,7 @@ function AdminNavigation({ appTheme = 'light', activeSection = 'accounts', onSec
       <div className="gl-admin-nav-inner" style={styles.inner}>
         <div className="gl-admin-nav-brand" style={styles.brandWrap}>
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.brandLogo} />
-          <h1 style={styles.brand}>GigLink</h1>
+          <h1 style={styles.brand}><BrandWordmark /></h1>
           <span style={styles.badge}>Admin</span>
         </div>
 

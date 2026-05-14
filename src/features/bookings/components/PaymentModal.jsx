@@ -21,7 +21,21 @@ import React, { useEffect, useState } from 'react';
  * - selectedMethod: 'gcash-advance' | 'after-service' | null
  * - isProcessing: Loading state while the parent persists the selection
  */
-const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
+const PaymentModal = ({
+  booking,
+  onSelectPayment,
+  onCancel,
+  title = 'Select Payment Method',
+  subtitle,
+  amountLabel = 'Cost',
+  scheduleLabel,
+  scheduleValue,
+  advancePaymentDescription,
+  transactionFeeRate = 0.05,
+  testModeTitle = 'Mock payment test mode',
+  testModeDescription = 'This flow records a sandbox payment reference only. No real GCash or cash transfer is processed.',
+  confirmLabel = 'Run Mock Payment & Confirm',
+}) => {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [afterServiceChannel, setAfterServiceChannel] = useState('cash');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -38,6 +52,32 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
   const allowsAfterServiceCash = allowsAfterService && (afterServicePaymentType === 'both' || afterServicePaymentType === 'cash-only');
   const allowsAfterServiceGcash = allowsAfterService && (afterServicePaymentType === 'both' || afterServicePaymentType === 'gcash-only');
   const isRequestBooking = booking?.bookingMode === 'calendar-only' || booking?.isRequestBooking;
+  const baseAmount = Number(booking?.quoteAmount || 0) || 0;
+  const feeRate = Math.max(0, Number(transactionFeeRate) || 0);
+  const transactionFeeAmount = Number((baseAmount * feeRate).toFixed(2));
+  const totalPaymentAmount = Number((baseAmount + transactionFeeAmount).toFixed(2));
+  const transactionFeePercent = `${Number((feeRate * 100).toFixed(2)).toString()}%`;
+  const resolvedSubtitle = subtitle || `Choose how you'd like to pay for ${booking.workerName}'s service`;
+  const resolvedScheduleLabel = scheduleLabel || (isRequestBooking ? 'Schedule:' : 'Scheduled:');
+  const resolvedScheduleValue = scheduleValue || (
+    isRequestBooking
+      ? 'Coordinated through chat'
+      : `${booking.selectedSlot?.date || 'Pending'} at ${booking.selectedSlot?.timeBlock?.startTime || 'TBD'}`
+  );
+  const buildMockReference = (method) => {
+    const date = new Date();
+    const stamp = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('');
+    const suffix = Math.floor(Math.random() * 900000 + 100000);
+    return `MOCK-${String(method || 'PAY').toUpperCase()}-${stamp}-${suffix}`;
+  };
+  const formatPhp = (value) => `PHP ${Number(value || 0).toLocaleString('en-PH', {
+    minimumFractionDigits: Number(value || 0) % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 
   useEffect(() => {
     const availableMethods = [];
@@ -94,7 +134,18 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       setSubmitError('');
       setShowProcessing(true);
       setIsProcessing(true);
-      await Promise.resolve(onSelectPayment(resolvedMethod));
+      const mockPaymentReference = buildMockReference(resolvedMethod);
+      await Promise.resolve(onSelectPayment(resolvedMethod, {
+        mockPaymentReference,
+        mockPaymentAt: new Date().toISOString(),
+        mockPaymentProvider: resolvedMethod.includes('gcash') ? 'GCash sandbox' : 'Cash confirmation sandbox',
+        mockPaymentStatus: 'test-approved',
+        serviceAmount: baseAmount,
+        transactionFeeRate: feeRate,
+        transactionFeePercent,
+        transactionFeeAmount,
+        totalChargedAmount: totalPaymentAmount,
+      }));
     } finally {
       setIsProcessing(false);
       setShowProcessing(false);
@@ -207,6 +258,17 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       flexDirection: isMobile ? 'column' : 'row',
     },
     note: { margin: 0, color: 'var(--gl-text-2)', fontSize: '0.9rem', maxWidth: '560px' },
+    testPanel: {
+      margin: '0 1rem 0.75rem',
+      border: '1px solid var(--gl-accent-border)',
+      borderRadius: '8px',
+      backgroundColor: 'var(--gl-accent-soft)',
+      color: 'var(--gl-text)',
+      padding: '0.7rem 0.8rem',
+      fontSize: '0.9rem',
+      lineHeight: 1.45,
+    },
+    testTitle: { margin: '0 0 0.25rem', fontWeight: 800, color: 'var(--gl-blue)' },
     confirm: {
       border: 'none',
       borderRadius: '8px',
@@ -224,9 +286,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
-          <h2>Select Payment Method</h2>
+          <h2>{title}</h2>
           <p style={styles.subtitle}>
-            Choose how you'd like to pay for {booking.workerName}'s service
+            {resolvedSubtitle}
           </p>
           <button style={styles.close} onClick={onCancel} aria-label="Cancel payment selection">x</button>
         </div>
@@ -238,16 +300,22 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
             <span style={styles.value}>{booking.serviceType}</span>
           </div>
           <div style={styles.row}>
-            <span style={styles.label}>Cost:</span>
-            <span style={{ ...styles.value, ...styles.amount }}>PHP {booking.quoteAmount}</span>
+            <span style={styles.label}>{amountLabel}:</span>
+            <span style={styles.value}>{formatPhp(baseAmount)}</span>
+          </div>
+          {feeRate > 0 && (
+            <div style={styles.row}>
+              <span style={styles.label}>Transaction fee ({transactionFeePercent}):</span>
+              <span style={styles.value}>{formatPhp(transactionFeeAmount)}</span>
+            </div>
+          )}
+          <div style={styles.row}>
+            <span style={styles.label}>Total payment:</span>
+            <span style={{ ...styles.value, ...styles.amount }}>{formatPhp(totalPaymentAmount)}</span>
           </div>
           <div style={styles.row}>
-            <span style={styles.label}>{isRequestBooking ? 'Schedule:' : 'Scheduled:'}</span>
-            <span style={styles.value}>
-              {isRequestBooking
-                ? 'Coordinated through chat'
-                : `${booking.selectedSlot?.date || 'Pending'} at ${booking.selectedSlot?.timeBlock?.startTime || 'TBD'}`}
-            </span>
+            <span style={styles.label}>{resolvedScheduleLabel}</span>
+            <span style={styles.value}>{resolvedScheduleValue}</span>
           </div>
         </div>
         
@@ -292,9 +360,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 </div>
 
                 <p style={styles.desc}>
-                  {isRequestBooking
+                  {advancePaymentDescription || (isRequestBooking
                     ? 'Pay now via GCash after agreeing on the details in chat.'
-                    : 'Pay now via GCash, immediately securing your booking slot'}
+                    : 'Pay now via GCash, immediately securing your booking slot')}
                 </p>
 
                 <ul style={styles.list}>
@@ -305,7 +373,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 </ul>
 
                 <div style={styles.footer}>
-                  <p>Total: <strong>PHP {booking.quoteAmount}</strong></p>
+                  <p>Service cost: <strong>{formatPhp(baseAmount)}</strong></p>
+                  {feeRate > 0 && <p>Transaction fee ({transactionFeePercent}): <strong>{formatPhp(transactionFeeAmount)}</strong></p>}
+                  <p>Total payment: <strong>{formatPhp(totalPaymentAmount)}</strong></p>
                 </div>
               </div>
             )}
@@ -374,7 +444,9 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 </ul>
 
                 <div style={styles.footer}>
-                  <p>Total: <strong>PHP {booking.quoteAmount}</strong></p>
+                  <p>Service cost: <strong>{formatPhp(baseAmount)}</strong></p>
+                  {feeRate > 0 && <p>Transaction fee ({transactionFeePercent}): <strong>{formatPhp(transactionFeeAmount)}</strong></p>}
+                  <p>Total payment: <strong>{formatPhp(totalPaymentAmount)}</strong></p>
                 </div>
               </div>
             )}
@@ -383,6 +455,11 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
         
         {/* Confirmation Button */}
         {!showProcessing || !isProcessing ? (
+          <>
+          <div style={styles.testPanel}>
+            <p style={styles.testTitle}>{testModeTitle}</p>
+            {testModeDescription}
+          </div>
           <div style={styles.actionWrap}>
             <p style={styles.note}>
               {selectedMethod === 'after-service' && afterServiceChannel === 'cash'
@@ -401,9 +478,10 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
               onMouseEnter={() => setHoveredKey('confirm-payment')}
               onMouseLeave={() => setHoveredKey('')}
             >
-              {isProcessing ? 'Processing...' : 'Confirm Payment'}
+              {isProcessing ? 'Processing...' : confirmLabel}
             </button>
           </div>
+          </>
         ) : null}
       </div>
     </div>

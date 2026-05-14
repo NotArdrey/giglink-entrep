@@ -29,6 +29,7 @@ import {
   getRegistrationFormLogSnapshot,
   logRegistrationDebug,
 } from '../../../shared/services/registrationLogger';
+import BrandWordmark from '../../../shared/components/BrandWordmark';
 
 const EMPTY_FORM = {
   accountRole: 'client',
@@ -37,6 +38,7 @@ const EMPTY_FORM = {
   confirmPassword: '',
   documentTypeKey: 'id_card',
   acceptedTerms: false,
+  acceptedRaTerms: false,
   manualFullName: '',
   identityDocumentNumber: '',
   idDocumentExpiry: '',
@@ -91,6 +93,7 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
       confirmPassword: storedState.password || current.confirmPassword,
       documentTypeKey: storedState.documentTypeKey || current.documentTypeKey,
       acceptedTerms: true,
+      acceptedRaTerms: true,
     }));
     setStep('didit');
     setStatusMessage('Verification session restored. You can continue checking the result.');
@@ -106,6 +109,7 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
     if (formData.password.length < 8) return 'Password must be at least 8 characters.';
     if (formData.password !== formData.confirmPassword) return 'Password and confirm password do not match.';
     if (!formData.acceptedTerms) return 'Confirm that you consent to identity verification before continuing.';
+    if (!formData.acceptedRaTerms) return 'Confirm that you agree to the RA 10173 Terms and Conditions before continuing.';
 
     if (!usesDidit) {
       if (!formData.manualFullName.trim()) return 'Enter the full name exactly as shown on the ID.';
@@ -571,7 +575,7 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
       <header style={styles.topbar}>
         <button type="button" style={styles.brand} onClick={onBack} aria-label="Back to GigLink home">
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.brandImg} />
-          GigLink
+          <BrandWordmark />
         </button>
         <button type="button" style={styles.backButton} onClick={onBack}>
           <ArrowLeft size={18} aria-hidden="true" />
@@ -776,6 +780,18 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
                   />
                   <span>
                     I consent to GigLink collecting registration details and sending me through Didit or manual identity review before creating account access.
+                  </span>
+                </label>
+
+                <label style={styles.consent}>
+                  <input
+                    type="checkbox"
+                    checked={formData.acceptedRaTerms}
+                    onChange={(event) => updateField('acceptedRaTerms', event.target.checked)}
+                    required
+                  />
+                  <span>
+                    I agree to GigLink collecting and processing my registration, identity, location, booking, and contact information under Republic Act No. 10173, the Data Privacy Act of 2012.
                   </span>
                 </label>
 

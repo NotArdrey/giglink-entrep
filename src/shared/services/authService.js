@@ -6,6 +6,7 @@ import {
 import { DEFAULT_PROFILE_PHOTO_URL, getProfilePhotoUrl } from '../utils/profilePhoto';
 
 const PROFILE_PHOTO_BUCKET = 'profile-photos';
+const PORTFOLIO_BUCKET = 'portfolio';
 
 const buildDefaultProfileImageUrl = () => DEFAULT_PROFILE_PHOTO_URL;
 
@@ -83,9 +84,15 @@ const resolveNameParts = (source = {}, metadata = {}, existingProfile = null) =>
 };
 
 const VALID_ROLES = ['client', 'worker', 'admin'];
+const ROLE_ALIASES = {
+  workers: 'worker',
+  seller: 'worker',
+  sellers: 'worker',
+};
 
 const getNormalizedRole = (value, fallback = 'client') => {
   const candidate = getCleanString(value).toLowerCase();
+  if (ROLE_ALIASES[candidate]) return ROLE_ALIASES[candidate];
   if (VALID_ROLES.includes(candidate)) return candidate;
   return fallback;
 };
@@ -318,6 +325,11 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
     profileRow?.role || (profileRow?.is_worker || workerRow ? 'worker' : 'client'),
     'client'
   );
+  const hasExplicitProfileRole = Boolean(profileRow?.role);
+  const resolvedIsWorker =
+    resolvedRole === 'worker'
+    || (!hasExplicitProfileRole && (Boolean(profileRow?.is_worker) || Boolean(workerRow)));
+  const workerProfileRow = resolvedIsWorker ? workerRow : null;
 
   return {
     userId: profileRow?.user_id || workerRow?.user_id || null,
@@ -339,7 +351,7 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
     address: location.address,
     location,
     isClient: profileRow?.is_client !== false,
-    isWorker: Boolean(profileRow?.is_worker || workerRow),
+    isWorker: resolvedIsWorker,
     role: resolvedRole,
     isAdmin: resolvedRole === 'admin',
     accountStatus: profileRow?.account_status || 'active',
@@ -355,23 +367,23 @@ const mapAppProfile = (profileRow = null, workerRow = null) => {
     diditSessionId: profileRow?.didit_session_id || '',
     idDocumentExpiry: profileRow?.id_document_expiry || null,
     idVerifiedAt: profileRow?.id_verified_at || null,
-    serviceType: workerRow?.service_type || '',
-    customServiceType: workerRow?.custom_service_type || '',
-    pricingModel: workerRow?.pricing_model || 'fixed',
-    fixedPrice: workerRow?.fixed_price ?? '',
-    hourlyRate: workerRow?.hourly_rate ?? '',
-    dailyRate: workerRow?.daily_rate ?? '',
-    weeklyRate: workerRow?.weekly_rate ?? '',
-    monthlyRate: workerRow?.monthly_rate ?? '',
-    bookingMode: workerRow?.booking_mode || 'with-slots',
-    rateBasis: workerRow?.rate_basis || 'per-hour',
-    paymentAdvance: workerRow?.payment_advance ?? false,
-    paymentAfterService: workerRow?.payment_after_service ?? true,
-    afterServicePaymentType: workerRow?.after_service_payment_type || 'both',
-    gcashNumber: workerRow?.gcash_number || '',
-    qrFileName: workerRow?.qr_file_name || '',
-    verificationStatus: workerRow?.verification_status || 'pending',
-    workerUpdatedAt: workerRow?.updated_at || null,
+    serviceType: workerProfileRow?.service_type || '',
+    customServiceType: workerProfileRow?.custom_service_type || '',
+    pricingModel: workerProfileRow?.pricing_model || 'fixed',
+    fixedPrice: workerProfileRow?.fixed_price ?? '',
+    hourlyRate: workerProfileRow?.hourly_rate ?? '',
+    dailyRate: workerProfileRow?.daily_rate ?? '',
+    weeklyRate: workerProfileRow?.weekly_rate ?? '',
+    monthlyRate: workerProfileRow?.monthly_rate ?? '',
+    bookingMode: workerProfileRow?.booking_mode || 'with-slots',
+    rateBasis: workerProfileRow?.rate_basis || 'per-hour',
+    paymentAdvance: workerProfileRow?.payment_advance ?? false,
+    paymentAfterService: workerProfileRow?.payment_after_service ?? true,
+    afterServicePaymentType: workerProfileRow?.after_service_payment_type || 'both',
+    gcashNumber: workerProfileRow?.gcash_number || '',
+    qrFileName: workerProfileRow?.qr_file_name || '',
+    verificationStatus: workerProfileRow?.verification_status || 'pending',
+    workerUpdatedAt: workerProfileRow?.updated_at || null,
     profileUpdatedAt: profileRow?.updated_at || null,
   };
 };
@@ -1071,6 +1083,54 @@ export const fetchSellerServices = async (sellerId) => {
   return data || [];
 };
 
+export const updateServiceAdBoost = async ({ serviceId, boost }) => {
+  if (!serviceId) throw new Error('Choose a service to boost.');
+
+  const { data: currentService, error: fetchError } = await supabase
+    .from('services')
+    .select('metadata')
+    .eq('id', serviceId)
+    .maybeSingle();
+
+  if (fetchError && fetchError.code !== 'PGRST116') {
+    throw toReadableDatabaseSetupError(fetchError);
+  }
+
+  const currentBoost = currentService?.metadata?.ad_booster || currentService?.metadata?.adBooster || null;
+  const currentBoostEndsAt = currentBoost?.ends_at || currentBoost?.endsAt || null;
+  const currentBoostEndsTime = currentBoostEndsAt ? new Date(currentBoostEndsAt).getTime() : null;
+  const hasValidCurrentBoostEnd = currentBoostEndsTime === null || Number.isFinite(currentBoostEndsTime);
+  const isCurrentlyBoosted = Boolean(currentBoost?.active)
+    && hasValidCurrentBoostEnd
+    && (currentBoostEndsTime === null || currentBoostEndsTime > Date.now());
+
+  if (boost?.active !== false && isCurrentlyBoosted) {
+    const activeUntil = currentBoostEndsAt ? new Date(currentBoostEndsAt).toLocaleDateString() : 'manually stopped';
+    throw new Error(`This gig is already boosted until ${activeUntil}.`);
+  }
+
+  const nextMetadata = {
+    ...(currentService?.metadata || {}),
+    ad_booster: {
+      ...(boost || {}),
+      updated_at: getTimestamp(),
+    },
+  };
+
+  const { data, error } = await supabase
+    .from('services')
+    .update({
+      metadata: nextMetadata,
+      updated_at: getTimestamp(),
+    })
+    .eq('id', serviceId)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw toReadableDatabaseSetupError(error);
+  return data;
+};
+
 export const fetchAllActiveServices = async (limit = 50) => {
   const { data, error } = await supabase
     .from('services')
@@ -1333,4 +1393,71 @@ export const uploadProfilePhoto = async ({ userId, file }) => {
   }
 
   return `${publicUrl}?v=${Date.now()}`;
+};
+
+export const uploadPortfolioDocument = async ({ userId, file }) => {
+  if (!file) throw new Error('No portfolio document selected.');
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+
+  const ownerId = userData?.user?.id || userId;
+  if (!ownerId) throw new Error('Missing authenticated user.');
+
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+  const fileType = String(file.type || '').toLowerCase();
+
+  if (fileType && !allowedTypes.includes(fileType)) {
+    throw new Error('Upload a PDF, DOC, DOCX, JPG, PNG, or WEBP document.');
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('Portfolio document is too large. Maximum size is 10 MB.');
+  }
+
+  const sanitizedName = String(file.name || 'portfolio-document')
+    .replace(/[^a-zA-Z0-9._-]/g, '-')
+    .toLowerCase();
+  const filePath = `${ownerId}/documents/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${sanitizedName}`;
+
+  const { error: uploadError } = await supabase
+    .storage
+    .from(PORTFOLIO_BUCKET)
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || 'application/octet-stream',
+    });
+
+  if (uploadError) {
+    throw new Error(
+      `Unable to upload portfolio document to Supabase Storage. Ensure bucket "portfolio" exists and allows authenticated uploads. ${uploadError.message || ''}`.trim()
+    );
+  }
+
+  const { data: publicUrlData } = supabase
+    .storage
+    .from(PORTFOLIO_BUCKET)
+    .getPublicUrl(filePath);
+
+  const publicUrl = publicUrlData?.publicUrl;
+  if (!publicUrl) {
+    throw new Error('Portfolio document uploaded but no public URL was returned.');
+  }
+
+  return {
+    name: file.name || sanitizedName,
+    size: file.size,
+    type: file.type || 'application/octet-stream',
+    storagePath: filePath,
+    publicUrl: `${publicUrl}?v=${Date.now()}`,
+    uploadedAt: getTimestamp(),
+  };
 };

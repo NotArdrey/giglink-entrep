@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   fetchClientBookings,
   fetchSellerBookings,
@@ -9,44 +9,47 @@ import {
 const TERMINAL_STATUSES = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refunded'];
 
 export function useBookingListController(initialBookings = [], options = {}) {
-  const { autoLoad = true, listRole = 'buyer', sellerId = null } = options;
+  const { autoLoad = true, includeStandaloneChats = false, listRole = 'buyer', sellerId = null } = options;
   const [bookings, setBookings] = useState(Array.isArray(initialBookings) ? initialBookings : []);
   const [activeFilter, setActiveFilter] = useState('all');
   const [displayFilter, setDisplayFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(Boolean(autoLoad));
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
+  const activeRequestRef = useRef(0);
 
   const refreshBookings = useCallback(async () => {
+    const requestId = activeRequestRef.current + 1;
+    activeRequestRef.current = requestId;
+    const isLatestRequest = () => activeRequestRef.current === requestId;
+
     try {
       setIsLoading(true);
       setLoadError('');
       const rows = listRole === 'seller'
-        ? await fetchSellerBookings(sellerId)
-        : await fetchClientBookings();
-      setBookings(rows);
+        ? await fetchSellerBookings(sellerId, { includeStandaloneChats })
+        : await fetchClientBookings({ includeStandaloneChats });
+      if (isLatestRequest()) {
+        setBookings(rows);
+      }
       return rows;
     } catch (error) {
-      setLoadError(error?.message || 'Unable to load bookings.');
+      if (isLatestRequest()) {
+        setLoadError(error?.message || 'Unable to load bookings.');
+      }
       return [];
     } finally {
-      setIsLoading(false);
+      if (isLatestRequest()) {
+        setIsLoading(false);
+      }
     }
-  }, [listRole, sellerId]);
+  }, [includeStandaloneChats, listRole, sellerId]);
 
   useEffect(() => {
     if (!autoLoad) return undefined;
-    let isMounted = true;
-
-    const load = async () => {
-      const rows = await refreshBookings();
-      if (!isMounted) return;
-      setBookings(rows);
-    };
-
-    load();
+    refreshBookings();
     return () => {
-      isMounted = false;
+      activeRequestRef.current += 1;
     };
   }, [autoLoad, refreshBookings]);
 

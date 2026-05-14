@@ -3,8 +3,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   ExternalLink,
-  Eye,
-  EyeOff,
   FileText,
   Home,
   Lock,
@@ -34,6 +32,7 @@ import {
   getRegistrationFormLogSnapshot,
   logRegistrationDebug,
 } from '../../../shared/services/registrationLogger';
+import BrandWordmark from '../../../shared/components/BrandWordmark';
 
 const PSGC_BASE_URL = 'https://psgc.gitlab.io/api';
 
@@ -54,6 +53,7 @@ const EMPTY_AUTH_FORM = {
   backImage: null,
   selfieImage: null,
   acceptedIdentityTerms: false,
+  acceptedRaTerms: false,
 };
 
 const getAuthErrorMessage = (error) => {
@@ -111,8 +111,6 @@ function AuthPage({
   const [forgotError, setForgotError] = useState('');
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
   const [isForgotSubmitted, setIsForgotSubmitted] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [identityStep, setIdentityStep] = useState('details');
   const [identitySession, setIdentitySession] = useState(null);
   const [identityStatusMessage, setIdentityStatusMessage] = useState('');
@@ -199,6 +197,7 @@ function AuthPage({
         accountRole: storedState.appRole || current.accountRole,
         documentTypeKey: storedState.documentTypeKey || current.documentTypeKey,
         acceptedIdentityTerms: true,
+        acceptedRaTerms: true,
       };
     });
   }, [isRegisterMode]);
@@ -431,6 +430,10 @@ function AuthPage({
 
     if (!formData.acceptedIdentityTerms) {
       return 'Confirm that you consent to identity verification before continuing.';
+    }
+
+    if (!formData.acceptedRaTerms) {
+      return 'Confirm that you agree to the RA 10173 Terms and Conditions before continuing.';
     }
 
     if (!usesDidit) {
@@ -695,7 +698,7 @@ function AuthPage({
       <header className="auth-topbar">
         <button type="button" className="auth-brand" onClick={onBack} aria-label="Back to GigLink home">
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" />
-          <strong>GigLink</strong>
+          <strong><BrandWordmark /></strong>
         </button>
 
         <button type="button" className="auth-back-button" onClick={onBack} aria-label="Back to GigLink home">
@@ -1040,27 +1043,18 @@ function AuthPage({
 
               <label className="auth-field" htmlFor="password">
                 <span>Password</span>
-                <div className="auth-input-wrap has-action">
+                <div className="auth-input-wrap">
                   <Lock size={18} aria-hidden="true" />
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type="password"
                     value={formData.password}
                     onChange={handleInputChange}
                     placeholder="Enter your password"
                     autoComplete={isLoginMode ? 'current-password' : 'new-password'}
                     required
                   />
-                  <button
-                    type="button"
-                    className="auth-input-action"
-                    onClick={() => setShowPassword((current) => !current)}
-                    aria-label={showPassword ? 'Hide entered text' : 'Show entered text'}
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-                  </button>
                 </div>
               </label>
 
@@ -1068,27 +1062,18 @@ function AuthPage({
                 <>
                   <label className="auth-field" htmlFor="confirmPassword">
                     <span>Confirm Password</span>
-                    <div className="auth-input-wrap has-action">
+                    <div className="auth-input-wrap">
                       <Lock size={18} aria-hidden="true" />
                       <input
                         id="confirmPassword"
                         name="confirmPassword"
-                        type={showConfirmPassword ? 'text' : 'password'}
+                        type="password"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
                         placeholder="Confirm your password"
                         autoComplete="new-password"
                         required
                       />
-                      <button
-                        type="button"
-                        className="auth-input-action"
-                        onClick={() => setShowConfirmPassword((current) => !current)}
-                        aria-label={showConfirmPassword ? 'Hide confirmation text' : 'Show confirmation text'}
-                        title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                      >
-                        {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-                      </button>
                     </div>
                   </label>
 
@@ -1191,6 +1176,22 @@ function AuthPage({
                         required
                       />
                       <span>I consent to identity verification before account access.</span>
+                    </div>
+                  </label>
+
+                  <label className="auth-field" htmlFor="acceptedRaTerms">
+                    <span>RA 10173 Terms and Conditions</span>
+                    <div className="auth-consent-control">
+                      <ShieldCheck size={18} aria-hidden="true" />
+                      <input
+                        id="acceptedRaTerms"
+                        name="acceptedRaTerms"
+                        type="checkbox"
+                        checked={formData.acceptedRaTerms}
+                        onChange={handleInputChange}
+                        required
+                      />
+                      <span>I agree to GigLink collecting and processing my registration, identity, location, booking, and contact information under Republic Act No. 10173, the Data Privacy Act of 2012.</span>
                     </div>
                   </label>
                 </>

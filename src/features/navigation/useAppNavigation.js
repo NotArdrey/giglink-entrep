@@ -45,6 +45,7 @@ const toErrorMessage = (error, fallbackMessage) => {
 
 const normalizeRole = (value) => {
   const role = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (role === 'workers' || role === 'seller' || role === 'sellers') return 'worker';
   return role === 'admin' || role === 'worker' || role === 'client' ? role : 'client';
 };
 

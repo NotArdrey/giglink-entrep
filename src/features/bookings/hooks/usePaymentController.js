@@ -107,23 +107,34 @@ export function usePaymentController(onPaymentProofSubmit, onPaymentMethodSelect
    * Updates booking with selected payment method and status
    * For cash payments, sets up cash confirmation QR
    */
-  const handleSelectPaymentMethod = useCallback(async (booking, paymentMethod) => {
+  const handleSelectPaymentMethod = useCallback(async (booking, paymentMethod, mockPayment = {}) => {
     const updates = {
       paymentMethod,
       status: paymentMethod === 'gcash-advance' ? 'Payment Confirmed' : 'Service Scheduled',
     };
+
+    if (mockPayment?.mockPaymentReference && paymentMethod !== 'after-service-cash') {
+      updates.paymentProofSubmitted = true;
+      updates.paymentReference = mockPayment.mockPaymentReference;
+      updates.transactionId = mockPayment.mockPaymentReference;
+    }
+
+    if (mockPayment?.mockPaymentReference) {
+      updates.mockPayment = mockPayment;
+    }
 
     // Setup cash confirmation if cash payment selected
     if (paymentMethod === 'after-service-cash') {
       updates.cashConfirmationStatus = 'awaiting-client-scan';
       updates.cashVerifierQrId = booking.cashVerifierQrId || `CASHQR-${booking.workerId || booking.id}-${booking.id}`;
       updates.submittedCashAmount = null;
+      updates.expectedCashAmount = mockPayment?.totalChargedAmount || booking.expectedCashAmount || booking.quoteAmount;
     }
 
     await updateBooking(booking.id, updates);
 
     // Notify parent
-    onPaymentMethodSelect?.(booking.id, paymentMethod);
+    onPaymentMethodSelect?.(booking.id, paymentMethod, mockPayment);
   }, [updateBooking, onPaymentMethodSelect]);
 
   // ========================================================================

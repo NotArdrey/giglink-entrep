@@ -2,14 +2,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import FloatingChatbot from './FloatingChatbot';
 import { sendChatbotMessage } from '../services/chatbotService';
-import { createClientBookingRequestByServiceId } from '../../features/bookings/services/bookingService';
+import { startServiceConversationByServiceId } from '../../features/bookings/services/bookingService';
 
 jest.mock('../services/chatbotService', () => ({
   sendChatbotMessage: jest.fn(),
 }));
 
 jest.mock('../../features/bookings/services/bookingService', () => ({
-  createClientBookingRequestByServiceId: jest.fn(),
+  startServiceConversationByServiceId: jest.fn(),
 }));
 
 describe('FloatingChatbot worker matches', () => {
@@ -18,7 +18,7 @@ describe('FloatingChatbot worker matches', () => {
     jest.clearAllMocks();
   });
 
-  it('starts a booking and redirects to the selected worker chat', async () => {
+  it('starts a conversation and redirects to the selected worker chat', async () => {
     const onOpenChatPage = jest.fn();
     const workerMatch = {
       id: 'service-123',
@@ -36,7 +36,7 @@ describe('FloatingChatbot worker matches', () => {
       estimate: { totalLow: 800, totalHigh: 1500 },
       sources: [],
     });
-    createClientBookingRequestByServiceId.mockResolvedValue({ id: 'booking-456' });
+    startServiceConversationByServiceId.mockResolvedValue({ id: 'conversation-456' });
 
     render(
       <FloatingChatbot
@@ -54,14 +54,14 @@ describe('FloatingChatbot worker matches', () => {
     await userEvent.click(screen.getByRole('button', { name: /chat with worker/i }));
 
     await waitFor(() => {
-      expect(createClientBookingRequestByServiceId).toHaveBeenCalledWith({
+      expect(startServiceConversationByServiceId).toHaveBeenCalledWith({
         serviceId: 'service-123',
         assistantContext: expect.objectContaining({
           source: 'giglink-chatbot',
           selected_match: workerMatch,
         }),
       });
-      expect(onOpenChatPage).toHaveBeenCalledWith('booking-456');
+      expect(onOpenChatPage).toHaveBeenCalledWith('conversation-456');
     });
   });
 

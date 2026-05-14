@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LogIn, Search } from 'lucide-react';
+import BrandWordmark from './BrandWordmark';
 
 function Navigation({ onLoginClick, onBrowseServices }) {
   const [isLoginHovered, setIsLoginHovered] = useState(false);
@@ -135,7 +136,7 @@ function Navigation({ onLoginClick, onBrowseServices }) {
         {/* Logo */}
         <div style={styles.navLogo.wrap}>
           <img src="/giglink-logo.svg" alt="" aria-hidden="true" style={styles.navLogo.img} />
-          <h1 style={styles.navLogo.h1}>GigLink</h1>
+          <h1 style={styles.navLogo.h1}><BrandWordmark /></h1>
         </div>
 
         {/* Desktop Navigation Links */}

@@ -35,6 +35,7 @@ function ServiceCard({ provider, onViewProfile, onViewReviews, onChat }) {
         <div className="service-result-title-row">
           <div>
             <span className="service-result-category">{displayServiceType}</span>
+            {provider.isBoosted && <span className="service-result-boosted">Boosted</span>}
             <h3>{provider.title || displayServiceType}</h3>
           </div>
           <strong className="service-result-price">{formatPrice(provider)}</strong>

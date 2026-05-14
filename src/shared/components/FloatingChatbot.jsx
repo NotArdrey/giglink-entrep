@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Loader2, MessageCircle, Paperclip, RotateCcw, Send, X } from 'lucide-react';
+import { BotMessageSquare, Loader2, Paperclip, RotateCcw, Send, X } from 'lucide-react';
 import { sendChatbotMessage } from '../services/chatbotService';
-import { createClientBookingRequestByServiceId } from '../../features/bookings/services/bookingService';
+import { startServiceConversationByServiceId } from '../../features/bookings/services/bookingService';
 
 const MAX_IMAGE_BYTES = 2_900_000;
 const PHOTO_HELP_PROMPT = 'Please identify the problem in this photo, estimate the likely budget, and find a qualified GigLink worker.';
@@ -455,7 +455,7 @@ function FloatingChatbot({
     try {
       setIsStartingBookingId(String(match.id));
       setErrorMessage('');
-      const booking = await createClientBookingRequestByServiceId({
+      const conversation = await startServiceConversationByServiceId({
         serviceId: match.id,
         assistantContext: {
           source: 'giglink-chatbot',
@@ -469,13 +469,13 @@ function FloatingChatbot({
         ...prevMessages,
         createMessage(
           'assistant',
-          `Booking request started with ${match.providerName || match.title || 'this worker'}. I opened the chat so you can continue scope, quote, and schedule details.`
+          `Chat started with ${match.providerName || match.title || 'this worker'}. I opened the thread so you can continue scope, quote, and schedule details.`
         ),
       ]);
-      onOpenChatPage?.(booking?.id);
+      onOpenChatPage?.(conversation?.id);
       setIsOpen(false);
     } catch (error) {
-      setErrorMessage(error?.message || 'Unable to start booking from this worker.');
+      setErrorMessage(error?.message || 'Unable to start chat with this worker.');
     } finally {
       setIsStartingBookingId('');
     }
@@ -583,7 +583,7 @@ function FloatingChatbot({
           ))}
           <header className="gl-chatbot-header">
             <span className="gl-chatbot-header-icon">
-              <Bot size={18} aria-hidden="true" />
+              <BotMessageSquare size={19} aria-hidden="true" />
             </span>
             <div>
               <h2>GigLink Assistant</h2>
@@ -713,7 +713,7 @@ function FloatingChatbot({
         aria-expanded={isOpen}
         onClick={() => setIsOpen((value) => !value)}
       >
-        {isOpen ? <X size={24} aria-hidden="true" /> : <MessageCircle size={25} aria-hidden="true" />}
+        {isOpen ? <X size={24} aria-hidden="true" /> : <BotMessageSquare className="gl-chatbot-toggle-icon" size={29} aria-hidden="true" />}
       </button>
     </aside>
   );

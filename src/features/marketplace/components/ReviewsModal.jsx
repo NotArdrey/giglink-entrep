@@ -1,4 +1,70 @@
 import React from 'react';
+import { Star } from 'lucide-react';
+
+const RatingStars = ({ rating, isDark = false, size = 16 }) => {
+  const normalizedRating = Math.max(0, Math.min(5, Number(rating) || 0));
+  const filledStars = Math.round(normalizedRating);
+  const starColor = isDark ? '#facc15' : '#f59e0b';
+  const emptyColor = isDark ? '#64748b' : '#cbd5e1';
+
+  return (
+    <span
+      aria-label={`${normalizedRating.toFixed(2)} out of 5 stars`}
+      title={`${normalizedRating.toFixed(2)} / 5`}
+      style={{ display: 'inline-flex', gap: 2, alignItems: 'center' }}
+    >
+      {[1, 2, 3, 4, 5].map((star) => {
+        const isFilled = star <= filledStars;
+
+        return (
+          <Star
+            key={star}
+            size={size}
+            fill={isFilled ? starColor : 'none'}
+            color={isFilled ? starColor : emptyColor}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        );
+      })}
+    </span>
+  );
+};
+
+const formatRating = (rating) => {
+  const value = Number(rating);
+
+  if (!Number.isFinite(value)) return null;
+
+  return value.toFixed(2).replace(/\.?0+$/, '');
+};
+
+const CompactRating = ({ rating, reviewCount = 0, isDark = false }) => {
+  const displayRating = formatRating(rating);
+  const color = isDark ? '#cbd5e1' : '#475569';
+
+  if (!displayRating) return <span>New</span>;
+
+  return (
+    <span
+      aria-label={`${displayRating} out of 5 stars from ${reviewCount} reviews`}
+      title={`${displayRating} / 5`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        color,
+        fontSize: 13,
+        fontWeight: 800,
+        lineHeight: 1,
+      }}
+    >
+      <Star size={14} fill={color} color={color} strokeWidth={2.5} aria-hidden="true" />
+      <span>{displayRating}</span>
+      <span>({reviewCount})</span>
+    </span>
+  );
+};
 
 const ReviewsModal = ({
   isOpen,
@@ -43,7 +109,7 @@ const ReviewsModal = ({
           <div>
             <h3 style={title}>{provider.name} - Reviews</h3>
             <p style={subtitle}>
-              {provider.rating ? `${provider.rating} / 5` : 'New'} - {provider.reviews || 0} reviews
+              <CompactRating rating={provider.rating} reviewCount={provider.reviews || 0} isDark={isDark} />
             </p>
           </div>
           <div>
@@ -65,7 +131,7 @@ const ReviewsModal = ({
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontWeight: 800 }}>{review.clientName || 'Client'}</div>
-                  <div style={{ fontWeight: 800 }}>{review.rating} / 5</div>
+                  <RatingStars rating={review.rating} isDark={isDark} />
                 </div>
                 <div style={{ marginTop: 6, color: isDark ? '#c7ceda' : '#334155' }}>{review.comment}</div>
                 <div style={{ marginTop: 8, fontSize: 12, color: isDark ? '#9aa5b5' : '#64748b' }}>{review.date}</div>

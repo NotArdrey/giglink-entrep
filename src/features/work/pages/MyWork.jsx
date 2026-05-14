@@ -16,6 +16,7 @@ import {
   CalendarDays,
   ChevronDown,
   Loader2,
+  Megaphone,
   MapPin,
   MessageSquareText,
   Pencil,
@@ -52,8 +53,11 @@ const classStyles = {
   'profile-avatar-image': { width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', display: 'block' },
   'profile-name-link': { border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer', fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' },
   'service-type': { fontSize: '14px', color: 'var(--gl-blue)', fontWeight: 600, margin: '0 0 8px 0' },
-  location: { fontSize: '14px', color: '#7f8c8d', margin: 0 },
-  'service-mode-tag': { margin: '8px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--gl-blue)', background: 'var(--gl-accent-soft)', display: 'inline-block', padding: '4px 8px', borderRadius: '999px' },
+  location: { fontSize: '14px', color: '#7f8c8d', margin: 0, display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' },
+  'profile-chip-row': { marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  'profile-action-row': { marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
+  'service-mode-tag': { margin: 0, fontSize: '12px', fontWeight: 700, color: 'var(--gl-blue)', background: 'var(--gl-accent-soft)', display: 'inline-block', padding: '4px 8px', borderRadius: '999px' },
+  'service-boost-tag': { margin: 0, fontSize: '12px', fontWeight: 800, color: '#854d0e', background: '#fef3c7', border: '1px solid #fde68a', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 8px', borderRadius: '999px', verticalAlign: 'middle' },
   'profile-stats': { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
   'service-description-panel': { gridColumn: '1 / -1', borderTop: '1px solid #eceff1', paddingTop: '18px' },
   'service-description-title': { margin: '0 0 8px', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' },
@@ -143,7 +147,7 @@ const classStyles = {
   'done-confirm-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#16a34a', color: '#fff' },
   'delete-confirm-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#dc2626', color: '#fff' },
   'gcash-qr-btn': { border: '1px solid var(--gl-accent-border)', background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
-  'profile-gcash-btn': { marginTop: '8px' },
+  'profile-gcash-btn': { marginTop: 0 },
   'gcash-preview-modal': { width: 'min(520px, 92vw)' },
   'gcash-preview-body': { marginTop: '12px', display: 'flex', gap: '14px', alignItems: 'flex-start' },
   'gcash-preview-qr': { width: '170px', height: '170px', borderRadius: '8px', border: '1px solid #d1d5db' },
@@ -158,7 +162,7 @@ const classStyles = {
   'payment-confirm-actions': { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   'btn-approve-cash': { border: 'none', background: '#16a34a', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
   'btn-deny-cash': { border: 'none', background: '#dc2626', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
-  'btn-gcash-preview': { border: '1px solid var(--gl-accent-border)', background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px' },
+  'btn-gcash-preview': { border: '1px solid var(--gl-accent-border)', background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 0 },
   'payment-qr-grid': { marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' },
   'payment-qr-item': { border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px', background: '#f8fafc', textAlign: 'center' },
   'payment-qr-title': { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
@@ -820,7 +824,9 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
         'profile-summary-card': { gridTemplateColumns: '1fr', gap: '16px', padding: '16px' },
         'profile-info': { flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' },
         'profile-name-link': { fontSize: '20px' },
-        location: { textAlign: 'center' },
+        location: { justifyContent: 'center', textAlign: 'center' },
+        'profile-chip-row': { justifyContent: 'center' },
+        'profile-action-row': { justifyContent: 'center' },
         'profile-stats': { gridTemplateColumns: '1fr' },
         'inquiries-section': { width: '100%', maxWidth: '600px', margin: '0 auto 32px' },
         'section-header': { textAlign: 'center' },
@@ -922,6 +928,10 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     : currentProfile?.paymentAdvance
       ? 'Advance payment'
       : 'After service';
+  const currentBoostEndsAt = currentProfile?.boostEndsAt || currentProfile?.raw?.metadata?.ad_booster?.ends_at || currentProfile?.raw?.metadata?.adBooster?.endsAt || null;
+  const currentBoostLabel = currentProfile?.isBoosted
+    ? `Active until ${currentBoostEndsAt ? new Date(currentBoostEndsAt).toLocaleDateString() : 'manually stopped'}`
+    : 'Not boosted';
   const avgRatingLabel = sellerRatingAggregate?.rating_count
     ? Number(sellerRatingAggregate.avg_rating || 0).toFixed(2).replace(/\.00$/, '')
     : '0';
@@ -1155,29 +1165,39 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                   <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: themeTokens.textSecondary, fontWeight: 600 }}>
                     {currentPriceLabel}
                   </p>
-                  <p style={sx('location')} className="gl-inline-icon-line">
+                  <p style={sx('location')}>
                     <MapPin size={14} aria-hidden="true" />
                     {currentProfile?.location?.address || currentProfile?.location?.barangay || 'Sabang'}, {currentProfile?.location?.city || 'Baliwag'}, {currentProfile?.location?.province || 'Bulacan'}
                   </p>
-                  <p style={sx('service-mode-tag')}>
-                    Booking: {supportsAvailabilitySchedule ? 'Time-slot booking' : 'Request booking'}
-                  </p>
-                  <button
-                    style={{ ...sx('gcash-qr-btn', 'profile-gcash-btn'), ...(isHovered('profile-gcash-btn') ? hoverStyles.gcashButton : {}) }}
-                    onMouseEnter={() => setHoverKey('profile-gcash-btn')}
-                    onMouseLeave={() => setHoverKey('')}
-                    onClick={handleOpenGcashPreview}
-                  >
-                    GCash QR
-                  </button>
-                  <button
-                    style={{ ...sx('btn-gcash-preview', 'profile-gcash-btn'), ...(isHovered('profile-cash-btn') ? hoverStyles.gcashButton : {}) }}
-                    onMouseEnter={() => setHoverKey('profile-cash-btn')}
-                    onMouseLeave={() => setHoverKey('')}
-                    onClick={handleOpenCashQrPreview}
-                  >
-                    Cash Confirm QR
-                  </button>
+                  <div style={sx('profile-chip-row')}>
+                    <p style={sx('service-mode-tag')}>
+                      Booking: {supportsAvailabilitySchedule ? 'Time-slot booking' : 'Request booking'}
+                    </p>
+                    {currentProfile?.isBoosted && (
+                      <span style={sx('service-boost-tag')}>
+                        <Megaphone size={13} aria-hidden="true" />
+                        Boosted
+                      </span>
+                    )}
+                  </div>
+                  <div style={sx('profile-action-row')}>
+                    <button
+                      style={{ ...sx('gcash-qr-btn', 'profile-gcash-btn'), ...(isHovered('profile-gcash-btn') ? hoverStyles.gcashButton : {}) }}
+                      onMouseEnter={() => setHoverKey('profile-gcash-btn')}
+                      onMouseLeave={() => setHoverKey('')}
+                      onClick={handleOpenGcashPreview}
+                    >
+                      GCash QR
+                    </button>
+                    <button
+                      style={{ ...sx('btn-gcash-preview', 'profile-gcash-btn'), ...(isHovered('profile-cash-btn') ? hoverStyles.gcashButton : {}) }}
+                      onMouseEnter={() => setHoverKey('profile-cash-btn')}
+                      onMouseLeave={() => setHoverKey('')}
+                      onClick={handleOpenCashQrPreview}
+                    >
+                      Cash Confirm QR
+                    </button>
+                  </div>
                 </div>
               </div>
               <div style={sx('profile-stats')}>
@@ -1213,6 +1233,10 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                   <div style={sx('service-detail-item')}>
                     <span style={sx('service-detail-label')}>Payment</span>
                     <span style={sx('service-detail-value')}>{currentPaymentLabel}</span>
+                  </div>
+                  <div style={sx('service-detail-item')}>
+                    <span style={sx('service-detail-label')}>Ad Booster</span>
+                    <span style={sx('service-detail-value')}>{currentBoostLabel}</span>
                   </div>
                 </div>
               </div>

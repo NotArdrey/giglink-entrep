@@ -3,6 +3,7 @@ import DashboardNavigation from '../../../shared/components/DashboardNavigation'
 import ChatWindow from '../components/ChatWindow';
 import SlotSelectionModal from '../components/SlotSelectionModal';
 import PaymentModal from '../components/PaymentModal';
+import BookingTermsModal from '../components/BookingTermsModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
 import {
@@ -11,6 +12,17 @@ import {
   useRefundController,
   useRatingController,
 } from '../hooks';
+import { archiveConversationThread } from '../services/bookingService';
+
+const WORKER_ROLE_VALUES = new Set(['worker', 'workers', 'seller', 'sellers']);
+const CLIENT_ROLE_VALUES = new Set(['client', 'clients', 'buyer', 'buyers', 'customer', 'customers']);
+
+const isWorkerProfile = (profile = {}) => {
+  const normalizedRole = String(profile?.role || '').trim().toLowerCase();
+  if (CLIENT_ROLE_VALUES.has(normalizedRole)) return false;
+  if (WORKER_ROLE_VALUES.has(normalizedRole)) return true;
+  return !normalizedRole && Boolean(profile?.isWorker || profile?.is_worker || profile?.sellerId || profile?.workerProfileId);
+};
 
 const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, selectedChatBookingId = null, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenChatPage, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
   // ========================================================================
@@ -34,15 +46,15 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   }, []);
 
   const normalizedRole = String(sellerProfile?.role || '').trim().toLowerCase();
-  const isWorkerProfile = normalizedRole === 'worker'
-    || (!normalizedRole && Boolean(sellerProfile?.isWorker));
+  const isAdminProfile = Boolean(sellerProfile?.isAdmin) || normalizedRole === 'admin';
+  const shouldLoadSellerBookings = isWorkerProfile(sellerProfile) && !isAdminProfile;
   const isChatRoute = currentView === 'chat';
-  const shouldLoadSellerChats = isChatRoute && isWorkerProfile;
 
   // Main booking list controller
   const bookingListCtrl = useBookingListController([], {
-    listRole: shouldLoadSellerChats ? 'seller' : 'buyer',
-    sellerId: shouldLoadSellerChats ? sellerProfile?.userId : null,
+    includeStandaloneChats: isChatRoute,
+    listRole: shouldLoadSellerBookings ? 'seller' : 'buyer',
+    sellerId: shouldLoadSellerBookings ? sellerProfile?.userId : null,
   });
 
   // Payment controller
@@ -71,6 +83,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   // View orchestration state
   const [selectedBookingId, setSelectedBookingId] = useState(selectedChatBookingId || null);
   const [uiState, setUiState] = useState(() => (isChatRoute ? 'chat' : 'list'));
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   const [hoveredBackToBookings, setHoveredBackToBookings] = useState(false);
 
@@ -135,11 +148,20 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     }
   }, [pushHeaderNotification, ratingCtrl]);
 
-  const handleSelectPaymentMethod = useCallback(async (bookingId, paymentMethod) => {
+  const handleOpenPaymentSelection = useCallback(() => {
+    setIsTermsModalOpen(true);
+  }, []);
+
+  const handleConfirmPaymentTerms = useCallback(() => {
+    setIsTermsModalOpen(false);
+    setUiState('payment');
+  }, []);
+
+  const handleSelectPaymentMethod = useCallback(async (bookingId, paymentMethod, mockPayment) => {
     const booking = bookingListCtrl.getBooking(bookingId);
     if (booking) {
       try {
-        await paymentCtrl.handleSelectPaymentMethod(booking, paymentMethod);
+        await paymentCtrl.handleSelectPaymentMethod(booking, paymentMethod, mockPayment);
         setUiState('confirmed');
 
         if (paymentMethod === 'after-service-cash') {
@@ -184,7 +206,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
         selectedSlot: slotInfo,
         status: 'Slot Selected - Payment Pending',
       });
-      setUiState('payment');
+      setIsTermsModalOpen(true);
     } catch (error) {
       pushHeaderNotification('Slot Update Failed', error?.message || 'Unable to update selected slot.');
     }
@@ -219,6 +241,27 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     }
   }, [bookingListCtrl, pushHeaderNotification]);
 
+  const hideCurrentChat = useCallback(async (targetBooking, mode) => {
+    if (!targetBooking) return;
+
+    try {
+      await archiveConversationThread(targetBooking, mode);
+      const nextRows = await bookingListCtrl.refreshBookings();
+      const nextSelected = nextRows.find((row) => String(row.id) !== String(targetBooking.id));
+      setSelectedBookingId(nextSelected?.id || null);
+      setUiState('chat');
+      pushHeaderNotification(
+        mode === 'delete' ? 'Chat Deleted' : 'Chat Archived',
+        mode === 'delete' ? 'The chat was removed from your inbox.' : 'The chat was moved out of your active inbox.'
+      );
+    } catch (error) {
+      pushHeaderNotification('Chat Update Failed', error?.message || 'Unable to update this chat.');
+    }
+  }, [bookingListCtrl, pushHeaderNotification]);
+
+  const handleArchiveChat = useCallback((targetBooking) => hideCurrentChat(targetBooking, 'archive'), [hideCurrentChat]);
+  const handleDeleteChat = useCallback((targetBooking) => hideCurrentChat(targetBooking, 'delete'), [hideCurrentChat]);
+
   // Navigation
   const handleBackToList = useCallback(() => {
     setSelectedBookingId(null);
@@ -245,6 +288,12 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   }, [bookingListCtrl.bookings, isChatRoute, selectedBookingId, selectedChatBookingId]);
 
   const currentBooking = bookingListCtrl.bookings.find((b) => String(b.id) === String(selectedBookingId));
+  const formatPhp = (value) => `\u20B1${Number(value || 0).toLocaleString('en-PH', {
+    minimumFractionDigits: Number(value || 0) % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+  const currentBookingFee = Number(currentBooking?.transactionFeeAmount || 0);
+  const currentBookingTotal = Number(currentBooking?.totalChargedAmount || currentBooking?.quoteAmount || 0);
   const themeTokens = getThemeTokens(appTheme);
   const statusFilters = [
     { key: 'all', label: 'All' },
@@ -525,7 +574,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
         <div style={styles.emptyState}>
           <h2 style={{ margin: '0 0 8px', color: themeTokens.textPrimary }}>No chats yet</h2>
           <p style={{ margin: 0 }}>
-            {shouldLoadSellerChats
+            {shouldLoadSellerBookings
               ? 'Client booking requests and conversations for your services will appear here.'
               : 'Start a booking from the marketplace to open a conversation here.'}
           </p>
@@ -539,15 +588,18 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
           booking={currentBooking}
           bookings={bookingListCtrl.bookings}
           selectedBookingId={selectedBookingId}
+          viewerRole={shouldLoadSellerBookings ? 'seller' : 'buyer'}
           onSelectBooking={handleOpenChat}
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}
           onRejectQuote={(reason) => handleRejectQuote(currentBooking.id, reason)}
           onOpenSlotSelection={handleOpenSlotSelection}
-          onOpenPaymentSelection={() => setUiState('payment')}
+          onOpenPaymentSelection={handleOpenPaymentSelection}
           onRequestRefund={(reason) => handleRequestRefund(currentBooking.id, reason)}
           onConfirmRefundReceived={() => handleConfirmRefundReceived(currentBooking.id)}
           onStopServiceAccepted={() => handleStopServiceAccepted(currentBooking.id)}
           onLeaveRating={handleLeaveRating}
+          onArchiveChat={handleArchiveChat}
+          onDeleteChat={handleDeleteChat}
         />
       )}
       {uiState === 'slots' && (
@@ -560,7 +612,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
       {uiState === 'payment' && (
         <PaymentModal
           booking={currentBooking}
-          onSelectPayment={(method) => handleSelectPaymentMethod(currentBooking.id, method)}
+          onSelectPayment={(method, mockPayment) => handleSelectPaymentMethod(currentBooking.id, method, mockPayment)}
           onCancel={handleBackToList}
         />
       )}
@@ -574,7 +626,14 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
             <div style={styles.confirmationDetails}>
               <div style={styles.detailRow}><span style={styles.detailLabel}>Worker:</span><span style={styles.detailValue}>{currentBooking.workerName}</span></div>
               <div style={styles.detailRow}><span style={styles.detailLabel}>Service:</span><span style={styles.detailValue}>{currentBooking.serviceType}</span></div>
-              <div style={styles.detailRow}><span style={styles.detailLabel}>Amount:</span><span style={styles.detailValue}>{`\u20B1${currentBooking.quoteAmount}`}</span></div>
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Service Cost:</span><span style={styles.detailValue}>{formatPhp(currentBooking.quoteAmount)}</span></div>
+              {currentBookingFee > 0 && (
+                <div style={styles.detailRow}>
+                  <span style={styles.detailLabel}>Transaction Fee ({currentBooking.transactionFeePercent || '5%'}):</span>
+                  <span style={styles.detailValue}>{formatPhp(currentBookingFee)}</span>
+                </div>
+              )}
+              <div style={styles.detailRow}><span style={styles.detailLabel}>Total Payment:</span><span style={styles.detailValue}>{formatPhp(currentBookingTotal)}</span></div>
               <div style={styles.detailRow}>
                 <span style={styles.detailLabel}>Booking Setup:</span>
                 <span style={styles.detailValue}>
@@ -621,6 +680,14 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
       )}
         </>
       )}
+      <BookingTermsModal
+        isOpen={isTermsModalOpen}
+        appTheme={appTheme}
+        title="Agree Before Payment"
+        confirmLabel="Agree and Open Payment"
+        onCancel={() => setIsTermsModalOpen(false)}
+        onConfirm={handleConfirmPaymentTerms}
+      />
     </div>
   );
 };

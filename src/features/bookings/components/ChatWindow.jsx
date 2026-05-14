@@ -1,8 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Archive, MoreVertical, Trash2 } from 'lucide-react';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 import { fetchBookingMessages, sendBookingMessage } from '../services/bookingService';
 
-const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived, onLeaveRating }) => {
+const normalizeChatKeyPart = (value) => String(value || '').trim().toLowerCase();
+
+const getChatListKey = (booking = {}, viewerRole = 'buyer') => {
+  const otherParticipantKey = viewerRole === 'seller'
+    ? (booking.buyerId || booking.clientId || booking.clientName)
+    : (booking.workerId || booking.sellerId || booking.workerName);
+  const serviceKey = booking.serviceId || booking.serviceType || booking.description;
+
+  return [
+    viewerRole,
+    otherParticipantKey,
+    serviceKey,
+  ].map(normalizeChatKeyPart).join('|');
+};
+
+const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote, onStopServiceAccepted, bookings, onSelectBooking, selectedBookingId, onOpenSlotSelection, onOpenPaymentSelection, onRequestRefund, onConfirmRefundReceived, onLeaveRating, onArchiveChat, onDeleteChat, viewerRole = 'buyer' }) => {
   const [messages, setMessages] = useState([]);
   const [clientMessage, setClientMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -20,6 +36,10 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   const [draftRating, setDraftRating] = useState(booking?.rating || 0);
   const [ratingComment, setRatingComment] = useState(booking?.ratingComment || '');
   const [ratingSubmitted, setRatingSubmitted] = useState(!!booking?.rating);
+  const [isChatActionSaving, setIsChatActionSaving] = useState(false);
+  const [isConversationMenuOpen, setIsConversationMenuOpen] = useState(false);
+  const [pendingChatAction, setPendingChatAction] = useState(null);
+  const conversationMenuRef = useRef(null);
 
   const hasSellerQuote = messages.some((message) => message.type === 'quote');
   const isRecurringService = booking?.billingCycle === 'weekly' || booking?.billingCycle === 'monthly';
@@ -58,6 +78,32 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   const priceDetailValue = shouldShowPriceAmount
     ? `\u20B1${booking.quoteAmount || 0}`
     : 'Waiting for worker quote';
+  const formatPhp = (value) => `\u20B1${Number(value || 0).toLocaleString('en-PH', {
+    minimumFractionDigits: Number(value || 0) % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+  const transactionFeeAmount = Number(booking?.transactionFeeAmount || 0);
+  const totalChargedAmount = Number(booking?.totalChargedAmount || booking?.quoteAmount || 0);
+  const isSellerView = viewerRole === 'seller';
+  const getChatDisplayName = (targetBooking = {}) => (
+    isSellerView
+      ? (targetBooking.clientName || 'Client')
+      : (targetBooking.workerName || 'Service Provider')
+  );
+  const getChatAvatarLetter = (targetBooking = {}) => (
+    getChatDisplayName(targetBooking).trim().charAt(0).toUpperCase() || '?'
+  );
+  const chatBookings = useMemo(() => {
+    const rows = Array.isArray(bookings) ? bookings : [];
+    const seen = new Set();
+
+    return rows.filter((item) => {
+      const key = getChatListKey(item, viewerRole);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [bookings, viewerRole]);
 
   const isGcashFlow = (paymentMethod) => paymentMethod === 'gcash-advance' || paymentMethod === 'after-service-gcash';
   const isRecurringBilling = (targetBooking) => targetBooking?.billingCycle === 'weekly' || targetBooking?.billingCycle === 'monthly';
@@ -74,6 +120,21 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     dueDate.setHours(0, 0, 0, 0);
     return dueDate <= today;
   };
+  const shouldShowSlotPaymentAction = booking.selectedSlot && !isServiceStopped && !booking.transactionId && !booking.paymentMethod;
+  const shouldShowRecurringGcashPaymentAction = booking.selectedSlot && !isServiceStopped && !booking.transactionId && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && isRecurringBilling(booking) && isRecurringChargeDue(booking);
+  const shouldShowGcashPaymentAction = booking.selectedSlot && !isServiceStopped && !booking.transactionId && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && !isRecurringBilling(booking);
+  const shouldShowCashConfirmationAction = booking.paymentMethod === 'after-service-cash' && !isServiceStopped && !booking.transactionId && booking.cashConfirmationStatus !== 'approved';
+  const shouldShowTransactionAction = Boolean(booking.transactionId || booking.paymentReference);
+  const showServiceDetailsSidebar = false;
+  const hasSidebarActions = shouldShowSlotSelectionNotice
+    || shouldShowRequestPaymentNotice
+    || shouldShowSlotPaymentAction
+    || shouldShowRecurringGcashPaymentAction
+    || shouldShowGcashPaymentAction
+    || shouldShowCashConfirmationAction
+    || (canRequestRefund && !isServiceStopped)
+    || canConfirmRefund
+    || shouldShowTransactionAction;
 
   useEffect(() => {
     let mounted = true;
@@ -82,6 +143,8 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     setDraftRating(booking?.rating || 0);
     setRatingComment(booking?.review || booking?.ratingComment || '');
     setRatingSubmitted(!!booking?.rating);
+    setIsConversationMenuOpen(false);
+    setPendingChatAction(null);
 
     const loadMessages = async () => {
       if (!booking?.id) return;
@@ -106,6 +169,19 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
       mounted = false;
     };
   }, [booking]);
+
+  useEffect(() => {
+    if (!isConversationMenuOpen) return undefined;
+
+    const handleOutsideClick = (event) => {
+      if (conversationMenuRef.current && !conversationMenuRef.current.contains(event.target)) {
+        setIsConversationMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isConversationMenuOpen]);
 
   const handleSendMessage = async () => {
     if (!clientMessage.trim()) return;
@@ -173,14 +249,14 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
   const styles = {
     // Embedded full-page layout (no modal overlay)
     pageContainer: { width: '100%', height: 'calc(100vh - 72px)', minHeight: '640px', background: chatTheme.bgPrimary },
-    mainContainer: { background: chatTheme.bgPrimary, display: 'grid', gridTemplateColumns: '320px 1fr 340px', width: '100%', height: '100%', overflow: 'hidden', borderTop: `1px solid ${chatTheme.border}` },
+    mainContainer: { background: chatTheme.bgPrimary, display: 'grid', gridTemplateColumns: '320px 1fr', width: '100%', height: '100%', overflow: 'hidden', borderTop: `1px solid ${chatTheme.border}` },
     
     // LEFT COLUMN: Chat List
     chatList: { display: 'flex', flexDirection: 'column', borderRight: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, overflow: 'hidden' },
     chatListHeader: { padding: '16px', borderBottom: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, flexShrink: 0 },
     chatListTitle: { fontSize: '16px', fontWeight: 700, color: chatTheme.textPrimary, margin: 0 },
     chatListScroll: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 },
-    chatItem: { padding: '12px 16px', borderBottom: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, cursor: 'pointer', transition: 'all 0.2s ease', borderLeft: '4px solid transparent' },
+    chatItem: { padding: '12px 16px', borderBottom: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, cursor: 'pointer', transition: 'all 0.2s ease', borderLeftWidth: '4px', borderLeftStyle: 'solid', borderLeftColor: 'transparent' },
     chatItemHovered: { background: chatTheme.hoverBg, borderLeftColor: themeTokens.accent },
     chatItemActive: { background: chatTheme.activeBg, borderLeftColor: themeTokens.accent },
     chatItemWorkerName: { fontSize: '14px', fontWeight: 600, color: chatTheme.textPrimary, margin: '0 0 4px 0' },
@@ -190,7 +266,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     
     // CENTER COLUMN: Messages & Chat
     chatContainer: { display: 'flex', flexDirection: 'column', background: chatTheme.bgPrimary },
-    header: { display: 'flex', justifyContent: 'flex-start', alignItems: 'center', padding: '16px 20px', borderBottom: `1px solid ${chatTheme.border}`, flexShrink: 0, background: chatTheme.bgSecondary },
+    header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '16px 20px', borderBottom: `1px solid ${chatTheme.border}`, flexShrink: 0, background: chatTheme.bgSecondary },
     workerInfo: { display: 'flex', gap: '12px', flex: 1 },
     workerAvatar: { width: '48px', height: '48px', background: themeTokens.accent, color: 'white', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '20px', flexShrink: 0 },
     workerName: { fontSize: '15px', fontWeight: 700, color: chatTheme.textPrimary, margin: 0 },
@@ -199,6 +275,12 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     workerMode: { fontSize: '12px', color: chatTheme.badgeText, margin: '4px 0 0 0', fontWeight: 800 },
     recurringBadge: { fontSize: '11px', margin: '6px 0 0 0', fontWeight: 700, color: chatTheme.badgeText },
     stoppedBadge: { fontSize: '11px', margin: '6px 0 0 0', fontWeight: 700, color: chatTheme.dangerText },
+    conversationMenuWrap: { position: 'relative', flexShrink: 0 },
+    conversationMenuBtn: { width: '36px', height: '36px', borderRadius: '8px', border: `1px solid ${chatTheme.border}`, background: chatTheme.bgTertiary, color: chatTheme.textSecondary, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 },
+    conversationMenu: { position: 'absolute', top: '44px', right: 0, minWidth: '176px', padding: '6px', borderRadius: '8px', border: `1px solid ${chatTheme.border}`, background: chatTheme.bgSecondary, boxShadow: isDarkMode ? '0 14px 32px rgba(0,0,0,0.36)' : '0 14px 32px rgba(15, 23, 42, 0.14)', zIndex: 12 },
+    conversationMenuItem: { width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 10px', border: 'none', borderRadius: '6px', background: 'transparent', color: chatTheme.textPrimary, fontSize: '13px', fontWeight: 700, textAlign: 'left', cursor: 'pointer' },
+    conversationMenuDanger: { color: chatTheme.dangerText },
+    conversationMenuDisabled: { opacity: 0.55, cursor: 'not-allowed' },
     messages: { flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: chatTheme.messageBg },
     loadingState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px', color: chatTheme.textSecondary },
     loadingBubble: { height: '14px', borderRadius: '999px', background: isDarkMode ? '#58606c' : '#e2e8f0' },
@@ -245,7 +327,6 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     actionBtnDanger: { background: '#dc2626' },
     actionBtnDisabled: { background: isDarkMode ? '#687282' : '#cbd5e1', cursor: 'not-allowed' },
     actionSection: { display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px', marginTop: '4px', borderTop: `1px solid ${chatTheme.border}` },
-    actionSectionTitle: { margin: 0, fontSize: '12px', fontWeight: 800, color: chatTheme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' },
     actionStack: { display: 'flex', flexDirection: 'column', gap: '8px' },
     sidebarPanel: { background: chatTheme.bgTertiary, border: `1px solid ${chatTheme.border}`, borderRadius: '8px', padding: '12px' },
     sidebarPanelTitle: { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: chatTheme.textPrimary },
@@ -265,6 +346,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     modalActions: { display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' },
     modalBtnCancel: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: isDarkMode ? '#58606c' : '#e2e8f0', color: chatTheme.textPrimary, fontWeight: 700, cursor: 'pointer' },
     modalBtnPrimary: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: themeTokens.accent, color: '#fff', fontWeight: 700, cursor: 'pointer' },
+    modalBtnDanger: { padding: '9px 14px', border: 'none', borderRadius: '8px', background: '#dc2626', color: '#fff', fontWeight: 700, cursor: 'pointer' },
     quoteDecisionActions: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 0, width: '100%', maxWidth: '100%', alignItems: 'stretch' },
     rejectQuoteBtn: { padding: '12px 18px', minWidth: '138px', background: chatTheme.bgTertiary, color: chatTheme.dangerText, border: `1px solid ${chatTheme.dangerText}`, borderLeft: 'none', borderRadius: '0 8px 8px 0', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' },
   };
@@ -299,6 +381,37 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     setRatingSubmitted(true);
   };
 
+  const openChatActionConfirm = (actionType) => {
+    if (isChatActionSaving) return;
+    setIsConversationMenuOpen(false);
+    setPendingChatAction(actionType);
+  };
+
+  const handleCancelChatAction = () => {
+    if (isChatActionSaving) return;
+    setPendingChatAction(null);
+  };
+
+  const handleConfirmChatAction = async () => {
+    if (!pendingChatAction || isChatActionSaving) return;
+
+    const actionHandler = pendingChatAction === 'delete' ? onDeleteChat : onArchiveChat;
+    if (!actionHandler) {
+      setPendingChatAction(null);
+      return;
+    }
+
+    try {
+      setIsChatActionSaving(true);
+      await actionHandler(booking);
+      setPendingChatAction(null);
+    } finally {
+      setIsChatActionSaving(false);
+    }
+  };
+
+  const isDeleteChatAction = pendingChatAction === 'delete';
+
   return (
     <div className="booking-workspace" style={styles.pageContainer}>
       <div className="booking-workspace-grid" style={styles.mainContainer}>
@@ -308,8 +421,8 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
             <h3 style={styles.chatListTitle}>Your Chats</h3>
           </div>
           <div style={styles.chatListScroll}>
-            {bookings && bookings.length > 0 ? (
-              bookings.map((b) => (
+            {chatBookings.length > 0 ? (
+              chatBookings.map((b) => (
                 <div
                   key={b.id}
                   style={{
@@ -320,11 +433,9 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
                   onMouseEnter={() => setHoveredChatId(b.id)}
                   onMouseLeave={() => setHoveredChatId(null)}
                   onClick={() => onSelectBooking(b.id)}
-                >
-                  <p style={styles.chatItemWorkerName}>{b.workerName}</p>
+                  >
+                  <p style={styles.chatItemWorkerName}>{getChatDisplayName(b)}</p>
                   <p style={styles.chatItemService}>{b.serviceType}</p>
-                  <span style={styles.chatItemMode}>{b.bookingModeLabel || (b.bookingMode === 'calendar-only' ? 'Request booking' : 'Time-slot booking')}</span>
-                  <p style={styles.chatItemStatus}>{b.status}</p>
                 </div>
               ))
             ) : (
@@ -339,9 +450,9 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
         <div className="booking-chat-thread" style={styles.chatContainer}>
           <div style={styles.header}>
             <div style={styles.workerInfo}>
-              <div style={styles.workerAvatar}>{booking.workerName.charAt(0)}</div>
+              <div style={styles.workerAvatar}>{getChatAvatarLetter(booking)}</div>
               <div>
-                <h3 style={styles.workerName}>{booking.workerName}</h3>
+                <h3 style={styles.workerName}>{getChatDisplayName(booking)}</h3>
                 <p style={styles.workerService}>{booking.serviceType}</p>
                 <p style={styles.workerMode}>
                   {isRequestBooking ? 'Request booking - coordinate through chat' : 'Time-slot booking'}
@@ -354,6 +465,47 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
                 )}
                 {isServiceStopped && <p style={styles.stoppedBadge}>Service Stopped</p>}
               </div>
+            </div>
+            <div ref={conversationMenuRef} style={styles.conversationMenuWrap}>
+              <button
+                type="button"
+                aria-label="Conversation actions"
+                aria-expanded={isConversationMenuOpen}
+                style={styles.conversationMenuBtn}
+                onClick={() => setIsConversationMenuOpen((current) => !current)}
+              >
+                <MoreVertical size={18} strokeWidth={2.4} />
+              </button>
+
+              {isConversationMenuOpen && (
+                <div style={styles.conversationMenu}>
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.conversationMenuItem,
+                      ...(isChatActionSaving ? styles.conversationMenuDisabled : {}),
+                    }}
+                    onClick={() => openChatActionConfirm('archive')}
+                    disabled={isChatActionSaving}
+                  >
+                    <Archive size={15} strokeWidth={2.3} />
+                    Archive Chat
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.conversationMenuItem,
+                      ...styles.conversationMenuDanger,
+                      ...(isChatActionSaving ? styles.conversationMenuDisabled : {}),
+                    }}
+                    onClick={() => openChatActionConfirm('delete')}
+                    disabled={isChatActionSaving}
+                  >
+                    <Trash2 size={15} strokeWidth={2.3} />
+                    Delete Chat
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -491,7 +643,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
           )}
         </div>
 
-        {/* RIGHT COLUMN: Service Details & Actions */}
+        {showServiceDetailsSidebar && (
         <div className="booking-detail-sidebar" style={styles.rightSidebar}>
           <div style={styles.rightHeader}>
             <h3 style={styles.rightTitle}>Service Details</h3>
@@ -548,6 +700,15 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
               </div>
             )}
 
+            {booking.paymentMethod && transactionFeeAmount > 0 && (
+              <div style={styles.detailSection}>
+                <p style={styles.detailLabel}>Payment Breakdown</p>
+                <p style={styles.detailValue}>Service cost: {formatPhp(booking.quoteAmount)}</p>
+                <p style={styles.detailValue}>Transaction fee ({booking.transactionFeePercent || '5%'}): {formatPhp(transactionFeeAmount)}</p>
+                <p style={styles.detailValue}>Total payment: {formatPhp(totalChargedAmount)}</p>
+              </div>
+            )}
+
             {/* Rating (one-time completed transactions only) */}
             {(!isRecurringService && booking?.status && (booking.status.toLowerCase().includes('complete') || booking.status.toLowerCase().includes('done') || booking.status.toLowerCase().includes('completed'))) && (
               <div style={styles.ratingCard}>
@@ -585,104 +746,105 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
             )}
 
             {/* Action Buttons */}
-            <div style={styles.actionSection}>
-              <p style={styles.actionSectionTitle}>Conversation Actions</p>
+            {hasSidebarActions && (
+              <div style={styles.actionSection}>
+                <div style={styles.actionStack}>
+                  {shouldShowSlotSelectionNotice && (
+                    <button
+                      style={{ ...styles.actionBtn, width: '100%' }}
+                      onClick={onOpenSlotSelection}
+                    >
+                      Proceed to Calendar / Slot Selection
+                    </button>
+                  )}
 
-              <div style={styles.actionStack}>
-                {shouldShowSlotSelectionNotice && (
-                  <button
-                    style={{ ...styles.actionBtn, width: '100%' }}
-                    onClick={onOpenSlotSelection}
-                  >
-                    Proceed to Calendar / Slot Selection
-                  </button>
-                )}
+                  {shouldShowRequestPaymentNotice && (
+                    <button
+                      style={{ ...styles.actionBtn, width: '100%' }}
+                      onClick={onOpenPaymentSelection}
+                    >
+                      Select Payment Method
+                    </button>
+                  )}
 
-                {shouldShowRequestPaymentNotice && (
-                  <button
-                    style={{ ...styles.actionBtn, width: '100%' }}
-                    onClick={onOpenPaymentSelection}
-                  >
-                    Select Payment Method
-                  </button>
-                )}
+                  {shouldShowSlotPaymentAction && (
+                    <button
+                      style={{ ...styles.actionBtn, width: '100%' }}
+                      onClick={onOpenPaymentSelection}
+                    >
+                      Select Payment Method
+                    </button>
+                  )}
 
-                {booking.selectedSlot && !isServiceStopped && !booking.transactionId && !booking.paymentMethod && (
-                  <button
-                    style={{ ...styles.actionBtn, width: '100%' }}
-                    onClick={onOpenPaymentSelection}
-                  >
-                    Select Payment Method
-                  </button>
-                )}
+                  {shouldShowRecurringGcashPaymentAction && (
+                    <button
+                      style={{ ...styles.actionBtn, width: '100%' }}
+                      onClick={onOpenPaymentSelection}
+                    >
+                      {`Pay ${getBillingLabel(booking)} Charge`}
+                    </button>
+                  )}
 
-                {booking.selectedSlot && !isServiceStopped && !booking.transactionId && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && isRecurringBilling(booking) && isRecurringChargeDue(booking) && (
-                  <button
-                    style={{ ...styles.actionBtn, width: '100%' }}
-                    onClick={onOpenPaymentSelection}
-                  >
-                    {`Pay ${getBillingLabel(booking)} Charge`}
-                  </button>
-                )}
+                  {shouldShowGcashPaymentAction && (
+                    <button
+                      style={{ ...styles.actionBtn, width: '100%' }}
+                      onClick={onOpenPaymentSelection}
+                    >
+                      Pay via GCash
+                    </button>
+                  )}
 
-                {booking.selectedSlot && !isServiceStopped && !booking.transactionId && isGcashFlow(booking.paymentMethod || '') && !booking.paymentProofSubmitted && !isRecurringBilling(booking) && (
-                  <button
-                    style={{ ...styles.actionBtn, width: '100%' }}
-                    onClick={onOpenPaymentSelection}
-                  >
-                    Pay via GCash
-                  </button>
-                )}
+                  {shouldShowCashConfirmationAction && (
+                    <button
+                      style={{ ...styles.actionBtn, ...styles.actionBtnSecondary, width: '100%' }}
+                      onClick={onOpenPaymentSelection}
+                    >
+                      Confirm Cash via Worker QR
+                    </button>
+                  )}
 
-                {booking.paymentMethod === 'after-service-cash' && !isServiceStopped && !booking.transactionId && booking.cashConfirmationStatus !== 'approved' && (
-                  <button
-                    style={{ ...styles.actionBtn, ...styles.actionBtnSecondary, width: '100%' }}
-                    onClick={onOpenPaymentSelection}
-                  >
-                    Confirm Cash via Worker QR
-                  </button>
-                )}
+                  {canRequestRefund && !isServiceStopped && (
+                    <button
+                      style={{ ...styles.actionBtn, background: '#7c3aed', width: '100%' }}
+                      onClick={() => setShowRefundRequestModal(true)}
+                    >
+                      Request Refund
+                    </button>
+                  )}
 
-                {canRequestRefund && !isServiceStopped && (
-                  <button
-                    style={{ ...styles.actionBtn, background: '#7c3aed', width: '100%' }}
-                    onClick={() => setShowRefundRequestModal(true)}
-                  >
-                    Request Refund
-                  </button>
-                )}
+                  {canConfirmRefund && (
+                    <button
+                      style={{ ...styles.actionBtn, background: '#0f766e', width: '100%' }}
+                      onClick={() => setShowRefundConfirmModal(true)}
+                    >
+                      Confirm Refund Received
+                    </button>
+                  )}
 
-                {canConfirmRefund && (
-                  <button
-                    style={{ ...styles.actionBtn, background: '#0f766e', width: '100%' }}
-                    onClick={() => setShowRefundConfirmModal(true)}
-                  >
-                    Confirm Refund Received
-                  </button>
-                )}
+                  {shouldShowTransactionAction && (
+                    <button
+                      style={{ ...styles.actionBtn, background: '#0f766e', width: '100%' }}
+                      onClick={() => setActiveSidebarPanel(activeSidebarPanel === 'transaction' ? null : 'transaction')}
+                    >
+                      View Transaction ID
+                    </button>
+                  )}
 
-                {(booking.transactionId || booking.paymentReference) && (
-                  <button
-                    style={{ ...styles.actionBtn, background: '#0f766e', width: '100%' }}
-                    onClick={() => setActiveSidebarPanel(activeSidebarPanel === 'transaction' ? null : 'transaction')}
-                  >
-                    View Transaction ID
-                  </button>
-                )}
-
-                {(booking.transactionId || booking.paymentReference) && activeSidebarPanel === 'transaction' && (
-                  <div style={styles.sidebarPanel}>
-                    <p style={styles.sidebarPanelTitle}>Transaction Proof</p>
-                    <p style={styles.sidebarPanelText}>Use this ID for verification and proof purposes.</p>
-                    <p style={{ ...styles.sidebarPanelText, marginTop: '8px', fontFamily: "'Courier New', monospace", wordBreak: 'break-all' }}>
-                      {booking.transactionId || booking.paymentReference}
-                    </p>
-                  </div>
-                )}
+                  {shouldShowTransactionAction && activeSidebarPanel === 'transaction' && (
+                    <div style={styles.sidebarPanel}>
+                      <p style={styles.sidebarPanelTitle}>Transaction Proof</p>
+                      <p style={styles.sidebarPanelText}>Use this ID for verification and proof purposes.</p>
+                      <p style={{ ...styles.sidebarPanelText, marginTop: '8px', fontFamily: "'Courier New', monospace", wordBreak: 'break-all' }}>
+                        {booking.transactionId || booking.paymentReference}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
+        )}
       </div>
 
       {showRefundRequestModal && (
@@ -704,6 +866,39 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
                 disabled={!refundReason.trim()}
               >
                 Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingChatAction && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <h3 style={styles.modalTitle}>
+              {isDeleteChatAction ? 'Delete Chat' : 'Archive Chat'}
+            </h3>
+            <p style={styles.modalText}>
+              {isDeleteChatAction
+                ? 'Delete this chat from your inbox?'
+                : 'Archive this chat and move it out of your active inbox?'}
+            </p>
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                style={styles.modalBtnCancel}
+                onClick={handleCancelChatAction}
+                disabled={isChatActionSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={isDeleteChatAction ? styles.modalBtnDanger : styles.modalBtnPrimary}
+                onClick={handleConfirmChatAction}
+                disabled={isChatActionSaving}
+              >
+                {isChatActionSaving ? 'Saving...' : (isDeleteChatAction ? 'Delete Chat' : 'Archive Chat')}
               </button>
             </div>
           </div>
