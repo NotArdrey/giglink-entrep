@@ -93,7 +93,7 @@ const DigitalPortfolioModal = ({
       paddingBottom: '0.5rem',
       marginBottom: '0.6rem',
     },
-    previewService: { margin: 0, color: '#2563eb', fontWeight: 700 },
+    previewService: { margin: 0, color: 'var(--gl-blue)', fontWeight: 700 },
     previewRating: { margin: '0.25rem 0 0', color: '#334155' },
     section: { marginBottom: '0.55rem' },
     qrSection: { textAlign: 'center' },
@@ -127,7 +127,7 @@ const DigitalPortfolioModal = ({
       flexDirection: isMobile ? 'column' : 'row',
     },
     cancelButton: { border: '1px solid #cbd5e1', borderRadius: '0.45rem', backgroundColor: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 600, width: isMobile ? '100%' : 'auto' },
-    downloadButton: { border: 'none', borderRadius: '0.45rem', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700, width: isMobile ? '100%' : 'auto' },
+    downloadButton: { border: 'none', borderRadius: '0.45rem', backgroundColor: 'var(--gl-blue)', color: '#ffffff', padding: '0.5rem 0.75rem', cursor: 'pointer', fontWeight: 700, width: isMobile ? '100%' : 'auto' },
   };
 
   const generatePDF = async () => {
@@ -140,8 +140,8 @@ const DigitalPortfolioModal = ({
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       
-      // Background color (light blue header)
-      doc.setFillColor(37, 99, 235); // Blue
+      // Background color (GigLink brand accent)
+      doc.setFillColor(12, 80, 126);
       doc.rect(0, 0, pageWidth, 50, 'F');
 
       // Title
@@ -183,7 +183,7 @@ const DigitalPortfolioModal = ({
       // Bio Section
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(37, 99, 235);
+      doc.setTextColor(12, 80, 126);
       doc.text('Professional Summary', 20, yPosition);
       yPosition += 6;
 
@@ -197,7 +197,7 @@ const DigitalPortfolioModal = ({
       // Location Section
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(37, 99, 235);
+      doc.setTextColor(12, 80, 126);
       doc.text('Service Location', 20, yPosition);
       yPosition += 6;
 
@@ -210,7 +210,7 @@ const DigitalPortfolioModal = ({
       // Payment Method Section
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(37, 99, 235);
+      doc.setTextColor(12, 80, 126);
       doc.text('Payment Method', 20, yPosition);
       yPosition += 6;
 
@@ -228,7 +228,7 @@ const DigitalPortfolioModal = ({
 
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(37, 99, 235);
+      doc.setTextColor(12, 80, 126);
       doc.text('Verification QR Code', 20, yPosition);
       yPosition += 6;
 

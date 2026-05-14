@@ -104,6 +104,9 @@ function App() {
         isLoggedIn={navigationContext.isLoggedIn}
         role={navigationContext.sellerProfile?.role || 'client'}
         isHidden={navigationContext.isSellerOnboardingOpen || navigationContext.currentView === 'chat'}
+        onOpenBrowseServices={navigationContext.handleOpenBrowseServices}
+        onOpenChatPage={navigationContext.handleOpenChatPage}
+        onSearchChange={navigationContext.handleSearchChange}
       />
       <SuccessNotification
         message={navigationContext.successNotification.message}

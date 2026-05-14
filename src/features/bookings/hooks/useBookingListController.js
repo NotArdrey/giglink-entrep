@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   fetchClientBookings,
+  fetchSellerBookings,
   submitBookingReview,
   updateBookingWorkflow,
 } from '../services/bookingService';
@@ -8,7 +9,7 @@ import {
 const TERMINAL_STATUSES = ['Completed Service', 'Service Stopped', 'Cancelled (Cash)', 'Refunded'];
 
 export function useBookingListController(initialBookings = [], options = {}) {
-  const { autoLoad = true } = options;
+  const { autoLoad = true, listRole = 'buyer', sellerId = null } = options;
   const [bookings, setBookings] = useState(Array.isArray(initialBookings) ? initialBookings : []);
   const [activeFilter, setActiveFilter] = useState('all');
   const [displayFilter, setDisplayFilter] = useState('all');
@@ -20,7 +21,9 @@ export function useBookingListController(initialBookings = [], options = {}) {
     try {
       setIsLoading(true);
       setLoadError('');
-      const rows = await fetchClientBookings();
+      const rows = listRole === 'seller'
+        ? await fetchSellerBookings(sellerId)
+        : await fetchClientBookings();
       setBookings(rows);
       return rows;
     } catch (error) {
@@ -29,7 +32,7 @@ export function useBookingListController(initialBookings = [], options = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [listRole, sellerId]);
 
   useEffect(() => {
     if (!autoLoad) return undefined;

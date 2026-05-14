@@ -93,7 +93,8 @@ function DashboardNavigation({
   const ThemeIcon = isDarkMode ? Moon : Sun;
   const normalizedRole = String(sellerProfile?.role || '').trim().toLowerCase();
   const isAdminAccount = Boolean(sellerProfile?.isAdmin) || normalizedRole === 'admin';
-  const isWorkerAccount = normalizedRole === 'worker';
+  const isWorkerAccount = normalizedRole === 'worker'
+    || (!normalizedRole && Boolean(sellerProfile?.isWorker));
   const handleThemeToggle = () => {
     onThemeChange?.(isDarkMode ? 'light' : 'dark');
   };
@@ -109,6 +110,8 @@ function DashboardNavigation({
   const workerNavItems = [
     { key: 'home', label: 'Home', icon: Home, onClick: onOpenDashboard },
     { key: 'work', label: 'My Work', icon: BriefcaseBusiness, onClick: onOpenMyWork || onOpenSellerSetup },
+    { key: 'chat', label: 'Chats', icon: MessageCircle, onClick: onOpenChatPage || onOpenMyBookings },
+    { key: 'bookings', label: 'Bookings', icon: CalendarCheck, onClick: onOpenMyBookings },
     { key: 'profile', label: 'Profile', icon: UserRound, onClick: onOpenProfile },
     { key: 'settings', label: 'Settings', icon: Settings, onClick: onOpenSettings },
   ];
@@ -191,15 +194,6 @@ function DashboardNavigation({
           </span>
         </button>
 
-        <div className="gl-app-sidebar-footer">
-          <button type="button" className="gl-app-user-row" onClick={() => onOpenProfile?.()}>
-            <span className="gl-app-avatar">{profileInitials}</span>
-            <span>
-              <strong>{fullName}</strong>
-              <small>{sellerProfile?.role || 'client'}</small>
-            </span>
-          </button>
-        </div>
       </aside>
 
       <header className="gl-app-topbar">

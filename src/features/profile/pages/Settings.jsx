@@ -9,6 +9,7 @@ const Settings = ({
   onLogout,
   onOpenSellerSetup,
   onOpenMyBookings,
+  onOpenChatPage,
   sellerProfile,
   onOpenMyWork,
   onOpenProfile,
@@ -250,7 +251,7 @@ const Settings = ({
       cursor: 'pointer',
       transition: 'all 0.2s ease',
       outline: 'none',
-      boxShadow: isLangFocused ? '0 0 0 3px rgba(39, 174, 96, 0.1)' : 'none',
+      boxShadow: isLangFocused ? `0 0 0 3px ${themeTokens.accentRing}` : 'none',
     },
     languageIndicator: {
       width: '36px',
@@ -312,7 +313,7 @@ const Settings = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: isDarkMode ? themeTokens.accent : '#ccc',
+      backgroundColor: isDarkMode ? themeTokens.accent : themeTokens.borderColor,
       transition: '0.3s',
       borderRadius: '34px',
     },
@@ -333,7 +334,7 @@ const Settings = ({
       padding: '10px 12px',
       border: `1px solid ${(themeMode === 'system' || isSystemHovered) ? themeTokens.accent : themeTokens.inputBorder}`,
       borderRadius: '8px',
-      backgroundColor: themeMode === 'system' ? 'rgba(39, 174, 96, 0.12)' : 'transparent',
+      backgroundColor: themeMode === 'system' ? themeTokens.accentSoft : 'transparent',
       color: themeTokens.textPrimary,
       fontSize: '13px',
       fontWeight: 700,
@@ -377,7 +378,7 @@ const Settings = ({
       display: 'inline-block',
       width: '44px',
       height: '24px',
-      backgroundColor: '#ccc',
+      backgroundColor: themeTokens.borderColor,
       borderRadius: '12px',
       cursor: 'pointer',
       transition: 'background-color 0.3s',
@@ -440,7 +441,7 @@ const Settings = ({
       transition: 'all 0.2s ease',
       opacity: isSaving ? 0.6 : 1,
       transform: isSaveHovered && !isSaving ? 'translateY(-2px)' : 'translateY(0)',
-      boxShadow: isSaveHovered && !isSaving ? '0 4px 12px rgba(39, 174, 96, 0.3)' : 'none',
+      boxShadow: isSaveHovered && !isSaving ? themeTokens.accentShadow : 'none',
     },
   };
 
@@ -456,6 +457,7 @@ const Settings = ({
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}

@@ -16,7 +16,7 @@ const BULACAN_CODE = '031400000';
  * - If mismatch: show red error message.
  * - If match: clear error and show success toast notification.
  */
-function AccountSettings({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
+function AccountSettings({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, onOpenChatPage, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onBackToProfile, onUpdateProfile, onUpdatePassword, onOpenAdminDashboard }) {
   const splitNameParts = (value = '') => {
     const parts = String(value).trim().split(/\s+/).filter(Boolean);
     if (parts.length === 0) return { firstName: '', middleName: '', lastName: '' };
@@ -313,6 +313,7 @@ function AccountSettings({ appTheme = 'light', themeMode = 'system', onThemeChan
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}

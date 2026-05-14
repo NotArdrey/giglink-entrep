@@ -77,7 +77,7 @@ function AdminAccountsTable({
                           ...(account.role === 'admin'
                             ? styles.badgeAdmin
                             : account.role === 'worker'
-                              ? { backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }
+                              ? { backgroundColor: themeTokens.accentSoft, color: themeTokens.accent, border: `1px solid ${themeTokens.accentBorder}` }
                               : styles.rowButtonMuted),
                         }}
                       >
@@ -91,7 +91,7 @@ function AdminAccountsTable({
                           ...(account.displayStatus === 'active'
                             ? styles.badgeActive
                             : account.displayStatus === 'suspended'
-                              ? { backgroundColor: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa' }
+                              ? { backgroundColor: themeTokens.warningBg, color: themeTokens.warning, border: `1px solid ${themeTokens.warningBorder}` }
                               : styles.badgeDisabled),
                         }}
                       >

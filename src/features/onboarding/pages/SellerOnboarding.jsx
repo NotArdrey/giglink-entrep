@@ -194,8 +194,8 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     setupHint: { margin: '0.4rem 0 0', fontSize: '0.9rem', color: themeTokens.textSecondary },
     actions: { display: 'flex', justifyContent: 'space-between', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '0.7rem', marginTop: '1.1rem' },
     backButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: themeTokens.surfaceSoft, color: themeTokens.textPrimary, width: isMobile ? '100%' : 'auto' },
-    nextButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'next' ? '#1d4ed8' : themeTokens.accent, color: '#ffffff', width: isMobile ? '100%' : 'auto' },
-    submitButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'submit' ? '#1d4ed8' : themeTokens.accent, color: '#ffffff', width: isMobile ? '100%' : 'auto' },
+    nextButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'next' ? themeTokens.accentHover : themeTokens.accent, color: '#ffffff', width: isMobile ? '100%' : 'auto' },
+    submitButton: { border: 'none', borderRadius: '8px', padding: '0.62rem 1rem', fontWeight: 700, cursor: 'pointer', background: hoveredButton === 'submit' ? themeTokens.accentHover : themeTokens.accent, color: '#ffffff', width: isMobile ? '100%' : 'auto' },
     onboardingError: { margin: '0.8rem 0 0', color: themeTokens.danger, fontWeight: 600, fontSize: '0.9rem' },
     successModalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 420 },
     successModalContent: { width: 'min(560px, 92vw)', borderRadius: '12px', background: themeTokens.surface, textAlign: 'left', padding: '1.5rem', border: `1px solid ${themeTokens.border}` },
@@ -203,7 +203,7 @@ function SellerOnboarding({ onBack, onComplete, userLocation, isFloating = false
     successText: { margin: '0.5rem 0 0', color: themeTokens.textSecondary, fontSize: '15px' },
     successActions: { marginTop: '14px', display: 'flex', justifyContent: 'center', flexDirection: isMobile ? 'column' : 'row', gap: '10px' },
     successSecondaryBtn: { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 16px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: themeTokens.surfaceSoft, color: themeTokens.textPrimary },
-    successPrimaryBtn: { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 16px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: hoveredButton === 'success-primary' ? '#1d4ed8' : themeTokens.accent, color: '#fff' },
+    successPrimaryBtn: { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 16px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: hoveredButton === 'success-primary' ? themeTokens.accentHover : themeTokens.accent, color: '#fff' },
   };
 
   return (

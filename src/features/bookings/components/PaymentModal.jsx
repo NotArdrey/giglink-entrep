@@ -118,13 +118,14 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       maxHeight: isMobile ? 'calc(100svh - 24px)' : '94vh',
       overflowY: 'auto',
       borderRadius: '8px',
-      border: '1px solid #e2e8f0',
-      backgroundColor: '#ffffff',
+      border: '1px solid var(--gl-border)',
+      backgroundColor: 'var(--gl-surface)',
       boxShadow: '0 18px 40px rgba(15, 23, 42, 0.24)',
+      color: 'var(--gl-text)',
     },
     header: {
-      borderBottom: '1px solid #e2e8f0',
-      backgroundColor: '#f8fafc',
+      borderBottom: '1px solid var(--gl-border)',
+      backgroundColor: 'var(--gl-surface-2)',
       padding: isMobile ? '0.75rem' : '0.85rem 1rem',
       display: 'flex',
       justifyContent: 'space-between',
@@ -132,37 +133,37 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       gap: '0.6rem',
       flexWrap: 'wrap',
     },
-    subtitle: { marginTop: '0.25rem', color: '#64748b' },
-    close: { width: '34px', height: '34px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
+    subtitle: { marginTop: '0.25rem', color: 'var(--gl-text-3)' },
+    close: { width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--gl-border-strong)', backgroundColor: 'var(--gl-surface)', color: 'var(--gl-text)', cursor: 'pointer' },
     summary: {
       margin: '0.85rem 1rem 0',
-      border: '1px solid #e2e8f0',
+      border: '1px solid var(--gl-border)',
       borderRadius: '8px',
-      backgroundColor: '#f8fafc',
+      backgroundColor: 'var(--gl-surface-2)',
       padding: '0.75rem',
       display: 'flex',
       flexDirection: 'column',
       gap: '0.35rem',
     },
-    row: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: isMobile ? '0.15rem' : '0.5rem', color: '#334155' },
+    row: { display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: isMobile ? '0.15rem' : '0.5rem', color: 'var(--gl-text-2)' },
     label: { fontWeight: 700 },
-    value: { color: '#0f172a' },
-    amount: { color: '#166534', fontWeight: 800 },
+    value: { color: 'var(--gl-text)' },
+    amount: { color: 'var(--gl-green)', fontWeight: 800 },
     processing: {
       margin: '1rem',
-      border: '1px solid #bfdbfe',
-      backgroundColor: '#eff6ff',
+      border: '1px solid var(--gl-accent-border)',
+      backgroundColor: 'var(--gl-accent-soft)',
       borderRadius: '8px',
       padding: '1rem',
       textAlign: 'center',
-      color: '#1e3a8a',
+      color: 'var(--gl-blue)',
     },
     spinner: {
       width: '34px',
       height: '34px',
       borderRadius: '999px',
-      border: '4px solid #bfdbfe',
-      borderTopColor: '#2563eb',
+      border: '4px solid var(--gl-accent-soft)',
+      borderTopColor: 'var(--gl-blue)',
       margin: '0 auto 0.6rem',
     },
     methods: {
@@ -172,31 +173,31 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       gap: '0.65rem',
     },
     option: {
-      border: '1px solid #cbd5e1',
+      border: '1px solid var(--gl-border-strong)',
       borderRadius: '8px',
       padding: '0.7rem',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--gl-surface)',
       cursor: 'pointer',
     },
-    optionSelected: { borderColor: '#2563eb', backgroundColor: '#eff6ff' },
+    optionSelected: { borderColor: 'var(--gl-blue)', backgroundColor: 'var(--gl-accent-soft)' },
     optionHeader: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' },
     icon: { fontSize: '1.1rem' },
-    desc: { color: '#334155', fontSize: '0.9rem' },
-    list: { margin: '0.45rem 0', color: '#334155', paddingLeft: '1.15rem' },
-    footer: { borderTop: '1px solid #e2e8f0', marginTop: '0.5rem', paddingTop: '0.45rem', color: '#0f172a' },
+    desc: { color: 'var(--gl-text-2)', fontSize: '0.9rem' },
+    list: { margin: '0.45rem 0', color: 'var(--gl-text-2)', paddingLeft: '1.15rem' },
+    footer: { borderTop: '1px solid var(--gl-border)', marginTop: '0.5rem', paddingTop: '0.45rem', color: 'var(--gl-text)' },
     chooser: {
       display: 'flex',
       gap: '0.6rem',
       marginTop: '0.45rem',
-      border: '1px solid #cbd5e1',
+      border: '1px solid var(--gl-border-strong)',
       borderRadius: '8px',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--gl-surface)',
       padding: '0.45rem 0.5rem',
       flexWrap: 'wrap',
     },
     actionWrap: {
-      borderTop: '1px solid #e2e8f0',
-      backgroundColor: '#f8fafc',
+      borderTop: '1px solid var(--gl-border)',
+      backgroundColor: 'var(--gl-surface-2)',
       padding: '0.75rem 1rem',
       display: 'flex',
       justifyContent: 'space-between',
@@ -205,11 +206,11 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
       flexWrap: 'wrap',
       flexDirection: isMobile ? 'column' : 'row',
     },
-    note: { margin: 0, color: '#334155', fontSize: '0.9rem', maxWidth: '560px' },
+    note: { margin: 0, color: 'var(--gl-text-2)', fontSize: '0.9rem', maxWidth: '560px' },
     confirm: {
       border: 'none',
       borderRadius: '8px',
-      backgroundColor: '#2563eb',
+      backgroundColor: 'var(--gl-blue)',
       color: '#ffffff',
       fontWeight: 700,
       cursor: 'pointer',
@@ -252,7 +253,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
         
         {/* Processing Overlay */}
         {submitError && (
-          <div style={{ margin: '0.8rem 1rem 0', color: '#b91c1c', fontWeight: 700, fontSize: '13px' }}>
+          <div style={{ margin: '0.8rem 1rem 0', color: 'var(--gl-red)', fontWeight: 700, fontSize: '13px' }}>
             {submitError}
           </div>
         )}
@@ -272,7 +273,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 style={{
                   ...styles.option,
                   ...(selectedMethod === 'gcash-advance' ? styles.optionSelected : {}),
-                  ...(hoveredKey === 'gcash-option' && selectedMethod !== 'gcash-advance' ? { backgroundColor: '#f8fafc' } : {}),
+                  ...(hoveredKey === 'gcash-option' && selectedMethod !== 'gcash-advance' ? { backgroundColor: 'var(--gl-surface-2)' } : {}),
                 }}
                 onClick={() => handleSelectMethod('gcash-advance')}
                 onMouseEnter={() => setHoveredKey('gcash-option')}
@@ -314,7 +315,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
                 style={{
                   ...styles.option,
                   ...(selectedMethod === 'after-service' ? styles.optionSelected : {}),
-                  ...(hoveredKey === 'after-service-option' && selectedMethod !== 'after-service' ? { backgroundColor: '#f8fafc' } : {}),
+                  ...(hoveredKey === 'after-service-option' && selectedMethod !== 'after-service' ? { backgroundColor: 'var(--gl-surface-2)' } : {}),
                 }}
                 onClick={() => handleSelectMethod('after-service')}
                 onMouseEnter={() => setHoveredKey('after-service-option')}
@@ -392,7 +393,7 @@ const PaymentModal = ({ booking, onSelectPayment, onCancel }) => {
               style={{
                 ...styles.confirm,
                 ...(selectedMethod
-                  ? { backgroundColor: hoveredKey === 'confirm-payment' ? '#1d4ed8' : '#2563eb' }
+                  ? { backgroundColor: hoveredKey === 'confirm-payment' ? 'var(--gl-blue-2)' : 'var(--gl-blue)' }
                   : { backgroundColor: '#94a3b8', cursor: 'not-allowed' }),
               }}
               onClick={handleConfirmPayment}

@@ -67,7 +67,7 @@ export const isActiveIdentityStatus = (status) =>
 
 const getWindowOrigin = () => (typeof window === 'undefined' ? '' : window.location.origin);
 
-export const getIdentityRedirectUrl = () => `${getWindowOrigin()}/?check_verification=true#identity-register`;
+export const getIdentityRedirectUrl = () => `${getWindowOrigin()}/?check_verification=true#login`;
 
 const buildTempSignupRef = () => {
   const suffix = typeof crypto !== 'undefined' && crypto.randomUUID

@@ -3,11 +3,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.104.1";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant";
+const DEFAULT_GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+const DEFAULT_GROQ_WEB_SEARCH_MODEL = "groq/compound-mini";
+const DEFAULT_GROQ_CHAT_FALLBACK_MODELS = [
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+];
+const DEFAULT_GROQ_VISION_FALLBACK_MODELS = [
+  DEFAULT_GROQ_VISION_MODEL,
+];
+const DEFAULT_GROQ_WEB_SEARCH_FALLBACK_MODELS = [
+  "groq/compound",
+];
+const GROQ_RETRYABLE_STATUSES = new Set([408, 409, 429, 498, 500, 502, 503, 504]);
 const MAX_MESSAGES = 10;
 const MAX_MESSAGE_LENGTH = 1200;
+const MAX_ATTACHMENTS = 1;
+const MAX_ATTACHMENT_DATA_URL_LENGTH = 4_200_000;
 const MAX_MARKETPLACE_ROWS = 120;
 const MAX_MARKETPLACE_MATCHES = 8;
 const MAX_BOOKING_MATCHES = 6;
+const MAX_MATERIAL_ITEMS = 8;
+const supportedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +38,7 @@ type ChatRole = "user" | "assistant";
 interface ChatMessage {
   role?: string;
   content?: unknown;
+  attachments?: ChatAttachment[];
 }
 
 interface ChatContext {
@@ -31,10 +50,110 @@ interface ChatContext {
 interface ChatRequestBody {
   messages?: ChatMessage[];
   context?: ChatContext;
+  attachments?: ChatAttachment[];
+}
+
+interface ChatAttachment {
+  type?: unknown;
+  name?: unknown;
+  mediaType?: unknown;
+  dataUrl?: unknown;
+}
+
+interface NormalizedAttachment {
+  type: "image";
+  name: string;
+  mediaType: string;
+  dataUrl: string;
+}
+
+interface ProblemMaterialHint {
+  name: string;
+  quantity: string;
+  searchTerm: string;
+}
+
+interface ProblemAnalysis {
+  problemTitle: string;
+  problemSummary: string;
+  likelyServiceTypes: string[];
+  materials: ProblemMaterialHint[];
+  urgency: string;
+  safetyNotes: string[];
+  confidence: number | null;
+  searchQuery: string;
+}
+
+interface MaterialPriceItem {
+  name: string;
+  quantity: string;
+  unit: string;
+  low: number | null;
+  high: number | null;
+  currency: string;
+  sourceHint: string;
+}
+
+interface MaterialResearch {
+  summary: string;
+  items: MaterialPriceItem[];
+  assumptions: string[];
+  sources: SourceRecord[];
+}
+
+interface SourceRecord {
+  title: string;
+  url: string;
+}
+
+interface BudgetEstimate {
+  problemTitle: string;
+  problemSummary: string;
+  currency: string;
+  materialSubtotalLow: number | null;
+  materialSubtotalHigh: number | null;
+  workerRateLow: number | null;
+  workerRateHigh: number | null;
+  totalLow: number | null;
+  totalHigh: number | null;
+  materials: MaterialPriceItem[];
+  assumptions: string[];
+  confidence: number | null;
+}
+
+class GroqProviderError extends Error {
+  status: number;
+  providerBody: string;
+  retryAfter: string | null;
+  model: string;
+  code: string;
+
+  constructor({
+    status,
+    providerBody,
+    retryAfter,
+    model,
+    code,
+  }: {
+    status: number;
+    providerBody: string;
+    retryAfter: string | null;
+    model: string;
+    code: string;
+  }) {
+    super(`Groq request failed for ${model || "unknown model"} with ${status}: ${providerBody.slice(0, 300)}`);
+    this.name = "GroqProviderError";
+    this.status = status;
+    this.providerBody = providerBody;
+    this.retryAfter = retryAfter;
+    this.model = model;
+    this.code = code;
+  }
 }
 
 interface MarketplaceRecord {
   id: number | string;
+  sellerId: string;
   title: string;
   providerName: string;
   serviceType: string;
@@ -46,11 +165,23 @@ interface MarketplaceRecord {
   rateBasis: string;
   bookingMode: string;
   pricingModel: string;
+  isVerified: boolean;
+  verificationStatus: string;
   rating: number | null;
   reviews: number;
   createdAt: string;
   searchableText: string;
+  serviceFamilies: string[];
+  matchQuality: MarketplaceFamilyMatch;
   score: number;
+}
+
+type MarketplaceFamilyMatch = "none" | "exact" | "fallback" | "mismatch";
+
+interface ServiceFamilyEvidence {
+  family: string;
+  score: number;
+  hits: string[];
 }
 
 interface MarketplaceSearch {
@@ -58,6 +189,8 @@ interface MarketplaceSearch {
   isPriceIntent: boolean;
   records: MarketplaceRecord[];
   queryTerms: string[];
+  desiredFamilies: string[];
+  hasExactFamilyMatch: boolean;
   totalFetched: number;
   error?: string;
 }
@@ -187,6 +320,7 @@ const searchStopWords = new Set([
   "are",
   "around",
   "ask",
+  "attached",
   "available",
   "book",
   "booking",
@@ -198,6 +332,7 @@ const searchStopWords = new Set([
   "cost",
   "costs",
   "do",
+  "estimate",
   "fee",
   "fees",
   "find",
@@ -209,10 +344,16 @@ const searchStopWords = new Set([
   "help",
   "how",
   "i",
+  "identify",
+  "image",
   "in",
+  "into",
   "is",
   "list",
   "looking",
+  "likely",
+  "material",
+  "materials",
   "max",
   "maximum",
   "me",
@@ -222,17 +363,27 @@ const searchStopWords = new Set([
   "on",
   "or",
   "php",
+  "photo",
+  "picture",
+  "piece",
+  "pieces",
   "please",
+  "problem",
   "price",
   "prices",
   "pricing",
   "provider",
   "providers",
+  "qualified",
   "quote",
   "quotes",
   "rate",
   "rates",
+  "require",
+  "requires",
+  "requiring",
   "search",
+  "several",
   "service",
   "services",
   "show",
@@ -241,11 +392,307 @@ const searchStopWords = new Set([
   "to",
   "under",
   "up",
+  "uploaded",
+  "visible",
   "what",
   "with",
   "within",
+  "worker",
+  "workers",
   "you",
 ]);
+
+const serviceFamilyRules = [
+  {
+    family: "plumbing",
+    queryTerms: [
+      "basin",
+      "bathroom",
+      "clog",
+      "clogged",
+      "drain",
+      "faucet",
+      "fixture",
+      "fixtures",
+      "fitting",
+      "fittings",
+      "kitchen",
+      "lavatory",
+      "leak",
+      "leaking",
+      "overflow",
+      "pipe",
+      "pipes",
+      "p-trap",
+      "plumber",
+      "plumbers",
+      "plumbing",
+      "ptrap",
+      "sink",
+      "sinks",
+      "shower",
+      "toilet",
+      "wash basin",
+      "water",
+      "waterline",
+    ],
+    recordTerms: [
+      "basin",
+      "bathroom",
+      "clog",
+      "clogged",
+      "drain",
+      "faucet",
+      "fixture",
+      "fittings",
+      "kitchen",
+      "lavatory",
+      "leak",
+      "leaking",
+      "pipe",
+      "pipes",
+      "p-trap",
+      "plumber",
+      "plumbing",
+      "ptrap",
+      "sink",
+      "sinks",
+      "shower",
+      "toilet",
+      "wash basin",
+    ],
+  },
+  {
+    family: "electrical",
+    queryTerms: [
+      "breaker",
+      "electric",
+      "electrical",
+      "electrician",
+      "light",
+      "lights",
+      "outlet",
+      "outlets",
+      "socket",
+      "switch",
+      "wiring",
+    ],
+    recordTerms: [
+      "breaker",
+      "electric",
+      "electrical",
+      "electrician",
+      "light",
+      "outlet",
+      "socket",
+      "switch",
+      "wiring",
+    ],
+  },
+  {
+    family: "electronics",
+    queryTerms: [
+      "computer",
+      "desktop",
+      "keyboard",
+      "laptop",
+      "monitor",
+      "mouse",
+      "network",
+      "no display",
+      "pc",
+      "print",
+      "printing",
+      "printer",
+      "router",
+      "scanner",
+      "wifi",
+    ],
+    recordTerms: [
+      "cable",
+      "computer",
+      "desktop",
+      "hardware",
+      "keyboard",
+      "laptop",
+      "monitor",
+      "network",
+      "no display",
+      "office hardware",
+      "pc",
+      "print",
+      "printing",
+      "printer",
+      "router",
+      "scanner",
+      "setup",
+      "wifi",
+    ],
+  },
+  {
+    family: "appliance",
+    queryTerms: [
+      "aircon",
+      "air conditioner",
+      "appliance",
+      "dryer",
+      "fan",
+      "fridge",
+      "microwave",
+      "oven",
+      "ref",
+      "refrigerator",
+      "rice cooker",
+      "stove",
+      "washer",
+      "washing machine",
+    ],
+    recordTerms: [
+      "aircon",
+      "air conditioner",
+      "appliance",
+      "dryer",
+      "fan",
+      "fridge",
+      "microwave",
+      "oven",
+      "ref",
+      "refrigerator",
+      "rice cooker",
+      "stove",
+      "washer",
+      "washing machine",
+    ],
+  },
+  {
+    family: "carpentry",
+    queryTerms: [
+      "cabinet",
+      "carpenter",
+      "carpentry",
+      "chair",
+      "door",
+      "drawer",
+      "furniture",
+      "hinge",
+      "lock",
+      "shelf",
+      "table",
+      "wood",
+    ],
+    recordTerms: [
+      "assembly",
+      "cabinet",
+      "carpenter",
+      "carpentry",
+      "chair",
+      "door",
+      "drawer",
+      "furniture",
+      "handle",
+      "hinge",
+      "lock",
+      "shelf",
+      "table",
+      "wood",
+    ],
+  },
+  {
+    family: "painting",
+    queryTerms: [
+      "paint",
+      "painter",
+      "painting",
+      "patch",
+      "scuff",
+      "wall",
+    ],
+    recordTerms: [
+      "paint",
+      "painter",
+      "painting",
+      "patch",
+      "scuff",
+      "wall",
+    ],
+  },
+  {
+    family: "cleaning",
+    queryTerms: [
+      "clean",
+      "cleaner",
+      "cleaning",
+      "deep clean",
+      "declutter",
+      "dishwashing",
+      "laundry",
+      "mold",
+      "organize",
+      "stain",
+      "tidy",
+    ],
+    recordTerms: [
+      "clean",
+      "cleaner",
+      "cleaning",
+      "deep clean",
+      "declutter",
+      "dishwashing",
+      "laundry",
+      "mold",
+      "organize",
+      "stain",
+      "tidy",
+    ],
+  },
+  {
+    family: "handyman",
+    queryTerms: [
+      "general repair",
+      "handyman",
+      "home fix",
+      "home repair",
+      "home repairs",
+      "household repair",
+      "household repairs",
+      "minor repair",
+      "minor repairs",
+    ],
+    recordTerms: [
+      "general repair",
+      "handyman",
+      "home fix",
+      "home repair",
+      "home repairs",
+    ],
+  },
+];
+
+const serviceFamilyFallbacks: Record<string, string[]> = {
+  appliance: ["handyman"],
+  carpentry: ["handyman"],
+  electrical: ["handyman"],
+  painting: ["handyman"],
+  plumbing: ["handyman"],
+};
+
+const serviceFamilyLabels: Record<string, string> = {
+  appliance: "appliance repair",
+  carpentry: "furniture or carpentry repair",
+  cleaning: "cleaning",
+  electrical: "electrical repair",
+  electronics: "computer or printer repair",
+  handyman: "handyman repair",
+  painting: "painting or wall repair",
+  plumbing: "plumbing repair",
+};
+
+const serviceFamilyRank: Record<MarketplaceFamilyMatch, number> = {
+  exact: 3,
+  fallback: 2,
+  none: 1,
+  mismatch: 0,
+};
 
 const shortcutReplies: Record<string, string> = {
   hi: "Hi. What would you like to do in GigLink: find a service, check a booking, or set up seller tools?",
@@ -289,6 +736,38 @@ const normalizeMessage = (message: ChatMessage): { role: ChatRole; content: stri
     role,
     content: content.slice(0, MAX_MESSAGE_LENGTH),
   };
+};
+
+const normalizeAttachment = (attachment: ChatAttachment): NormalizedAttachment | null => {
+  const type = getText(attachment.type);
+  const name = getText(attachment.name).slice(0, 120) || "problem-photo";
+  const mediaType = getText(attachment.mediaType).toLowerCase();
+  const dataUrl = getText(attachment.dataUrl);
+
+  if (type !== "image") return null;
+  if (!supportedImageTypes.has(mediaType)) return null;
+  if (!dataUrl.startsWith(`data:${mediaType};base64,`)) return null;
+  if (dataUrl.length > MAX_ATTACHMENT_DATA_URL_LENGTH) return null;
+
+  return {
+    type: "image",
+    name,
+    mediaType,
+    dataUrl,
+  };
+};
+
+const normalizeRequestAttachments = (body: ChatRequestBody): NormalizedAttachment[] => {
+  const messageAttachments = (Array.isArray(body.messages) ? body.messages : [])
+    .flatMap((message) => (Array.isArray(message.attachments) ? message.attachments : []));
+
+  return [
+    ...(Array.isArray(body.attachments) ? body.attachments : []),
+    ...messageAttachments,
+  ]
+    .map(normalizeAttachment)
+    .filter((attachment): attachment is NormalizedAttachment => Boolean(attachment))
+    .slice(0, MAX_ATTACHMENTS);
 };
 
 const normalizeContextValue = (value: unknown, fallback: string) => {
@@ -358,12 +837,115 @@ const hasAnyTerm = (value: string, terms: string[]) => {
   return terms.some((term) => lowerValue.includes(term));
 };
 
-const getSearchTerms = (value: string) =>
-  tokenize(value)
+const getSearchTerms = (value: string) => {
+  const seen = new Set<string>();
+
+  return tokenize(value)
     .filter((term) => term.length > 1)
     .filter((term) => !/^\d+$/.test(term))
     .filter((term) => !searchStopWords.has(term))
-    .slice(0, 8);
+    .filter((term) => {
+      if (seen.has(term)) return false;
+      seen.add(term);
+      return true;
+    })
+    .slice(0, 12);
+};
+
+const hasServiceFamilyTerm = (lowerValue: string, tokenSet: Set<string>, term: string) => {
+  const cleanTerm = term.toLowerCase().trim();
+  if (!cleanTerm) return false;
+  if (cleanTerm.includes(" ")) return lowerValue.includes(cleanTerm);
+  return tokenSet.has(cleanTerm);
+};
+
+const getServiceFamilyTermWeight = (term: string, family: string) => {
+  if (term.includes(" ")) return family === "handyman" ? 3 : 4;
+  if (term === family) return 4;
+  if (term.length <= 3) return 1.5;
+  return 2;
+};
+
+const getServiceFamilyEvidence = (value: string, key: "queryTerms" | "recordTerms"): ServiceFamilyEvidence[] => {
+  const lowerValue = value.toLowerCase();
+  const tokenSet = new Set(tokenize(value));
+
+  return serviceFamilyRules
+    .map((rule) => {
+      const hits = rule[key].filter((term) => hasServiceFamilyTerm(lowerValue, tokenSet, term));
+      return {
+        family: rule.family,
+        score: hits.reduce((sum, term) => sum + getServiceFamilyTermWeight(term, rule.family), 0),
+        hits,
+      };
+    })
+    .filter((evidence) => evidence.score > 0)
+    .sort((a, b) => b.score - a.score);
+};
+
+const getServiceFamiliesForText = (value: string, key: "queryTerms" | "recordTerms") => (
+  getServiceFamilyEvidence(value, key).map((evidence) => evidence.family)
+);
+
+const pickDominantServiceFamilies = (evidence: ServiceFamilyEvidence[]) => {
+  if (evidence.length === 0) return [];
+
+  const topScore = evidence[0].score;
+  const minimumScore = Math.max(2, topScore * 0.55);
+  const selected = evidence
+    .filter((item) => item.score >= minimumScore)
+    .map((item) => item.family);
+  const hasSpecialist = selected.some((family) => family !== "handyman");
+
+  return uniqueStrings(
+    hasSpecialist
+      ? selected.filter((family) => family !== "handyman")
+      : selected
+  ).slice(0, 3);
+};
+
+const uniqueStrings = (values: string[]) => {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (!value || seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+};
+
+const getDesiredServiceFamilies = (value: string) =>
+  pickDominantServiceFamilies(getServiceFamilyEvidence(value, "queryTerms"));
+
+const getRecordServiceFamilies = (record: MarketplaceRecord) =>
+  Array.isArray(record.serviceFamilies) && record.serviceFamilies.length > 0
+    ? record.serviceFamilies
+    : uniqueStrings(getServiceFamiliesForText(record.searchableText, "recordTerms"));
+
+const getFallbackServiceFamilies = (desiredFamilies: string[]) =>
+  uniqueStrings(desiredFamilies.flatMap((family) => serviceFamilyFallbacks[family] || []));
+
+const getMarketplaceFamilyMatch = (
+  record: MarketplaceRecord,
+  desiredFamilies: string[]
+): MarketplaceFamilyMatch => {
+  if (desiredFamilies.length === 0) return "none";
+
+  const recordFamilies = getRecordServiceFamilies(record);
+  const desiredSet = new Set(desiredFamilies);
+  if (recordFamilies.some((family) => desiredSet.has(family))) return "exact";
+
+  const fallbackSet = new Set(getFallbackServiceFamilies(desiredFamilies));
+  if (recordFamilies.some((family) => fallbackSet.has(family))) return "fallback";
+
+  return "mismatch";
+};
+
+const formatServiceFamilyList = (families: string[]) => (
+  families
+    .map((family) => serviceFamilyLabels[family] || family)
+    .filter(Boolean)
+    .join(", ")
+);
 
 const extractPriceLimit = (value: string) => {
   const normalized = value.replace(/,/g, "");
@@ -409,6 +991,464 @@ const formatAmount = (amount: number) =>
   new Intl.NumberFormat("en-PH", {
     maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
   }).format(amount);
+
+const parseJsonObject = (value: string): Record<string, unknown> => {
+  const cleanValue = value.trim();
+  const fencedMatch = cleanValue.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const target = fencedMatch?.[1]?.trim() || cleanValue;
+
+  try {
+    const parsed = JSON.parse(target);
+    return getObject(parsed);
+  } catch {
+    const start = target.indexOf("{");
+    const end = target.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        return getObject(JSON.parse(target.slice(start, end + 1)));
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  }
+};
+
+const toStringList = (value: unknown, maxItems = 6) => (
+  Array.isArray(value)
+    ? value.map((item) => getText(item)).filter(Boolean).slice(0, maxItems)
+    : []
+);
+
+const clampConfidence = (value: unknown) => {
+  const parsed = getNumberOrNull(value);
+  if (parsed === null) return null;
+  return Math.max(0, Math.min(1, parsed));
+};
+
+const normalizeProblemMaterials = (value: unknown): ProblemMaterialHint[] => (
+  Array.isArray(value)
+    ? value.map((item) => {
+      const material = getObject(item);
+      const name = getText(material["name"]);
+      if (!name) return null;
+      return {
+        name,
+        quantity: getText(material["quantity"]) || "as needed",
+        searchTerm: getText(material["searchTerm"] || material["search_term"]) || name,
+      };
+    }).filter((item): item is ProblemMaterialHint => Boolean(item)).slice(0, MAX_MATERIAL_ITEMS)
+    : []
+);
+
+const normalizeProblemAnalysis = (payload: Record<string, unknown>): ProblemAnalysis => ({
+  problemTitle: getText(payload["problemTitle"] || payload["problem_title"]) || "Photo problem estimate",
+  problemSummary: getText(payload["problemSummary"] || payload["problem_summary"]) || "The uploaded photo needs worker review before a final quote.",
+  likelyServiceTypes: toStringList(payload["likelyServiceTypes"] || payload["likely_service_types"], 5),
+  materials: normalizeProblemMaterials(payload["materials"]),
+  urgency: getText(payload["urgency"]) || "medium",
+  safetyNotes: toStringList(payload["safetyNotes"] || payload["safety_notes"], 4),
+  confidence: clampConfidence(payload["confidence"]),
+  searchQuery: getText(payload["searchQuery"] || payload["search_query"]),
+});
+
+const normalizeMaterialItems = (value: unknown): MaterialPriceItem[] => (
+  Array.isArray(value)
+    ? value.map((item) => {
+      const material = getObject(item);
+      const name = getText(material["name"]);
+      if (!name) return null;
+      const low = getNumberOrNull(material["low"] || material["min"] || material["priceLow"] || material["price_low"]);
+      const high = getNumberOrNull(material["high"] || material["max"] || material["priceHigh"] || material["price_high"]) ?? low;
+      return {
+        name,
+        quantity: getText(material["quantity"]) || "as needed",
+        unit: getText(material["unit"]) || "item",
+        low,
+        high,
+        currency: getText(material["currency"]) || "PHP",
+        sourceHint: getText(material["sourceHint"] || material["source_hint"]),
+      };
+    }).filter((item): item is MaterialPriceItem => Boolean(item)).slice(0, MAX_MATERIAL_ITEMS)
+    : []
+);
+
+const extractGroqSources = (payload: Record<string, unknown>): SourceRecord[] => {
+  const choices = Array.isArray(payload["choices"]) ? payload["choices"] : [];
+  const firstChoice = getObject(choices[0]);
+  const message = getObject(firstChoice["message"]);
+  const executedTools = Array.isArray(message["executed_tools"]) ? message["executed_tools"] : [];
+  const sources: SourceRecord[] = [];
+
+  executedTools.forEach((tool) => {
+    const searchResults = getObject(getObject(tool)["search_results"]);
+    const results = Array.isArray(searchResults["results"]) ? searchResults["results"] : [];
+    results.forEach((result) => {
+      const source = getObject(result);
+      const title = getText(source["title"]);
+      const url = getText(source["url"]);
+      if (title && url && !sources.some((item) => item.url === url)) {
+        sources.push({ title, url });
+      }
+    });
+  });
+
+  return sources.slice(0, 5);
+};
+
+const normalizeMaterialResearch = (
+  payload: Record<string, unknown>,
+  sources: SourceRecord[]
+): MaterialResearch => ({
+  summary: getText(payload["summary"]) || "Material prices were estimated from current web search snippets.",
+  items: normalizeMaterialItems(payload["items"] || payload["materials"]),
+  assumptions: toStringList(payload["assumptions"], 5),
+  sources,
+});
+
+const sumPriceField = (items: MaterialPriceItem[], field: "low" | "high") => {
+  const values = items.map((item) => item[field]).filter((value): value is number => typeof value === "number");
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0);
+};
+
+const getWorkerRateRange = (records: MarketplaceRecord[]) => {
+  const values = records
+    .map((record) => record.amount)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+
+  if (values.length === 0) return { low: null, high: null };
+  return {
+    low: Math.min(...values),
+    high: Math.max(...values),
+  };
+};
+
+const buildBudgetEstimate = (
+  problemAnalysis: ProblemAnalysis,
+  materialResearch: MaterialResearch,
+  marketplaceSearch: MarketplaceSearch
+): BudgetEstimate => {
+  const materialSubtotalLow = sumPriceField(materialResearch.items, "low");
+  const materialSubtotalHigh = sumPriceField(materialResearch.items, "high");
+  const workerRange = getWorkerRateRange(marketplaceSearch.records);
+  const totalLow = materialSubtotalLow !== null && workerRange.low !== null
+    ? materialSubtotalLow + workerRange.low
+    : materialSubtotalLow;
+  const totalHigh = materialSubtotalHigh !== null && workerRange.high !== null
+    ? materialSubtotalHigh + workerRange.high
+    : materialSubtotalHigh;
+
+  return {
+    problemTitle: problemAnalysis.problemTitle,
+    problemSummary: problemAnalysis.problemSummary,
+    currency: "PHP",
+    materialSubtotalLow,
+    materialSubtotalHigh,
+    workerRateLow: workerRange.low,
+    workerRateHigh: workerRange.high,
+    totalLow,
+    totalHigh,
+    materials: materialResearch.items,
+    assumptions: [
+      ...materialResearch.assumptions,
+      "Worker rates are from active GigLink listings and may be hourly, daily, or project-based.",
+      "Final quote depends on on-site inspection, severity, schedule, and worker confirmation.",
+    ].slice(0, 7),
+    confidence: problemAnalysis.confidence,
+  };
+};
+
+const formatPesoRange = (low: number | null, high: number | null) => {
+  if (low === null && high === null) return "needs worker quote";
+  if (low !== null && high !== null && low !== high) return `PHP ${formatAmount(low)}-${formatAmount(high)}`;
+  const value = low ?? high ?? 0;
+  return `PHP ${formatAmount(value)}`;
+};
+
+const buildProblemSearchText = (latestUserMessage: string, problemAnalysis: ProblemAnalysis | null) => {
+  if (!problemAnalysis) return latestUserMessage;
+
+  return [
+    problemAnalysis.problemTitle,
+    problemAnalysis.problemSummary,
+    ...problemAnalysis.likelyServiceTypes,
+    ...problemAnalysis.materials.map((item) => `${item.name} ${item.searchTerm}`),
+    problemAnalysis.searchQuery,
+    latestUserMessage,
+    "worker service repair provider book",
+  ].join(" ");
+};
+
+const buildPhotoEstimateReply = (
+  problemAnalysis: ProblemAnalysis,
+  budgetEstimate: BudgetEstimate,
+  marketplaceSearch: MarketplaceSearch,
+  materialResearch: MaterialResearch
+) => {
+  const materialLines = materialResearch.items.slice(0, 4).map((item) =>
+    `- ${item.name}: ${formatPesoRange(item.low, item.high)}${item.quantity ? ` (${item.quantity})` : ""}`
+  );
+  const workerLines = marketplaceSearch.records.slice(0, 3).map((record, index) =>
+    `${index + 1}. ${record.providerName} - ${record.serviceType}, ${record.priceLabel}${record.location ? `, ${record.location}` : ""}`
+  );
+  const desiredFamilyLabel = formatServiceFamilyList(marketplaceSearch.desiredFamilies);
+  const workerHeading = marketplaceSearch.desiredFamilies.length > 0 && !marketplaceSearch.hasExactFamilyMatch
+    ? `Closest worker matches${desiredFamilyLabel ? ` (no exact ${desiredFamilyLabel} listing is active)` : ""}:`
+    : "Fit workers:";
+  const safety = problemAnalysis.safetyNotes.length > 0
+    ? `\n\nSafety note: ${problemAnalysis.safetyNotes[0]}`
+    : "";
+  const workerText = workerLines.length > 0
+    ? `\n\n${workerHeading}\n${workerLines.join("\n")}\n\nTap Chat with worker on a worker card to create the booking request.`
+    : "\n\nI could not find a matching active worker listing yet. Try Browse with a broader service type.";
+
+  return [
+    `From the photo, this looks like: ${problemAnalysis.problemTitle}.`,
+    problemAnalysis.problemSummary,
+    `Estimated materials: ${formatPesoRange(budgetEstimate.materialSubtotalLow, budgetEstimate.materialSubtotalHigh)}.`,
+    `Likely starting budget with listed worker rates: ${formatPesoRange(budgetEstimate.totalLow, budgetEstimate.totalHigh)}.`,
+    materialLines.length > 0 ? `\nMaterial search snapshot:\n${materialLines.join("\n")}` : "",
+    workerText,
+    safety,
+  ].filter(Boolean).join("\n");
+};
+
+const splitModelList = (value?: string | null) => (
+  String(value || "")
+    .split(/[,\s]+/)
+    .map((model) => model.trim())
+    .filter(Boolean)
+);
+
+const uniqueModels = (models: string[]) => {
+  const seen = new Set<string>();
+  return models.filter((model) => {
+    if (seen.has(model)) return false;
+    seen.add(model);
+    return true;
+  });
+};
+
+const getGroqModelList = ({
+  primaryEnvName,
+  fallbackEnvName,
+  defaultPrimary,
+  defaultFallbacks,
+}: {
+  primaryEnvName: string;
+  fallbackEnvName: string;
+  defaultPrimary: string;
+  defaultFallbacks: string[];
+}) => {
+  const configuredPrimary = Deno.env.get(primaryEnvName)?.trim() || defaultPrimary;
+  return uniqueModels([
+    configuredPrimary,
+    ...splitModelList(Deno.env.get(fallbackEnvName)),
+    ...defaultFallbacks,
+  ]);
+};
+
+const parseGroqErrorCode = (providerBody: string) => {
+  try {
+    const payload = JSON.parse(providerBody) as Record<string, unknown>;
+    const error = getObject(payload["error"]);
+    return getText(error["code"] || error["type"]);
+  } catch {
+    return "";
+  }
+};
+
+const isGroqFallbackError = (error: unknown): error is GroqProviderError => (
+  error instanceof GroqProviderError
+  && GROQ_RETRYABLE_STATUSES.has(error.status)
+  && error.code !== "blocked_api_access"
+);
+
+const callGroq = async (
+  apiKey: string,
+  body: Record<string, unknown>
+) => {
+  const model = getText(body["model"]);
+  const response = await fetch(GROQ_API_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const providerBody = await response.text();
+    throw new GroqProviderError({
+      status: response.status,
+      providerBody,
+      retryAfter: response.headers.get("retry-after"),
+      model,
+      code: parseGroqErrorCode(providerBody),
+    });
+  }
+
+  return await response.json() as Record<string, unknown>;
+};
+
+const callGroqWithModelFallback = async (
+  apiKey: string,
+  body: Record<string, unknown>,
+  models: string[],
+  label: string
+) => {
+  let lastError: unknown = null;
+
+  for (const [index, model] of models.entries()) {
+    try {
+      const payload = await callGroq(apiKey, { ...body, model });
+      return { payload, model };
+    } catch (error) {
+      lastError = error;
+      if (!isGroqFallbackError(error) || index === models.length - 1) {
+        throw error;
+      }
+
+      console.warn("giglink-chatbot groq model fallback", {
+        label,
+        failedModel: model,
+        nextModel: models[index + 1],
+        status: error.status,
+        retryAfter: error.retryAfter,
+        code: error.code || undefined,
+      });
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Groq request failed before any model returned.");
+};
+
+const getGroqChatModels = () => getGroqModelList({
+  primaryEnvName: "GROQ_CHATBOT_MODEL",
+  fallbackEnvName: "GROQ_CHATBOT_FALLBACK_MODELS",
+  defaultPrimary: DEFAULT_GROQ_MODEL,
+  defaultFallbacks: DEFAULT_GROQ_CHAT_FALLBACK_MODELS,
+});
+
+const getGroqVisionModels = () => getGroqModelList({
+  primaryEnvName: "GROQ_VISION_MODEL",
+  fallbackEnvName: "GROQ_VISION_FALLBACK_MODELS",
+  defaultPrimary: DEFAULT_GROQ_VISION_MODEL,
+  defaultFallbacks: DEFAULT_GROQ_VISION_FALLBACK_MODELS,
+});
+
+const getGroqWebSearchModels = () => getGroqModelList({
+  primaryEnvName: "GROQ_WEB_SEARCH_MODEL",
+  fallbackEnvName: "GROQ_WEB_SEARCH_FALLBACK_MODELS",
+  defaultPrimary: DEFAULT_GROQ_WEB_SEARCH_MODEL,
+  defaultFallbacks: DEFAULT_GROQ_WEB_SEARCH_FALLBACK_MODELS,
+});
+
+const getGroqMessageContent = (payload: Record<string, unknown>) => {
+  const choices = Array.isArray(payload["choices"]) ? payload["choices"] : [];
+  const firstChoice = getObject(choices[0]);
+  const message = getObject(firstChoice["message"]);
+  return getText(message["content"]);
+};
+
+const analyzeProblemImage = async (
+  groqApiKey: string,
+  imageAttachment: NormalizedAttachment,
+  latestUserMessage: string
+): Promise<ProblemAnalysis | null> => {
+  try {
+    const { payload } = await callGroqWithModelFallback(groqApiKey, {
+      messages: [
+        {
+          role: "system",
+          content: [
+            "You identify visible local-service problems from user-uploaded photos for GigLink.",
+            "Return JSON only with keys: problemTitle, problemSummary, likelyServiceTypes, materials, urgency, safetyNotes, confidence, searchQuery.",
+            "likelyServiceTypes should be service labels such as Plumber, Electrician, Technician, Cleaner, Carpenter, Appliance Repair, Painter, or General Repair.",
+            "materials must be an array of {name, quantity, searchTerm}. Use visible evidence and uncertainty. Do not infer identities or private details.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `${latestUserMessage}\nAnalyze the uploaded problem photo for repair/service triage and likely materials.`,
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageAttachment.dataUrl },
+            },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_completion_tokens: 650,
+      response_format: { type: "json_object" },
+    }, getGroqVisionModels(), "vision");
+
+    const content = getGroqMessageContent(payload);
+    return normalizeProblemAnalysis(parseJsonObject(content));
+  } catch (error) {
+    console.error("giglink-chatbot vision analysis error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+};
+
+const fetchMaterialResearch = async (
+  groqApiKey: string,
+  problemAnalysis: ProblemAnalysis,
+  latestUserMessage: string
+): Promise<MaterialResearch> => {
+  const materialHints = problemAnalysis.materials.length > 0
+    ? problemAnalysis.materials.map((item) => `${item.name} (${item.quantity}; search: ${item.searchTerm})`).join("; ")
+    : "common replacement materials visible or implied by the problem";
+
+  try {
+    const { payload } = await callGroqWithModelFallback(groqApiKey, {
+      messages: [
+        {
+          role: "system",
+          content: [
+            "Use web search to estimate current retail material prices in the Philippines for a local service repair.",
+            "Return JSON only with keys: summary, items, assumptions.",
+            "items must be an array of {name, quantity, unit, low, high, currency, sourceHint}.",
+            "Use PHP. Prefer current Philippine hardware, home improvement, or marketplace pricing. Do not include labor in material items.",
+          ].join(" "),
+        },
+        {
+          role: "user",
+          content: [
+            `User request: ${latestUserMessage}`,
+            `Photo triage: ${problemAnalysis.problemTitle} - ${problemAnalysis.problemSummary}`,
+            `Likely materials to price: ${materialHints}`,
+            `Search query: ${problemAnalysis.searchQuery || `${problemAnalysis.problemTitle} materials price Philippines`}`,
+          ].join("\n"),
+        },
+      ],
+      temperature: 0.1,
+      max_completion_tokens: 850,
+    }, getGroqWebSearchModels(), "material-web-search");
+
+    const content = getGroqMessageContent(payload);
+    return normalizeMaterialResearch(parseJsonObject(content), extractGroqSources(payload));
+  } catch (error) {
+    console.error("giglink-chatbot material search error", {
+      message: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      summary: "Material web search was unavailable.",
+      items: [],
+      assumptions: ["Ask the worker to confirm materials after inspecting the issue."],
+      sources: [],
+    };
+  }
+};
 
 const normalizeMarketplaceRecord = (row: Record<string, unknown>): MarketplaceRecord => {
   const seller = getRelatedObject(row["sellers"] || row["seller"]);
@@ -468,6 +1508,7 @@ const normalizeMarketplaceRecord = (row: Record<string, unknown>): MarketplaceRe
 
   return {
     id: getNumberOrNull(row["id"]) ?? getText(row["id"]) ?? "unknown",
+    sellerId: getText(row["seller_id"] || seller["user_id"]),
     title,
     providerName,
     serviceType,
@@ -479,15 +1520,25 @@ const normalizeMarketplaceRecord = (row: Record<string, unknown>): MarketplaceRe
     rateBasis,
     bookingMode,
     pricingModel: pricingModel || (isInquiry ? "inquiry" : "fixed"),
+    isVerified: Boolean(seller["is_verified"]),
+    verificationStatus: getText(seller["verification_status"]),
     rating,
     reviews,
     createdAt: getText(row["created_at"]),
     searchableText,
+    serviceFamilies: [],
+    matchQuality: "none",
     score: 0,
   };
 };
 
-const scoreMarketplaceRecord = (record: MarketplaceRecord, queryTerms: string[], priceLimit: number | null) => {
+const scoreMarketplaceRecord = (
+  record: MarketplaceRecord,
+  queryTerms: string[],
+  priceLimit: number | null,
+  desiredFamilies: string[],
+  matchQuality: MarketplaceFamilyMatch = getMarketplaceFamilyMatch(record, desiredFamilies)
+) => {
   let score = queryTerms.length === 0 ? 1 : 0;
 
   queryTerms.forEach((term) => {
@@ -504,6 +1555,14 @@ const scoreMarketplaceRecord = (record: MarketplaceRecord, queryTerms: string[],
     else if (record.amount !== null && record.amount > priceLimit) score -= 4;
     else score -= 1;
   }
+
+  if (matchQuality === "exact") score += 16;
+  else if (matchQuality === "fallback") score += 6;
+  else if (matchQuality === "mismatch") score -= 30;
+
+  if (record.isVerified || record.verificationStatus === "approved") score += 1;
+  if ((record.rating || 0) >= 4.5) score += 1;
+  if (record.reviews > 0) score += 0.5;
 
   return score;
 };
@@ -727,12 +1786,15 @@ const fetchMarketplaceSearch = async (
     currentView === "browse-services"
     || isPriceIntent
     || hasAnyTerm(latestUserMessage, marketplaceIntentTerms);
+  const desiredFamilies = getDesiredServiceFamilies(latestUserMessage);
 
   const baseSearch: MarketplaceSearch = {
     isMarketplaceIntent,
     isPriceIntent,
     records: [],
     queryTerms: getSearchTerms(latestUserMessage),
+    desiredFamilies,
+    hasExactFamilyMatch: false,
     totalFetched: 0,
   };
 
@@ -773,15 +1835,34 @@ const fetchMarketplaceSearch = async (
   const priceLimit = extractPriceLimit(latestUserMessage);
   const normalizedRecords = ((data || []) as Record<string, unknown>[])
     .map(normalizeMarketplaceRecord)
-    .map((record) => ({
-      ...record,
-      score: scoreMarketplaceRecord(record, baseSearch.queryTerms, priceLimit),
-    }));
-  const hasSearchFilters = baseSearch.queryTerms.length > 0 || priceLimit !== null;
+    .map((record) => {
+      const recordWithFamilies = {
+        ...record,
+        serviceFamilies: uniqueStrings(getServiceFamiliesForText(record.searchableText, "recordTerms")),
+      };
+      const matchQuality = getMarketplaceFamilyMatch(recordWithFamilies, desiredFamilies);
+
+      return {
+        ...recordWithFamilies,
+        matchQuality,
+        score: scoreMarketplaceRecord(recordWithFamilies, baseSearch.queryTerms, priceLimit, desiredFamilies, matchQuality),
+      };
+    });
+  const hasExactFamilyMatch = desiredFamilies.length > 0
+    && normalizedRecords.some((record) => record.matchQuality === "exact" && record.score > 0);
+  const hasSearchFilters = baseSearch.queryTerms.length > 0 || priceLimit !== null || desiredFamilies.length > 0;
   const matches = normalizedRecords
-    .filter((record) => !hasSearchFilters || record.score > 0)
+    .filter((record) => {
+      if (desiredFamilies.length > 0 && record.matchQuality === "mismatch") {
+        return false;
+      }
+      return !hasSearchFilters || record.score > 0;
+    })
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
+      if (serviceFamilyRank[b.matchQuality] !== serviceFamilyRank[a.matchQuality]) {
+        return serviceFamilyRank[b.matchQuality] - serviceFamilyRank[a.matchQuality];
+      }
       if (isPriceIntent && a.amount !== null && b.amount !== null) return a.amount - b.amount;
       if (isPriceIntent && a.amount !== null) return -1;
       if (isPriceIntent && b.amount !== null) return 1;
@@ -792,6 +1873,7 @@ const fetchMarketplaceSearch = async (
   return {
     ...baseSearch,
     records: matches,
+    hasExactFamilyMatch,
     totalFetched: normalizedRecords.length,
   };
 };
@@ -813,10 +1895,18 @@ const buildMarketplacePromptContext = (marketplaceSearch: MarketplaceSearch) => 
     ].join("\n");
   }
 
+  const desiredFamilyLabel = formatServiceFamilyList(marketplaceSearch.desiredFamilies);
+  const matchGuidance = marketplaceSearch.desiredFamilies.length > 0
+    ? marketplaceSearch.hasExactFamilyMatch
+      ? `Detected service domain: ${desiredFamilyLabel}. Exact domain matches are available; prefer exact matches before fallback matches.`
+      : `Detected service domain: ${desiredFamilyLabel}. No exact active listing was found; label returned workers as closest fallback matches instead of specialist matches.`
+    : "No specific service domain was detected; rank by the user's search terms, price, rating, and recency.";
+
   return [
+    matchGuidance,
     "Marketplace database lookup results from active services. Use these exact records for provider and price answers:",
     ...marketplaceSearch.records.map((record, index) => (
-      `${index + 1}. service_id=${record.id}; service="${record.title}"; provider="${record.providerName}"; type="${record.serviceType}"; location="${record.location || "Not specified"}"; price="${record.priceLabel}"; booking="${record.bookingMode}"; rating="${record.rating ?? "New"}"; reviews=${record.reviews}; description="${shorten(record.description, 120)}"`
+      `${index + 1}. service_id=${record.id}; service="${record.title}"; provider="${record.providerName}"; type="${record.serviceType}"; match="${record.matchQuality}"; location="${record.location || "Not specified"}"; price="${record.priceLabel}"; booking="${record.bookingMode}"; rating="${record.rating ?? "New"}"; reviews=${record.reviews}; description="${shorten(record.description, 120)}"`
     )),
   ].join("\n");
 };
@@ -874,9 +1964,13 @@ const buildDatabaseFallbackReply = (marketplaceSearch: MarketplaceSearch, bookin
     return "I checked the active GigLink listings, but I could not find a matching service price for that search. Try a broader service name, location, or budget.";
   }
 
-  const intro = marketplaceSearch.isPriceIntent
-    ? "I found these current prices from active GigLink listings:"
-    : "I found these active GigLink services:";
+  const desiredFamilyLabel = formatServiceFamilyList(marketplaceSearch.desiredFamilies);
+  const isFallbackOnly = marketplaceSearch.desiredFamilies.length > 0 && !marketplaceSearch.hasExactFamilyMatch;
+  const intro = isFallbackOnly
+    ? `I did not find an exact active ${desiredFamilyLabel || "specialist"} listing, but these are the closest current GigLink matches:`
+    : marketplaceSearch.isPriceIntent
+      ? "I found these current prices from active GigLink listings:"
+      : "I found these active GigLink services:";
   const lines = marketplaceSearch.records.slice(0, 5).map((record, index) => {
     const location = record.location ? ` in ${record.location}` : "";
     return `${index + 1}. ${record.title} by ${record.providerName}${location}: ${record.priceLabel}`;
@@ -888,6 +1982,7 @@ const buildDatabaseFallbackReply = (marketplaceSearch: MarketplaceSearch, bookin
 const buildMatchesPayload = (marketplaceSearch: MarketplaceSearch) =>
   marketplaceSearch.records.map((record) => ({
     id: record.id,
+    sellerId: record.sellerId,
     title: record.title,
     providerName: record.providerName,
     serviceType: record.serviceType,
@@ -896,6 +1991,11 @@ const buildMatchesPayload = (marketplaceSearch: MarketplaceSearch) =>
     amount: record.amount,
     currency: record.currency,
     rateBasis: record.rateBasis,
+    bookingMode: record.bookingMode,
+    isVerified: record.isVerified,
+    verificationStatus: record.verificationStatus,
+    serviceFamilies: record.serviceFamilies,
+    matchQuality: record.matchQuality,
   }));
 
 const buildSystemPrompt = (
@@ -926,6 +2026,7 @@ const buildSystemPrompt = (
     "If the database lookup has no matching service records, say that clearly. Do not estimate, make up price ranges, or invent providers.",
     "If private booking lookup is unavailable, explain that the Bookings screen has the latest account-specific status.",
     "For price searches, answer with a compact list that includes service, provider, price basis, and location when available.",
+    "If the user asks for a photo estimate but no image was attached, ask them to upload the problem photo and add any location or size details they know.",
     `Current app view: ${currentView}.`,
     `Current screen hint: ${viewGuidance[currentView] || "Use the current view and role to choose the next best navigation step."}`,
     `User login state: ${isLoggedIn ? "logged in" : "guest"}.`,
@@ -961,8 +2062,10 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "A message is required." }, 400);
     }
 
+    const attachments = normalizeRequestAttachments(body);
+    const imageAttachment = attachments.find((attachment) => attachment.type === "image") || null;
     const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "";
-    const deterministicReply = buildDeterministicReply(latestUserMessage, body.context);
+    const deterministicReply = imageAttachment ? "" : buildDeterministicReply(latestUserMessage, body.context);
     if (deterministicReply) {
       return jsonResponse({
         message: deterministicReply,
@@ -971,10 +2074,38 @@ serve(async (req: Request) => {
       });
     }
 
+    const groqApiKey = Deno.env.get("GROQ_API_KEY")?.trim();
+
+    if (imageAttachment) {
+      if (!groqApiKey) {
+        return jsonResponse({ error: "The photo estimator is not configured yet." }, 503);
+      }
+
+      const problemAnalysis = await analyzeProblemImage(groqApiKey, imageAttachment, latestUserMessage);
+      if (!problemAnalysis) {
+        return jsonResponse({ error: "The assistant could not analyze that photo right now." }, 502);
+      }
+
+      const marketplaceSearch = await fetchMarketplaceSearch(
+        req,
+        buildProblemSearchText(latestUserMessage, problemAnalysis),
+        body.context
+      );
+      const materialResearch = await fetchMaterialResearch(groqApiKey, problemAnalysis, latestUserMessage);
+      const budgetEstimate = buildBudgetEstimate(problemAnalysis, materialResearch, marketplaceSearch);
+
+      return jsonResponse({
+        message: buildPhotoEstimateReply(problemAnalysis, budgetEstimate, marketplaceSearch, materialResearch),
+        model: "giglink-photo-budget-estimator",
+        matches: buildMatchesPayload(marketplaceSearch),
+        diagnosis: problemAnalysis,
+        estimate: budgetEstimate,
+        sources: materialResearch.sources,
+      });
+    }
+
     const marketplaceSearch = await fetchMarketplaceSearch(req, latestUserMessage, body.context);
     const bookingLookup = await fetchBookingLookup(req, latestUserMessage, body.context);
-    const groqApiKey = Deno.env.get("GROQ_API_KEY")?.trim();
-    const groqModel = Deno.env.get("GROQ_CHATBOT_MODEL")?.trim() || DEFAULT_GROQ_MODEL;
     if (!groqApiKey) {
       const fallbackReply = buildDatabaseFallbackReply(marketplaceSearch, bookingLookup);
       if (fallbackReply) {
@@ -989,28 +2120,28 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "The assistant is not configured yet." }, 503);
     }
 
-    const response = await fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${groqApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: groqModel,
+    let groqPayload: Record<string, unknown>;
+    let usedGroqModel = DEFAULT_GROQ_MODEL;
+
+    try {
+      const result = await callGroqWithModelFallback(groqApiKey, {
         messages: [
           { role: "system", content: buildSystemPrompt(body.context, marketplaceSearch, bookingLookup) },
           ...messages,
         ],
         temperature: 0.35,
         max_completion_tokens: 420,
-      }),
-    });
+      }, getGroqChatModels(), "chat");
 
-    if (!response.ok) {
-      const providerBody = await response.text();
+      groqPayload = result.payload;
+      usedGroqModel = result.model;
+    } catch (error) {
       console.error("giglink-chatbot provider error", {
-        status: response.status,
-        body: providerBody.slice(0, 500),
+        status: error instanceof GroqProviderError ? error.status : undefined,
+        model: error instanceof GroqProviderError ? error.model : undefined,
+        retryAfter: error instanceof GroqProviderError ? error.retryAfter : undefined,
+        code: error instanceof GroqProviderError ? error.code || undefined : undefined,
+        body: error instanceof GroqProviderError ? error.providerBody.slice(0, 500) : String(error).slice(0, 500),
       });
 
       const fallbackReply = buildDatabaseFallbackReply(marketplaceSearch, bookingLookup);
@@ -1025,10 +2156,7 @@ serve(async (req: Request) => {
       return jsonResponse({ error: "The assistant could not answer right now." }, 502);
     }
 
-    const payload = await response.json();
-    const content = typeof payload?.choices?.[0]?.message?.content === "string"
-      ? payload.choices[0].message.content.trim()
-      : "";
+    const content = getGroqMessageContent(groqPayload).trim();
 
     if (!content) {
       return jsonResponse({ error: "The assistant returned an empty response." }, 502);
@@ -1036,7 +2164,7 @@ serve(async (req: Request) => {
 
     return jsonResponse({
       message: content.slice(0, 2000),
-      model: payload?.model || groqModel,
+      model: getText(groqPayload["model"]) || usedGroqModel,
       matches: buildMatchesPayload(marketplaceSearch),
     });
   } catch (error) {

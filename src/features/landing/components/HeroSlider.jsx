@@ -125,10 +125,10 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
     },
     sliderCtaButton: (variant = 'primary') => ({
       background: variant === 'primary'
-        ? (ctaHovered ? '#1d4ed8' : '#2563eb')
+        ? (ctaHovered ? 'var(--gl-blue-2)' : 'var(--gl-blue)')
         : 'rgba(255, 255, 255, 0.1)',
       color: '#ffffff',
-      border: variant === 'primary' ? '1px solid #2563eb' : '1px solid rgba(255, 255, 255, 0.36)',
+      border: variant === 'primary' ? '1px solid var(--gl-blue)' : '1px solid rgba(255, 255, 255, 0.36)',
       minHeight: '46px',
       padding: '0 16px',
       borderRadius: '8px',
@@ -142,7 +142,7 @@ function HeroSlider({ onGetStarted, onBrowseServices }) {
       width: isSmallMobile ? '100%' : 'auto',
       transition: 'transform 0.2s ease, box-shadow 0.25s ease, background 0.2s ease, border-color 0.2s ease',
       boxShadow: ctaHovered
-        ? '0 14px 30px rgba(29, 78, 216, 0.36)'
+        ? '0 14px 30px color-mix(in srgb, var(--gl-blue) 36%, transparent)'
         : '0 10px 24px rgba(15, 23, 42, 0.28)',
       transform: ctaHovered && variant === 'primary' ? 'translateY(-2px)' : 'translateY(0)',
     }),

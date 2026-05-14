@@ -123,7 +123,7 @@ const GOAL_CARDS = [
     title: 'Academic Tutors',
     description: 'Find patient tutors for school subjects, exam prep, review sessions, and recurring study support.',
     tag: 'Learning',
-    color: '#2563EB',
+    color: 'var(--gl-blue)',
   },
   {
     id: 2,
@@ -131,7 +131,7 @@ const GOAL_CARDS = [
     title: 'Home Repair',
     description: 'Book practical help for repairs, troubleshooting, installations, and maintenance work.',
     tag: 'Home Services',
-    color: '#059669',
+    color: 'var(--gl-green)',
   },
   {
     id: 3,
@@ -139,7 +139,7 @@ const GOAL_CARDS = [
     title: 'Cleaning Services',
     description: 'Compare cleaners by location, rates, booking type, and availability before starting a chat.',
     tag: 'Household',
-    color: '#D97706',
+    color: 'var(--gl-amber)',
   },
   {
     id: 4,
@@ -147,7 +147,7 @@ const GOAL_CARDS = [
     title: 'Creative Design',
     description: 'Hire freelancers for posters, social posts, layouts, branding assets, and quick creative work.',
     tag: 'Creative',
-    color: '#2563EB',
+    color: 'var(--gl-blue)',
   },
   {
     id: 5,
@@ -155,7 +155,7 @@ const GOAL_CARDS = [
     title: 'Beauty & Wellness',
     description: 'Discover rated local providers for care, grooming, wellness, and appointment-based services.',
     tag: 'Personal Care',
-    color: '#BE185D',
+    color: 'var(--gl-blue)',
   },
   {
     id: 6,
@@ -163,7 +163,7 @@ const GOAL_CARDS = [
     title: 'Event Support',
     description: 'Coordinate reliable help for small events, setup tasks, photo support, and short-term gigs.',
     tag: 'Events',
-    color: '#475569',
+    color: 'var(--gl-text-3)',
   },
 ];
 
@@ -227,7 +227,7 @@ function GoalCard({ icon, title, description, tag, color, onSet }) {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'rgba(37, 99, 235, 0.08)',
+      background: `color-mix(in srgb, ${color} 12%, var(--gl-surface))`,
       color,
       marginBottom: '4px',
     },
@@ -320,7 +320,7 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
       content: '""',
       position: 'absolute',
       inset: 0,
-      background: 'linear-gradient(180deg, rgba(37, 99, 235, 0.04), transparent 320px)',
+      background: 'linear-gradient(180deg, color-mix(in srgb, var(--gl-blue) 5%, transparent), transparent 320px)',
       pointerEvents: 'none',
     },
     goalsSectionHeader: {
@@ -335,10 +335,10 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
       fontWeight: 500,
       letterSpacing: 0,
       textTransform: 'uppercase',
-      color: '#2563eb',
+      color: 'var(--gl-blue)',
       marginBottom: '16px',
       padding: '4px 14px',
-      border: '1px solid rgba(37, 99, 235, 0.25)',
+      border: '1px solid var(--gl-accent-border)',
       borderRadius: '8px',
     },
     goalsSectionTitle: {
@@ -352,7 +352,7 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
     },
     goalsSectionTitleEm: {
       fontStyle: 'italic',
-      color: '#2563eb',
+      color: 'var(--gl-blue)',
     },
     goalsSectionSubtitle: {
       fontFamily: 'var(--gl-font)',
@@ -432,7 +432,7 @@ function GoalsSection({ onLoginClick, isMobile, isTablet }) {
       justifyContent: 'center',
       width: '20px',
       height: '20px',
-      background: '#2563eb',
+      background: 'var(--gl-blue)',
       color: '#ffffff',
       borderRadius: '50%',
       fontSize: '11px',
@@ -577,7 +577,7 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
       width: '100%',
       minHeight: '100vh',
       background:
-        'radial-gradient(120% 80% at 50% -20%, rgba(37, 99, 235, 0.08), transparent 60%), var(--bg-page)',
+        'radial-gradient(120% 80% at 50% -20%, color-mix(in srgb, var(--gl-blue) 8%, transparent), transparent 60%), var(--bg-page)',
     },
     landingMain: {
       width: '100%',
@@ -603,9 +603,9 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
       minHeight: '28px',
       padding: '0 10px',
       borderRadius: '8px',
-      border: '1px solid #cbd5e1',
-      color: '#334155',
-      background: '#f8fafc',
+      border: '1px solid var(--gl-border)',
+      color: 'var(--gl-text-2)',
+      background: 'var(--gl-surface-2)',
       fontSize: '11px',
       letterSpacing: 0,
       textTransform: 'uppercase',
@@ -614,12 +614,12 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
     landingStatsHeaderH2: {
       margin: '10px 0 6px',
       fontSize: 'clamp(1.7rem, 3vw, 2.3rem)',
-      color: '#0f172a',
+      color: 'var(--gl-text)',
       fontWeight: 800,
     },
     landingStatsHeaderP: {
       margin: 0,
-      color: '#64748b',
+      color: 'var(--gl-text-3)',
       fontSize: '1.08rem',
     },
     landingStatsGrid: {
@@ -630,8 +630,8 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
     landingStatCard: {
       border: '1px solid var(--border-default)',
       borderRadius: '8px',
-      background: '#ffffff',
-      boxShadow: '0 4px 12px rgba(17, 24, 39, 0.06)',
+      background: 'var(--gl-surface)',
+      boxShadow: 'var(--gl-shadow-soft)',
       padding: '16px 18px',
       textAlign: 'center',
     },
@@ -640,12 +640,12 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
       fontSize: 'clamp(1.25rem, 2vw, 1.7rem)',
       fontWeight: 800,
       letterSpacing: 0,
-      color: '#0f172a',
+      color: 'var(--gl-text)',
     },
     landingStatLabel: {
       margin: '4px 0 0',
       fontSize: '1rem',
-      color: '#475569',
+      color: 'var(--gl-text-2)',
     },
     landingLinksSection: {
       maxWidth: '1320px',
@@ -673,7 +673,7 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
         gap: '8px',
       },
       a: (isHovered) => ({
-        color: isHovered ? '#2563eb' : 'var(--text-secondary)',
+        color: isHovered ? 'var(--gl-blue)' : 'var(--text-secondary)',
         textDecoration: 'none',
         fontSize: '1.08rem',
         lineHeight: 1.5,
@@ -707,11 +707,11 @@ function LandingPage({ appTheme = 'light', onLogin, onResendVerification, onForg
       width: '38px',
       height: '38px',
       borderRadius: '8px',
-      border: socialLinkHovered === id ? '1px solid #111827' : '1px solid #d1d5db',
+      border: socialLinkHovered === id ? '1px solid var(--gl-blue)' : '1px solid var(--gl-border)',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#111827',
+      color: socialLinkHovered === id ? 'var(--gl-blue)' : 'var(--gl-text)',
       textDecoration: 'none',
       transition: 'transform 0.18s ease, border-color 0.2s ease, color 0.2s ease',
       transform: socialLinkHovered === id ? 'translateY(-2px)' : 'translateY(0)',

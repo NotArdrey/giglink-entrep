@@ -12,7 +12,7 @@ import {
   useRatingController,
 } from '../hooks';
 
-const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenChatPage, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
+const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, selectedChatBookingId = null, searchQuery, onSearchChange, onGoHome, onLogout, onOpenSellerSetup, onOpenMyWork, sellerProfile, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenMyBookings, onOpenChatPage, onOpenDashboard, onOpenBrowseServices, onOpenAdminDashboard }) => {
   // ========================================================================
   // CONTROLLER HOOKS INITIALIZATION
   // ========================================================================
@@ -33,8 +33,17 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     ]);
   }, []);
 
+  const normalizedRole = String(sellerProfile?.role || '').trim().toLowerCase();
+  const isWorkerProfile = normalizedRole === 'worker'
+    || (!normalizedRole && Boolean(sellerProfile?.isWorker));
+  const isChatRoute = currentView === 'chat';
+  const shouldLoadSellerChats = isChatRoute && isWorkerProfile;
+
   // Main booking list controller
-  const bookingListCtrl = useBookingListController();
+  const bookingListCtrl = useBookingListController([], {
+    listRole: shouldLoadSellerChats ? 'seller' : 'buyer',
+    sellerId: shouldLoadSellerChats ? sellerProfile?.userId : null,
+  });
 
   // Payment controller
   const paymentCtrl = usePaymentController(
@@ -60,8 +69,8 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   // ========================================================================
   
   // View orchestration state
-  const [selectedBookingId, setSelectedBookingId] = useState(1);
-  const [uiState, setUiState] = useState('chat');
+  const [selectedBookingId, setSelectedBookingId] = useState(selectedChatBookingId || null);
+  const [uiState, setUiState] = useState(() => (isChatRoute ? 'chat' : 'list'));
 
   const [hoveredBackToBookings, setHoveredBackToBookings] = useState(false);
 
@@ -93,11 +102,25 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   // EVENT HANDLERS - Delegate to Controllers
   // ========================================================================
 
+  useEffect(() => {
+    setUiState((prevState) => {
+      if (isChatRoute) return 'chat';
+      return prevState === 'chat' ? 'list' : prevState;
+    });
+  }, [isChatRoute]);
+
+  useEffect(() => {
+    if (!selectedChatBookingId) return;
+    setSelectedBookingId(selectedChatBookingId);
+    setUiState('chat');
+  }, [selectedChatBookingId]);
+
   // Chat navigation
   const handleOpenChat = useCallback((bookingId) => {
     setSelectedBookingId(bookingId);
     setUiState('chat');
-  }, []);
+    onOpenChatPage?.(bookingId);
+  }, [onOpenChatPage]);
 
   // Slot selection
   const handleOpenSlotSelection = useCallback(() => {
@@ -199,29 +222,47 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
   // Navigation
   const handleBackToList = useCallback(() => {
     setSelectedBookingId(null);
-    setUiState('chat');
-  }, []);
+    setUiState(isChatRoute ? 'chat' : 'list');
+  }, [isChatRoute]);
 
   const handleNewInquiry = useCallback(() => {
     setSelectedBookingId(null);
-    setUiState('chat');
-  }, []);
+    setUiState(isChatRoute ? 'chat' : 'list');
+  }, [isChatRoute]);
 
   // ========================================================================
   // COMPUTED VALUES FOR RENDERING
   // ========================================================================
 
   useEffect(() => {
-    if (selectedBookingId && bookingListCtrl.bookings.some((booking) => booking.id === selectedBookingId)) return;
-    setSelectedBookingId(bookingListCtrl.bookings[0]?.id || null);
-  }, [bookingListCtrl.bookings, selectedBookingId]);
+    const hasSelectedBooking = selectedBookingId
+      && bookingListCtrl.bookings.some((booking) => String(booking.id) === String(selectedBookingId));
 
-  const currentBooking = bookingListCtrl.bookings.find((b) => b.id === selectedBookingId);
+    if (hasSelectedBooking) return;
+    if (selectedChatBookingId && isChatRoute && bookingListCtrl.bookings.length === 0) return;
+
+    setSelectedBookingId(bookingListCtrl.bookings[0]?.id || null);
+  }, [bookingListCtrl.bookings, isChatRoute, selectedBookingId, selectedChatBookingId]);
+
+  const currentBooking = bookingListCtrl.bookings.find((b) => String(b.id) === String(selectedBookingId));
   const themeTokens = getThemeTokens(appTheme);
+  const statusFilters = [
+    { key: 'all', label: 'All' },
+    { key: 'active', label: 'Active' },
+    { key: 'completed', label: 'Completed' },
+  ];
+  const displayFilters = [
+    { key: 'all', label: 'All bookings' },
+    { key: 'cash-approvals', label: 'Cash' },
+    { key: 'refunds', label: 'Refunds' },
+    { key: 'cancelled', label: 'Cancelled' },
+  ];
 
   // ========================================================================
   // STYLES (UNCHANGED - Moved to end for clarity)
   // ========================================================================
+
+  const contentGutter = isMobile ? '14px' : '24px';
 
   const styles = {
     myBookings: {
@@ -233,15 +274,15 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
       overflowX: 'hidden',
       color: themeTokens.textPrimary,
     },
-    bookingsHeader: { width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto 24px', textAlign: 'center', padding: isMobile ? '20px 14px 0' : '32px 0', boxSizing: 'border-box' },
+    bookingsHeader: { width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto 24px', textAlign: 'center', padding: isMobile ? '20px 14px 0' : '32px 24px 0', boxSizing: 'border-box' },
     title: { fontSize: isMobile ? '24px' : '32px', fontWeight: 700, color: themeTokens.textPrimary, margin: '0 0 8px 0' },
     subtitle: { fontSize: '14px', color: themeTokens.textSecondary, margin: 0 },
-    bookingsFilters: { width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto 16px', padding: isMobile ? '0 14px' : '0', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', boxSizing: 'border-box' },
+    bookingsFilters: { width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto 16px', padding: `0 ${contentGutter}`, display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', boxSizing: 'border-box' },
     filterBtn: { padding: '8px 14px', borderRadius: '999px', border: `1px solid ${themeTokens.border}`, background: themeTokens.surface, color: themeTokens.textPrimary, fontSize: '12px', fontWeight: 600, cursor: 'pointer', textAlign: 'center' },
     filterBtnActive: { background: themeTokens.accent, color: '#fff', borderColor: themeTokens.accent },
-    displayFilters: { width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto 14px', padding: isMobile ? '0 14px' : '0', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', boxSizing: 'border-box' },
+    displayFilters: { width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto 14px', padding: `0 ${contentGutter}`, display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', boxSizing: 'border-box' },
     displayHint: { width: '100%', margin: '2px 0 0', fontSize: '12px', color: themeTokens.textSecondary, textAlign: isMobile ? 'center' : 'left' },
-    bookingsList: { display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto', padding: isMobile ? '0 14px 16px' : '0 0 20px', alignItems: 'stretch', boxSizing: 'border-box' },
+    bookingsList: { display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: isMobile ? '720px' : '1200px', margin: '0 auto', padding: `0 ${contentGutter} ${isMobile ? '16px' : '24px'}`, alignItems: 'stretch', boxSizing: 'border-box' },
     bookingCard: { background: themeTokens.surface, borderRadius: '12px', boxShadow: `0 2px 8px ${appTheme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.08)'}`, padding: isMobile ? '14px' : '20px', display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', borderLeft: `4px solid ${themeTokens.success}`, width: '100%', marginLeft: 'auto', marginRight: 'auto', boxSizing: 'border-box' },
     bookingCardHover: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', transform: 'translateY(-2px)' },
     bookingInfo: { flex: 1 },
@@ -250,7 +291,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     description: { fontSize: '14px', color: themeTokens.textSecondary, margin: '0 0 12px 0', lineHeight: 1.5, textAlign: isMobile ? 'center' : 'left' },
     bookingMeta: { display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '12px', color: themeTokens.textSecondary, alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start' },
     requestDate: { display: 'inline-block' },
-    billingBadge: { display: 'inline-block', padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: `${appTheme === 'dark' ? '#1e3a8a' : '#dbeafe'}`, color: `${appTheme === 'dark' ? '#93c5fd' : '#1e3a8a'}` },
+    billingBadge: { display: 'inline-block', padding: '4px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, background: themeTokens.accentSoft, color: themeTokens.accent },
     nextChargeDate: { fontSize: '12px', color: themeTokens.accent, fontWeight: 600 },
     statusBadge: { display: 'inline-block', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' },
     bookingRating: { color: `${appTheme === 'dark' ? '#fed7aa' : '#7c2d12'}`, fontWeight: 600 },
@@ -276,11 +317,11 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     transactionIdInline: { padding: '6px 10px', borderRadius: '999px', background: `${appTheme === 'dark' ? '#0f766e' : '#ecfeff'}`, border: `1px solid ${appTheme === 'dark' ? '#14b8a6' : '#99f6e4'}`, color: `${appTheme === 'dark' ? '#a7f3d0' : '#0f766e'}`, fontSize: '12px', fontFamily: "'Courier New', monospace", fontWeight: 700 },
     bookingActionRow: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start', width: '100%' },
     openChatBtn: { padding: '10px 16px', background: themeTokens.success, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease', transform: 'scale(1)' },
-    openChatBtnHover: { background: `${appTheme === 'dark' ? '#059669' : '#229954'}`, transform: 'scale(1.02)' },
+    openChatBtnHover: { background: '#059669', transform: 'scale(1.02)' },
     rateBtn: { padding: '10px 18px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' },
     rateBtnHover: { background: '#d97706' },
     payGcashBtn: { padding: '10px 16px', background: themeTokens.accent, color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s ease' },
-    payGcashBtnHover: { background: `${appTheme === 'dark' ? '#1e40af' : '#1d4ed8'}` },
+    payGcashBtnHover: { background: themeTokens.accentHover },
     loadingCard: { background: themeTokens.surface, borderRadius: '12px', boxShadow: `0 2px 8px ${appTheme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.06)'}`, padding: '20px', border: `1px solid ${themeTokens.border}`, display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', marginLeft: 'auto', marginRight: 'auto', boxSizing: 'border-box' },
     loadingLine: { height: '11px', borderRadius: '999px', background: `${appTheme === 'dark' ? '#334155' : '#e2e8f0'}` },
     emptyState: { textAlign: 'center', padding: '60px 20px', color: themeTokens.textSecondary, width: '100%', marginLeft: 'auto', marginRight: 'auto', boxSizing: 'border-box' },
@@ -314,7 +355,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     proofFileName: { margin: '2px 0 6px', fontSize: '12px', color: themeTokens.textSecondary },
     referenceNumberGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
     referenceInput: { padding: '12px 14px', fontSize: '15px', border: `1px solid ${themeTokens.border}`, borderRadius: '6px', background: themeTokens.surface, fontFamily: 'inherit', transition: 'border-color 0.2s, box-shadow 0.2s', minHeight: '48px', width: '100%', boxSizing: 'border-box', outline: 'none', color: themeTokens.textPrimary },
-    referenceInputFocused: { borderColor: themeTokens.accent, boxShadow: `0 0 0 3px ${appTheme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)'}` },
+    referenceInputFocused: { borderColor: themeTokens.accent, boxShadow: `0 0 0 3px ${themeTokens.accentRing}` },
     errorTextInline: { margin: 0, color: themeTokens.danger, fontSize: '13px', fontWeight: 600 },
     paymentStatusNotice: { position: 'fixed', right: isMobile ? '12px' : '16px', left: isMobile ? '12px' : 'auto', bottom: '16px', background: themeTokens.accent, color: '#fff', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', fontWeight: 600, boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)', zIndex: 1400 },
     cashModalHeader: { marginBottom: '10px' },
@@ -327,7 +368,7 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     cashAmountInput: { padding: '12px 14px', fontSize: '15px', border: `1px solid ${appTheme === 'dark' ? '#ea580c' : '#fdba74'}`, borderRadius: '6px', background: themeTokens.surface, fontFamily: 'inherit', transition: 'border-color 0.2s, box-shadow 0.2s', minHeight: '48px', width: '100%', boxSizing: 'border-box', outline: 'none', color: themeTokens.textPrimary },
     cashAmountInputFocused: { borderColor: '#f97316', boxShadow: `0 0 0 3px ${appTheme === 'dark' ? 'rgba(249, 115, 22, 0.3)' : 'rgba(249, 115, 22, 0.15)'}` },
     cashReviewNotice: { margin: 0, borderRadius: '6px', padding: '9px 10px', fontSize: '13px', fontWeight: 600 },
-    cashReviewPending: { background: `${appTheme === 'dark' ? '#1e3a8a' : '#eff6ff'}`, color: `${appTheme === 'dark' ? '#93c5fd' : '#1d4ed8'}`, border: `1px solid ${appTheme === 'dark' ? '#1e40af' : '#bfdbfe'}` },
+    cashReviewPending: { background: themeTokens.accentSoft, color: themeTokens.accent, border: `1px solid ${themeTokens.accentBorder}` },
     cashReviewApproved: { background: `${appTheme === 'dark' ? '#064e3b' : '#ecfdf5'}`, color: `${appTheme === 'dark' ? '#86efac' : '#047857'}`, border: `1px solid ${appTheme === 'dark' ? '#047857' : '#a7f3d0'}` },
     cashReviewDenied: { background: `${appTheme === 'dark' ? '#7f1d1d' : '#fef2f2'}`, color: `${appTheme === 'dark' ? '#fca5a5' : '#b91c1c'}`, border: `1px solid ${appTheme === 'dark' ? '#991b1b' : '#fecaca'}` },
     transactionModalValue: { fontSize: '14px', color: themeTokens.textPrimary, fontWeight: 700, fontFamily: "'Courier New', monospace" },
@@ -348,6 +389,97 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
     backToBookingsHover: { background: `${appTheme === 'dark' ? '#059669' : '#229954'}` },
     confirmationNote: { fontSize: '12px', color: themeTokens.textSecondary, margin: 0, lineHeight: 1.5 },
   };
+
+  const renderBookingsList = () => (
+    <>
+      <header style={styles.bookingsHeader}>
+        <h1 style={styles.title}>My Bookings</h1>
+        <p style={styles.subtitle}>Track your scheduled services, payments, refunds, and conversations.</p>
+      </header>
+
+      <div style={styles.bookingsFilters} aria-label="Booking status filters">
+        {statusFilters.map((filter) => (
+          <button
+            key={filter.key}
+            type="button"
+            style={{
+              ...styles.filterBtn,
+              ...(bookingListCtrl.activeFilter === filter.key ? styles.filterBtnActive : {}),
+            }}
+            onClick={() => bookingListCtrl.setActiveFilter(filter.key)}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={styles.displayFilters} aria-label="Booking type filters">
+        {displayFilters.map((filter) => (
+          <button
+            key={filter.key}
+            type="button"
+            style={{
+              ...styles.filterBtn,
+              ...(bookingListCtrl.displayFilter === filter.key ? styles.filterBtnActive : {}),
+            }}
+            onClick={() => bookingListCtrl.setDisplayFilter(filter.key)}
+          >
+            {filter.label}
+          </button>
+        ))}
+        <p style={styles.displayHint}>
+          {bookingListCtrl.filteredBookings.length} booking{bookingListCtrl.filteredBookings.length === 1 ? '' : 's'} shown
+        </p>
+      </div>
+
+      {bookingListCtrl.bookings.length === 0 ? (
+        <div style={styles.emptyState}>
+          <h2 style={{ margin: '0 0 8px', color: themeTokens.textPrimary }}>No bookings yet</h2>
+          <p style={{ margin: 0 }}>Bookings you create from the marketplace will appear here.</p>
+        </div>
+      ) : bookingListCtrl.filteredBookings.length === 0 ? (
+        <div style={styles.emptyState}>
+          <h2 style={{ margin: '0 0 8px', color: themeTokens.textPrimary }}>No matching bookings</h2>
+          <p style={{ margin: 0 }}>Try another filter to see the rest of your bookings.</p>
+        </div>
+      ) : (
+        <section style={styles.bookingsList} aria-label="Bookings list">
+          {bookingListCtrl.filteredBookings.map((booking) => (
+            <article key={booking.id} style={styles.bookingCard}>
+              <div style={styles.bookingInfo}>
+                <h2 style={styles.workerName}>{booking.workerName}</h2>
+                <p style={styles.serviceType}>{booking.serviceType}</p>
+                <p style={styles.description}>{booking.description}</p>
+                <div style={styles.bookingMeta}>
+                  <span style={styles.requestDate}>Requested: {booking.requestDate || 'Recently'}</span>
+                  <span style={styles.billingBadge}>{booking.bookingModeLabel || 'Booking'}</span>
+                  <span style={styles.statusBadge}>{booking.status}</span>
+                  {booking.quoteAmount !== undefined && (
+                    <span style={styles.quoteAmount}>{`\u20B1${booking.quoteAmount || 0}`}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={styles.bookingActions}>
+                <div style={styles.bookingActionRow}>
+                  <button
+                    type="button"
+                    style={styles.openChatBtn}
+                    onClick={() => handleOpenChat(booking.id)}
+                  >
+                    Open Chat
+                  </button>
+                  {booking.paymentReference && (
+                    <span style={styles.transactionIdInline}>{booking.paymentReference}</span>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
+    </>
+  );
 
   // ========================================================================
   // RENDER - Main Page Component
@@ -388,19 +520,24 @@ const MyBookings = ({ appTheme = 'light', themeMode = 'system', onThemeChange, c
       {bookingListCtrl.isLoading && (
         <div style={styles.emptyState}>Loading your bookings...</div>
       )}
-      {!bookingListCtrl.isLoading && bookingListCtrl.bookings.length === 0 && (
+      {!bookingListCtrl.isLoading && !isChatRoute && renderBookingsList()}
+      {!bookingListCtrl.isLoading && isChatRoute && bookingListCtrl.bookings.length === 0 && (
         <div style={styles.emptyState}>
-          <h2 style={{ margin: '0 0 8px', color: themeTokens.textPrimary }}>No bookings yet</h2>
-          <p style={{ margin: 0 }}>Bookings you create from the marketplace will appear here.</p>
+          <h2 style={{ margin: '0 0 8px', color: themeTokens.textPrimary }}>No chats yet</h2>
+          <p style={{ margin: 0 }}>
+            {shouldLoadSellerChats
+              ? 'Client booking requests and conversations for your services will appear here.'
+              : 'Start a booking from the marketplace to open a conversation here.'}
+          </p>
         </div>
       )}
-      {!bookingListCtrl.isLoading && currentBooking && (
+      {!bookingListCtrl.isLoading && isChatRoute && currentBooking && (
         <>
       {uiState === 'chat' && (
         <ChatWindow
           appTheme={appTheme}
           booking={currentBooking}
-          bookings={bookingListCtrl.filteredBookings}
+          bookings={bookingListCtrl.bookings}
           selectedBookingId={selectedBookingId}
           onSelectBooking={handleOpenChat}
           onApproveQuote={() => handleApproveQuote(currentBooking.id)}

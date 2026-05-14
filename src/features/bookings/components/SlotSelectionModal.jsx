@@ -158,30 +158,30 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
 
   const styles = {
     overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.54)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 280, padding: isMobile ? '0.75rem' : '1rem', overflowY: 'auto' },
-    card: { width: 'min(100%, 980px)', maxHeight: isMobile ? 'calc(100svh - 24px)' : '94vh', overflowY: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 18px 40px rgba(15, 23, 42, 0.25)' },
-    header: { display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '0.75rem', padding: isMobile ? '0.75rem' : '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' },
-    subtitle: { margin: '0.2rem 0 0', color: '#64748b' },
-    closeButton: { width: '34px', height: '34px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', cursor: 'pointer' },
+    card: { width: 'min(100%, 980px)', maxHeight: isMobile ? 'calc(100svh - 24px)' : '94vh', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--gl-border)', backgroundColor: 'var(--gl-surface)', color: 'var(--gl-text)', boxShadow: '0 18px 40px rgba(15, 23, 42, 0.25)' },
+    header: { display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: '0.75rem', padding: isMobile ? '0.75rem' : '0.85rem 1rem', borderBottom: '1px solid var(--gl-border)', backgroundColor: 'var(--gl-surface-2)' },
+    subtitle: { margin: '0.2rem 0 0', color: 'var(--gl-text-3)' },
+    closeButton: { width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--gl-border-strong)', backgroundColor: 'var(--gl-surface)', color: 'var(--gl-text)', cursor: 'pointer' },
     content: { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(260px, 1fr) minmax(320px, 1.2fr)', gap: '0.8rem', padding: isMobile ? '0.75rem' : '1rem' },
-    section: { border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#ffffff', padding: '0.75rem' },
+    section: { border: '1px solid var(--gl-border)', borderRadius: '8px', backgroundColor: 'var(--gl-surface)', padding: '0.75rem' },
     dateGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(74px, 100%), 1fr))', gap: '0.45rem', marginTop: '0.55rem' },
-    dateButton: { border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#ffffff', cursor: 'pointer', padding: '0.45rem', textAlign: 'center', color: '#1e293b' },
-    dateDay: { fontSize: '0.78rem', color: '#64748b' },
+    dateButton: { border: '1px solid var(--gl-border-strong)', borderRadius: '8px', backgroundColor: 'var(--gl-surface)', cursor: 'pointer', padding: '0.45rem', textAlign: 'center', color: 'var(--gl-text)' },
+    dateDay: { fontSize: '0.78rem', color: 'var(--gl-text-3)' },
     dateNum: { fontSize: '1.05rem', fontWeight: 700 },
-    noSlots: { border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '0.8rem', color: '#64748b', textAlign: 'center' },
+    noSlots: { border: '1px dashed var(--gl-border-strong)', borderRadius: '8px', padding: '0.8rem', color: 'var(--gl-text-3)', textAlign: 'center' },
     hint: { marginTop: '0.2rem', fontSize: '0.86rem' },
     slotList: { display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.55rem' },
-    slotButton: { border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#ffffff', padding: '0.6rem', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '0.5rem' },
-    slotTime: { fontWeight: 700, color: '#0f172a' },
+    slotButton: { border: '1px solid var(--gl-border-strong)', borderRadius: '8px', backgroundColor: 'var(--gl-surface)', padding: '0.6rem', cursor: 'pointer', textAlign: 'left', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: '0.5rem' },
+    slotTime: { fontWeight: 700, color: 'var(--gl-text)' },
     slotInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
-    slotsCount: { color: '#166534', fontSize: '0.84rem' },
-    selectedIndicator: { color: '#166534', fontWeight: 700, fontSize: '0.82rem' },
-    fullText: { color: '#64748b', fontWeight: 700 },
-    placeholder: { border: '1px dashed #cbd5e1', borderRadius: '8px', minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', padding: '0.8rem' },
-    confirmationBar: { display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid #e2e8f0', backgroundColor: '#eff6ff', padding: isMobile ? '0.75rem' : '0.8rem 1rem', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row' },
-    confirmButton: { border: 'none', borderRadius: '8px', backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 700, cursor: 'pointer', padding: '0.55rem 0.85rem', width: isMobile ? '100%' : 'auto' },
-    hintBar: { borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', padding: '0.7rem 1rem', fontWeight: 600 },
-    error: { margin: '0.75rem 1rem 0', color: '#b91c1c', fontWeight: 700 },
+    slotsCount: { color: 'var(--gl-green)', fontSize: '0.84rem' },
+    selectedIndicator: { color: 'var(--gl-green)', fontWeight: 700, fontSize: '0.82rem' },
+    fullText: { color: 'var(--gl-text-3)', fontWeight: 700 },
+    placeholder: { border: '1px dashed var(--gl-border-strong)', borderRadius: '8px', minHeight: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gl-text-3)', textAlign: 'center', padding: '0.8rem' },
+    confirmationBar: { display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid var(--gl-border)', backgroundColor: 'var(--gl-accent-soft)', padding: isMobile ? '0.75rem' : '0.8rem 1rem', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row' },
+    confirmButton: { border: 'none', borderRadius: '8px', backgroundColor: 'var(--gl-blue)', color: '#ffffff', fontWeight: 700, cursor: 'pointer', padding: '0.55rem 0.85rem', width: isMobile ? '100%' : 'auto' },
+    hintBar: { borderTop: '1px solid var(--gl-border)', backgroundColor: 'var(--gl-surface-2)', color: 'var(--gl-text-3)', padding: '0.7rem 1rem', fontWeight: 600 },
+    error: { margin: '0.75rem 1rem 0', color: 'var(--gl-red)', fontWeight: 700 },
   };
 
   return (
@@ -214,8 +214,8 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
                     type="button"
                     style={{
                       ...styles.dateButton,
-                      ...(selectedDate === dateString ? { backgroundColor: '#dbeafe', borderColor: '#2563eb' } : {}),
-                      ...(hoveredKey === `date-${dateString}` && selectedDate !== dateString && canSelect ? { backgroundColor: '#f8fafc' } : {}),
+                      ...(selectedDate === dateString ? { backgroundColor: 'var(--gl-accent-soft)', borderColor: 'var(--gl-blue)' } : {}),
+                      ...(hoveredKey === `date-${dateString}` && selectedDate !== dateString && canSelect ? { backgroundColor: 'var(--gl-surface-2)' } : {}),
                       ...(!canSelect ? { cursor: 'not-allowed', opacity: 0.55 } : {}),
                     }}
                     onClick={() => canSelect && handleDateSelect(dateString)}
@@ -253,8 +253,8 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
                             type="button"
                             style={{
                               ...styles.slotButton,
-                              ...(isFull ? { backgroundColor: '#f1f5f9', color: '#94a3b8', cursor: 'not-allowed' } : { backgroundColor: '#ecfdf5', borderColor: '#86efac' }),
-                              ...(isSelected ? { borderColor: '#16a34a', boxShadow: 'inset 0 0 0 1px #16a34a' } : {}),
+                              ...(isFull ? { backgroundColor: 'var(--gl-surface-2)', color: 'var(--gl-text-3)', cursor: 'not-allowed' } : { backgroundColor: 'var(--gl-success-soft)', borderColor: 'var(--gl-success-border)' }),
+                              ...(isSelected ? { borderColor: 'var(--gl-green)', boxShadow: 'inset 0 0 0 1px var(--gl-green)' } : {}),
                             }}
                             onClick={() => !isFull && setSelectedBlockId(timeBlock.id)}
                             disabled={isFull}
@@ -301,7 +301,7 @@ const SlotSelectionModal = ({ booking, onConfirmSlot, onCancel }) => {
               type="button"
               style={{
                 ...styles.confirmButton,
-                backgroundColor: hoveredKey === 'confirm-slot' ? '#1d4ed8' : '#2563eb',
+                backgroundColor: hoveredKey === 'confirm-slot' ? 'var(--gl-blue-2)' : 'var(--gl-blue)',
               }}
               onClick={handleConfirm}
               onMouseEnter={() => setHoveredKey('confirm-slot')}

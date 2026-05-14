@@ -112,7 +112,7 @@ function ResetPasswordModal({ isOpen, token, email, onClose, onBack }) {
       border: 'none',
       cursor: 'pointer',
       transition: 'all 0.2s',
-      backgroundColor: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb',
+      backgroundColor: hoveredButton === 'submit' ? 'var(--gl-blue-2)' : 'var(--gl-blue)',
       color: '#ffffff',
     },
     secondaryButton: {

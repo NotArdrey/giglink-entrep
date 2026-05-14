@@ -209,7 +209,7 @@ const ChatWindow = ({ appTheme = 'light', booking, onApproveQuote, onRejectQuote
     chatMessageSystem: { alignSelf: 'center', maxWidth: '100%' },
     chatMessageTextBase: { padding: '12px 16px', borderRadius: '12px', margin: 0, fontSize: '14px', color: chatTheme.textPrimary, lineHeight: 1.5, wordWrap: 'break-word', boxShadow: 'none' },
     chatMessageTextWorker: { background: chatTheme.bgSecondary, border: `1px solid ${chatTheme.border}`, borderRadius: '12px 12px 12px 2px' },
-    chatMessageTextClient: { background: themeTokens.accent, color: 'white', border: 'none', borderRadius: '12px 12px 2px 12px', boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(37, 99, 235, 0.3)' },
+    chatMessageTextClient: { background: themeTokens.accent, color: 'white', border: 'none', borderRadius: '12px 12px 2px 12px', boxShadow: isDarkMode ? 'none' : themeTokens.accentShadow },
     chatMessageTime: { fontSize: '11px', color: chatTheme.textMuted, padding: '0 4px' },
     chatSystemMessage: { background: chatTheme.bgTertiary, color: chatTheme.textSecondary, padding: '8px 12px', borderRadius: '8px', fontSize: '13px', textAlign: 'center', margin: 0 },
     quoteCard: { background: chatTheme.bgSecondary, borderRadius: '12px', overflow: 'hidden', boxShadow: isDarkMode ? 'none' : '0 2px 8px rgba(0, 0, 0, 0.12)', border: `2px solid ${themeTokens.accent}`, maxWidth: '320px' },

@@ -193,6 +193,7 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
   const metadata = booking.metadata || {};
   const service = context.servicesById?.[booking.service_id] || booking.services || {};
   const seller = context.sellersById?.[booking.seller_id] || getServiceSeller(service) || {};
+  const buyerProfile = context.profilesById?.[booking.buyer_id] || {};
   const review = normalizeReview(context.reviews || [], booking.id);
   const selectedSlot = buildSelectedSlot(booking, metadata);
   const paymentMethod = metadata.payment_method || metadata.paymentMethod || null;
@@ -207,11 +208,12 @@ export const mapBookingRowToUiBooking = (booking = {}, context = {}) => {
     serviceId: booking.service_id,
     workerId: booking.seller_id,
     workerName: metadata.worker_name || metadata.workerName || getSellerName(service, seller),
-    clientName: metadata.client_name || metadata.clientName || 'Client',
-    serviceType: metadata.service_type || metadata.serviceType || getServiceType(service, seller),
+    clientName: buyerProfile.full_name || metadata.client_name || metadata.clientName || 'Client',
+    clientPhoto: buyerProfile.profile_photo || '',
+    serviceType: getServiceType(service, seller) || metadata.service_type || metadata.serviceType,
     status: uiStatus,
     requestDate: formatDate(booking.created_at) || formatDate(nowIso()),
-    description: metadata.description || service.short_description || service.description || seller.about || 'Service booking',
+    description: service.short_description || service.description || metadata.description || seller.about || 'Service booking',
     quoteAmount: totalAmount,
     bookingMode,
     bookingModeLabel: getBookingModeLabel(bookingMode),
@@ -273,18 +275,21 @@ export const hydrateBookingRows = async (bookingRows = []) => {
 
   const serviceIds = unique(rows.map((row) => row.service_id));
   const sellerIds = unique(rows.map((row) => row.seller_id));
+  const buyerIds = unique(rows.map((row) => row.buyer_id));
   const bookingIds = unique(rows.map((row) => row.id));
 
-  const [services, sellers, reviews] = await Promise.all([
+  const [services, sellers, buyerProfiles, reviews] = await Promise.all([
     fetchRowsByIds('services', 'id', serviceIds, '*'),
     fetchRowsByIds('sellers', 'user_id', sellerIds, '*'),
+    fetchRowsByIds('profiles', 'user_id', buyerIds, 'user_id, full_name, profile_photo'),
     fetchRowsByIds('reviews', 'booking_id', bookingIds, '*'),
   ]);
 
   const servicesById = Object.fromEntries(services.map((row) => [row.id, row]));
   const sellersById = Object.fromEntries(sellers.map((row) => [row.user_id, row]));
+  const profilesById = Object.fromEntries(buyerProfiles.map((row) => [row.user_id, row]));
 
-  return rows.map((row) => mapBookingRowToUiBooking(row, { servicesById, sellersById, reviews }));
+  return rows.map((row) => mapBookingRowToUiBooking(row, { servicesById, sellersById, profilesById, reviews }));
 };
 
 export const fetchBookingsForUser = async ({ userId, role = 'buyer' } = {}) => {
@@ -591,7 +596,7 @@ export const createClientBooking = async ({ provider, pendingBooking, paymentMet
   return mapped;
 };
 
-export const createClientBookingRequest = async ({ provider } = {}) => {
+export const createClientBookingRequest = async ({ provider, assistantContext = null } = {}) => {
   const user = await getAuthUser();
   if (!user?.id) throw new Error('Please sign in before requesting a booking.');
 
@@ -647,6 +652,7 @@ export const createClientBookingRequest = async ({ provider } = {}) => {
     refund_eligible: false,
     can_rate: false,
     created_via: 'marketplace-request',
+    assistant_context: assistantContext || null,
   };
 
   const { data, error } = await supabase
@@ -670,6 +676,47 @@ export const createClientBookingRequest = async ({ provider } = {}) => {
   if (error) throw mapDatabaseError(error);
   const [mapped] = await hydrateBookingRows([data]);
   return mapped;
+};
+
+export const createClientBookingRequestByServiceId = async ({
+  serviceId,
+  assistantContext = null,
+} = {}) => {
+  if (!serviceId) throw new Error('Select a worker before starting a booking.');
+
+  const { data, error } = await supabase
+    .from('services')
+    .select('*, sellers(*)')
+    .eq('id', serviceId)
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error && !maybeSingleOrNull(error)) throw mapDatabaseError(error);
+  if (!data) throw new Error('This worker listing is no longer available.');
+
+  const seller = getServiceSeller(data);
+  const metadata = data.metadata || {};
+  const rateBasis = metadata.rate_basis || metadata.rateBasis || data.price_type || 'per-project';
+  const amount = getRateAmount(data, metadata);
+  const provider = {
+    id: data.id,
+    serviceId: data.id,
+    rawService: data,
+    name: getSellerName(data, seller),
+    serviceType: getServiceType(data, seller),
+    description: data.short_description || data.description || seller.about || '',
+    bookingMode: getServiceBookingMode(data, seller, metadata),
+    rateBasis,
+    hourlyRate: rateBasis === 'per-hour' || rateBasis === 'hourly' ? amount : null,
+    dailyRate: rateBasis === 'per-day' || rateBasis === 'daily' ? amount : null,
+    weeklyRate: rateBasis === 'per-week' || rateBasis === 'weekly' ? amount : null,
+    monthlyRate: rateBasis === 'per-month' || rateBasis === 'monthly' ? amount : null,
+    projectRate: !['per-hour', 'hourly', 'per-day', 'daily', 'per-week', 'weekly', 'per-month', 'monthly'].includes(rateBasis)
+      ? amount
+      : null,
+  };
+
+  return createClientBookingRequest({ provider, assistantContext });
 };
 
 export const submitBookingReview = async (bookingOrId, ratingValue, ratingComment = '') => {
@@ -854,6 +901,7 @@ export const bookingService = {
   confirmBookingRefundReceived,
   createClientBooking,
   createClientBookingRequest,
+  createClientBookingRequestByServiceId,
   fetchBookingById,
   fetchBookingMessages,
   fetchClientBookings,

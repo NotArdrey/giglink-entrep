@@ -4,8 +4,6 @@ import {
   CalendarCheck,
   LayoutDashboard,
   Search,
-  Settings,
-  ShieldCheck,
   Sparkles,
   Store,
   UserRound,
@@ -64,13 +62,14 @@ function Dashboard({
   onOpenBrowseServices,
   onOpenAdminDashboard,
 }) {
-  const isAdmin = Boolean(sellerProfile?.isAdmin) || sellerProfile?.role === 'admin';
-  const hasSellerProfile = Boolean(
-    sellerProfile?.isWorker
-      || sellerProfile?.sellerId
-      || sellerProfile?.serviceType
-      || sellerProfile?.workerProfileId
-  );
+  const normalizedRole = String(sellerProfile?.role || '').trim().toLowerCase();
+  const hasSellerProfile = normalizedRole === 'worker'
+    || (!normalizedRole && Boolean(
+      sellerProfile?.isWorker
+        || sellerProfile?.sellerId
+        || sellerProfile?.serviceType
+        || sellerProfile?.workerProfileId
+    ));
 
   const displayName = sellerProfile?.firstName
     || sellerProfile?.fullName
@@ -155,7 +154,7 @@ function Dashboard({
         </section>
 
         <section className="dashboard-action-grid" aria-label="Primary workspace actions">
-          {quickActions.map((action) => {
+          {quickActions.filter((action) => action.id !== 'work' || hasSellerProfile).map((action) => {
             const Icon = action.icon;
             const handler = actionHandlers[action.id];
 
@@ -174,37 +173,6 @@ function Dashboard({
               </article>
             );
           })}
-        </section>
-
-        <section className="dashboard-secondary-row">
-          <article className="dashboard-wide-panel gl-card">
-            <div>
-              <span className="gl-eyebrow">
-                <ShieldCheck size={15} aria-hidden="true" />
-                Trust Controls
-              </span>
-              <h2>Keep your account details ready for booking and payout flows.</h2>
-              <p>
-                Review contact details, location, privacy settings, and password controls before your next transaction.
-              </p>
-            </div>
-            <div className="dashboard-panel-actions">
-              <button className="gl-button secondary" type="button" onClick={onOpenAccountSettings}>
-                <UserRound size={17} aria-hidden="true" />
-                Account
-              </button>
-              <button className="gl-button secondary" type="button" onClick={onOpenSettings}>
-                <Settings size={17} aria-hidden="true" />
-                Settings
-              </button>
-              {isAdmin && (
-                <button className="gl-button secondary" type="button" onClick={onOpenAdminDashboard}>
-                  <ShieldCheck size={17} aria-hidden="true" />
-                  Admin
-                </button>
-              )}
-            </div>
-          </article>
         </section>
       </main>
     </div>

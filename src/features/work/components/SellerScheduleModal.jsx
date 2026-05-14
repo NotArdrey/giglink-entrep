@@ -308,7 +308,7 @@ function SellerScheduleModal({
           </div>
           <div style={styles.formActions}>
             <button
-              style={{ ...styles.button, backgroundColor: hoveredButton === 'add' ? '#1d4ed8' : '#2563eb' }}
+              style={{ ...styles.button, backgroundColor: hoveredButton === 'add' ? 'var(--gl-blue-2)' : 'var(--gl-blue)' }}
               onMouseEnter={() => setHoveredButton('add')}
               onMouseLeave={() => setHoveredButton('')}
               onClick={handleAddOrUpdateBlock}
@@ -341,7 +341,7 @@ function SellerScheduleModal({
                   <span>{row.slotsLeft} / {row.capacity} slots left</span>
                 </div>
                 <div style={styles.itemActions}>
-                  <button style={{ ...styles.button, backgroundColor: '#2563eb' }} onClick={() => handleEditBlock(row)}>Edit</button>
+                  <button style={{ ...styles.button, backgroundColor: 'var(--gl-blue)' }} onClick={() => handleEditBlock(row)}>Edit</button>
                   <button style={{ ...styles.button, backgroundColor: '#dc2626' }} onClick={() => handleDeleteBlock(row)}>
                     Delete
                   </button>

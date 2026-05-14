@@ -721,6 +721,7 @@ export const buildProfilePayload = ({
 }: Record<string, unknown>) => {
   const resolvedAppRole = normalizeAppRole(appRole);
   const resolvedIdentityStatus = normalizeStatus(identityStatus) || "PENDING_REVIEW";
+  const isApproved = resolvedIdentityStatus === "APPROVED";
   return {
     user_id: user?.id || user,
     email: normalizeEmail(email || user?.email),
@@ -731,11 +732,11 @@ export const buildProfilePayload = ({
     account_status: "active",
     identity_required: true,
     identity_role: normalizeIdentityRole(identityRole),
-    is_verified: false,
+    is_verified: isApproved,
     verification_status: resolvedIdentityStatus,
     didit_session_id: cleanString(diditSessionId) || null,
     id_document_expiry: cleanString(idDocumentExpiry) || null,
-    id_verified_at: resolvedIdentityStatus === "APPROVED" ? new Date().toISOString() : null,
+    id_verified_at: isApproved ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
   };
 };

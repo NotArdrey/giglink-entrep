@@ -24,6 +24,9 @@ export const getThemeTokens = (appTheme = 'light') => {
       accentHover: '#0c507e',
       accentDeep: '#0b4066',
       accentSoft: 'rgba(16, 176, 209, 0.18)',
+      accentBorder: 'rgba(16, 176, 209, 0.36)',
+      accentRing: 'rgba(16, 176, 209, 0.2)',
+      accentShadow: '0 10px 22px rgba(16, 176, 209, 0.2)',
       shadow: '0 18px 42px rgba(0, 0, 0, 0.28)',
       shadowSoft: '0 10px 24px rgba(0, 0, 0, 0.22)',
       navBg: '#121a28',
@@ -35,6 +38,11 @@ export const getThemeTokens = (appTheme = 'light') => {
       successText: '#a7e4c0',
       successBorder: '#52b788',
       danger: '#fca5a5',
+      dangerBg: 'rgba(220, 38, 38, 0.16)',
+      dangerBorder: 'rgba(248, 113, 113, 0.38)',
+      warning: '#f59e0b',
+      warningBg: 'rgba(217, 119, 6, 0.16)',
+      warningBorder: 'rgba(251, 191, 36, 0.38)',
     };
   }
 
@@ -60,6 +68,9 @@ export const getThemeTokens = (appTheme = 'light') => {
     accentHover: '#0b4066',
     accentDeep: '#0b4066',
     accentSoft: 'rgba(16, 176, 209, 0.12)',
+    accentBorder: 'rgba(12, 80, 126, 0.28)',
+    accentRing: 'rgba(12, 80, 126, 0.14)',
+    accentShadow: '0 10px 22px rgba(12, 80, 126, 0.18)',
     shadow: '0 16px 34px rgba(17, 24, 39, 0.12)',
     shadowSoft: '0 4px 12px rgba(17, 24, 39, 0.06)',
     navBg: '#ffffff',
@@ -71,5 +82,10 @@ export const getThemeTokens = (appTheme = 'light') => {
     successText: '#166534',
     successBorder: '#86efac',
     danger: '#b91c1c',
+    dangerBg: '#fef2f2',
+    dangerBorder: '#fecaca',
+    warning: '#d97706',
+    warningBg: '#fffbeb',
+    warningBorder: '#fed7aa',
   };
 };

@@ -321,7 +321,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
       color: '#111827',
     },
     submit: {
-      backgroundColor: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb',
+      backgroundColor: hoveredButton === 'submit' ? 'var(--gl-blue-2)' : 'var(--gl-blue)',
       color: '#ffffff',
       border: 'none',
       minHeight: '44px',
@@ -347,7 +347,7 @@ function LoginModal({ isOpen, onClose, onSubmit, onForgotPassword, onResendVerif
     toggleLink: (key) => ({
       background: 'none',
       border: 'none',
-      color: hoveredButton === key ? '#1d4ed8' : '#2563eb',
+      color: hoveredButton === key ? 'var(--gl-blue-2)' : 'var(--gl-blue)',
       fontWeight: 600,
       cursor: 'pointer',
       textDecoration: hoveredButton === key ? 'underline' : 'none',

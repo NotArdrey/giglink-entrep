@@ -3,7 +3,7 @@ import DashboardNavigation from '../../../shared/components/DashboardNavigation'
 import DigitalPortfolioModal from '../components/DigitalPortfolioModal';
 import { getThemeTokens } from '../../../shared/styles/themeTokens';
 
-function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile, onOpenAdminDashboard }) {
+function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, onOpenChatPage, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, userLocation, onManageAccount, onBackToDashboard, onUpdateProfile, onOpenAdminDashboard }) {
   const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
   const fallbackName = 'Juan Dela Cruz';
   const fallbackBio = 'Dedicated service provider focused on quality, punctuality, and client satisfaction.';
@@ -231,16 +231,16 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
     paragraph: { margin: 0, color: themeTokens.textSecondary, lineHeight: 1.55 },
     saveError: {
       margin: '0 0 14px',
-      color: '#b91c1c',
-      background: '#fee2e2',
-      border: '1px solid #fecaca',
+      color: themeTokens.danger,
+      background: themeTokens.dangerBg,
+      border: `1px solid ${themeTokens.dangerBorder}`,
       borderRadius: '8px',
       padding: '10px 12px',
       fontSize: '0.92rem',
       fontWeight: 600,
     },
     portfolioParagraph: { margin: 0, color: themeTokens.textPrimary, lineHeight: 1.55 },
-    generatePortfolioBtn: { width: '100%', border: 'none', borderRadius: '8px', padding: '12px', background: isPortfolioHovered ? themeTokens.accent : themeTokens.accent, color: '#ffffff', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px', transition: 'all 0.3s ease', transform: isPortfolioHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isPortfolioHovered ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none' },
+    generatePortfolioBtn: { width: '100%', border: 'none', borderRadius: '8px', padding: '12px', background: isPortfolioHovered ? themeTokens.accentHover : themeTokens.accent, color: '#ffffff', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginTop: '8px', transition: 'all 0.3s ease', transform: isPortfolioHovered ? 'translateY(-2px)' : 'translateY(0)', boxShadow: isPortfolioHovered ? themeTokens.accentShadow : 'none' },
     manageAccountBtn: { width: '100%', border: 'none', borderRadius: '10px', padding: '14px', background: isManageHovered ? themeTokens.surfaceAlt : themeTokens.surfaceSoft, color: themeTokens.textPrimary, fontWeight: 700, fontSize: '15px', cursor: 'pointer' },
     photoSourceOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 220 },
     photoSourceModal: { width: 'min(460px, 94vw)', background: themeTokens.surface, color: themeTokens.textPrimary, border: `1px solid ${themeTokens.border}`, borderRadius: '14px', padding: '20px', boxShadow: themeTokens.shadow },
@@ -248,7 +248,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
     modalText: { margin: '0 0 8px', color: themeTokens.textSecondary, fontSize: '1rem' },
     modalHint: { margin: '0 0 14px', color: themeTokens.textMuted, fontSize: '0.9rem' },
     photoSourceActions: { display: 'grid', gap: '8px' },
-    photoActionBtn: { border: 'none', borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: '#2563eb', color: '#ffffff' },
+    photoActionBtn: { border: 'none', borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: themeTokens.accent, color: '#ffffff' },
     cancelBtn: { border: `1px solid ${themeTokens.border}`, borderRadius: '10px', padding: '12px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem', background: themeTokens.surfaceAlt, color: themeTokens.textPrimary },
   };
 
@@ -264,6 +264,7 @@ function Profile({ appTheme = 'light', themeMode = 'system', onThemeChange, curr
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}

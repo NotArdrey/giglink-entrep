@@ -38,6 +38,14 @@ export const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, 
     sellerRow?.search_meta?.service_type ||
     fallbackProfile?.serviceType ||
     'Service Type';
+  const profilePhoto =
+    workerProfile?.profilePhoto ||
+    workerProfile?.profile_photo ||
+    sellerRow?.profile_photo ||
+    sellerRow?.avatar_url ||
+    fallbackProfile?.profilePhoto ||
+    fallbackProfile?.profile_photo ||
+    '';
   const location = {
     address: workerProfile?.address || sellerRow?.search_meta?.location?.address || fallbackProfile?.location?.address || '',
     barangay: workerProfile?.barangay || sellerRow?.search_meta?.location?.barangay || fallbackProfile?.location?.barangay || '',
@@ -62,6 +70,7 @@ export const mapSellerRowToUiProfile = (sellerRow = null, workerProfile = null, 
     paymentAfterService: workerProfile?.paymentAfterService ?? true,
     afterServicePaymentType: workerProfile?.afterServicePaymentType || 'both',
     gcashNumber: workerProfile?.gcashNumber || sellerRow?.gcash_number || '',
+    profilePhoto,
     location,
     raw: null,
   };
@@ -76,9 +85,16 @@ export const mapServiceRowToWorkerService = (service, sellerRow = null, fallback
     fallbackProfile?.full_name ||
     service?.title ||
     'Service';
+  const profilePhoto =
+    sellerRow?.profile_photo ||
+    sellerRow?.avatar_url ||
+    fallbackProfile?.profilePhoto ||
+    fallbackProfile?.profile_photo ||
+    '';
 
   return {
     fullName: sellerDisplayName,
+    profilePhoto,
     serviceType: service?.title || service?.metadata?.service_type || 'Service',
     description: service?.description || service?.short_description || '',
     pricingModel: getPricingModelFromService(service),
@@ -118,6 +134,7 @@ export const loadWorkerProfileServices = async ({ userId, fallbackProfile = null
       workerServices: [],
       sellerUiProfile: null,
       sellerId: null,
+      sellerRatingAggregate: null,
     };
   }
 
@@ -134,11 +151,24 @@ export const loadWorkerProfileServices = async ({ userId, fallbackProfile = null
       workerServices: [],
       sellerUiProfile: mapSellerRowToUiProfile(null, workerBundle, fallbackProfile),
       sellerId: userId,
+      sellerRatingAggregate: null,
     };
   }
 
   const sellerId = seller.id || seller.user_id || userId;
-  const services = await fetchSellerServices(sellerId);
+  const [services, ratingAggregateResult] = await Promise.all([
+    fetchSellerServices(sellerId),
+    supabase
+      .from('seller_rating_aggregates')
+      .select('avg_rating, rating_count')
+      .eq('seller_id', sellerId)
+      .maybeSingle(),
+  ]);
+
+  if (ratingAggregateResult.error && ratingAggregateResult.error.code !== 'PGRST116') {
+    throw ratingAggregateResult.error;
+  }
+
   const sellerUiProfile = mapSellerRowToUiProfile(seller, workerBundle, fallbackProfile);
   const workerServices = (services || []).map((service) =>
     mapServiceRowToWorkerService(service, seller, sellerUiProfile || fallbackProfile)
@@ -151,6 +181,7 @@ export const loadWorkerProfileServices = async ({ userId, fallbackProfile = null
     workerServices,
     sellerUiProfile,
     sellerId,
+    sellerRatingAggregate: ratingAggregateResult.data || null,
   };
 };
 

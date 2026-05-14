@@ -42,11 +42,11 @@ function AdminOverview({ stats, accounts, logs, themeTokens, styles }) {
             <p style={styles.panelDesc}>Recent account activity snapshot.</p>
           </div>
           <div style={styles.miniChartBars}>
-            <div style={styles.miniBar('30%', '#dbeafe')} />
-            <div style={styles.miniBar('48%', '#bfdbfe')} />
-            <div style={styles.miniBar('70%', '#93c5fd')} />
-            <div style={styles.miniBar('54%', '#60a5fa')} />
-            <div style={styles.miniBar('82%', '#2563eb')} />
+            <div style={styles.miniBar('30%', themeTokens.accentSoft)} />
+            <div style={styles.miniBar('48%', themeTokens.accentSoft)} />
+            <div style={styles.miniBar('70%', themeTokens.accentBorder)} />
+            <div style={styles.miniBar('54%', themeTokens.accent)} />
+            <div style={styles.miniBar('82%', themeTokens.accentDeep)} />
           </div>
         </article>
 
@@ -56,11 +56,11 @@ function AdminOverview({ stats, accounts, logs, themeTokens, styles }) {
             <p style={styles.panelDesc}>Quick moderation snapshot for comments and reports.</p>
           </div>
           <div style={styles.miniChartBars}>
-            <div style={styles.miniBar('22%', '#dcfce7')} />
-            <div style={styles.miniBar('46%', '#bbf7d0')} />
-            <div style={styles.miniBar('28%', '#86efac')} />
-            <div style={styles.miniBar('61%', '#4ade80')} />
-            <div style={styles.miniBar('36%', '#16a34a')} />
+            <div style={styles.miniBar('22%', themeTokens.successBg)} />
+            <div style={styles.miniBar('46%', themeTokens.successBg)} />
+            <div style={styles.miniBar('28%', themeTokens.successBorder)} />
+            <div style={styles.miniBar('61%', themeTokens.success)} />
+            <div style={styles.miniBar('36%', themeTokens.successText)} />
           </div>
         </article>
 

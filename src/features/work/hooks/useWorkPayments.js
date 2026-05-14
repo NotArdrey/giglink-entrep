@@ -20,6 +20,7 @@ const mapBookingToTransaction = (booking) => {
   return {
     id: booking.id,
     clientName: booking.clientName || 'Client',
+    clientPhoto: booking.clientPhoto || '',
     service: booking.serviceType || 'Service',
     scheduleRef: booking.selectedSlot?.timeBlock?.id || booking.selectedSlot?.slotId || booking.id,
     paymentMode: isAfterService ? 'After Service' : 'Advance',

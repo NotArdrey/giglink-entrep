@@ -117,7 +117,10 @@ function AuthPage({
   const [identitySession, setIdentitySession] = useState(null);
   const [identityStatusMessage, setIdentityStatusMessage] = useState('');
   const [identityOutcome, setIdentityOutcome] = useState(null);
+  const [loginStatusMessage, setLoginStatusMessage] = useState('');
   const latestEmailRef = useRef('');
+  const diditReturnHandledRef = useRef(false);
+  const pendingLoginStatusRef = useRef('');
 
   const selectedDocument = useMemo(
     () => getDocumentType(formData.documentTypeKey),
@@ -201,9 +204,93 @@ function AuthPage({
   }, [isRegisterMode]);
 
   useEffect(() => {
+    if (!isLoginMode || diditReturnHandledRef.current || typeof window === 'undefined') return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('check_verification') !== 'true') return;
+
+    diditReturnHandledRef.current = true;
+
+    const replaceReturnUrl = () => {
+      window.history.replaceState('', document.title, `${window.location.pathname}#login`);
+    };
+
+    const completeDiditReturn = async () => {
+      const storedState = loadIdentitySignupState();
+      if (!storedState?.diditSessionId) {
+        setLoginStatusMessage('Verification finished. Enter your email and password to log in.');
+        replaceReturnUrl();
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        setSubmitError('');
+        setLoginStatusMessage('Finishing your Didit verification...');
+        logRegistrationDebug('auth_page:didit_return_started', {
+          identitySession: storedState,
+        });
+
+        const diditSession = await fetchDiditIdentitySession(storedState.diditSessionId);
+        logRegistrationDebug('auth_page:didit_return_status_result', {
+          diditSession,
+        });
+
+        if (diditSession.status === 'APPROVED' || diditSession.status === 'PENDING_REVIEW') {
+          const result = await finishDiditIdentitySignup(storedState, diditSession.status);
+          const isPending = result.identityStatus === 'PENDING_REVIEW' || diditSession.status === 'PENDING_REVIEW';
+          setFormData((current) => ({
+            ...current,
+            email: storedState.email || current.email,
+            password: '',
+            confirmPassword: '',
+          }));
+          setLoginStatusMessage(isPending
+            ? 'Your account was created, but access is held until identity review is approved.'
+            : 'Your identity was approved. Confirm your email, then log in.');
+          logRegistrationDebug('auth_page:didit_return_finished', {
+            result,
+            diditStatus: diditSession.status,
+            pendingReview: isPending,
+          });
+          return;
+        }
+
+        if (isTerminalIdentityFailure(diditSession.status)) {
+          clearIdentitySignupState();
+          setLoginStatusMessage('Didit did not approve this attempt. Please start registration again with a valid document.');
+          logRegistrationDebug('auth_page:didit_return_terminal_failure', {
+            diditStatus: diditSession.status,
+          }, 'warn');
+          return;
+        }
+
+        setLoginStatusMessage('Didit is still processing your verification. Please wait a moment, then try logging in.');
+        logRegistrationDebug('auth_page:didit_return_still_processing', {
+          diditStatus: diditSession.status,
+        });
+      } catch (error) {
+        logRegistrationDebug('auth_page:didit_return_error', {
+          message: error?.message,
+          error,
+        }, 'error');
+        setSubmitError(getAuthErrorMessage(error));
+      } finally {
+        replaceReturnUrl();
+        setIsSubmitting(false);
+      }
+    };
+
+    completeDiditReturn();
+  }, [isLoginMode]);
+
+  useEffect(() => {
+    const pendingLoginStatus = pendingLoginStatusRef.current;
+    pendingLoginStatusRef.current = '';
     setSubmitError('');
     setForgotError('');
     setApiError('');
+    setLoginStatusMessage(mode === 'login' && pendingLoginStatus ? pendingLoginStatus : '');
     setIsSignupSuccess(false);
     setIsForgotSubmitted(false);
 
@@ -334,6 +421,10 @@ function AuthPage({
       return 'Password and confirm password do not match.';
     }
 
+    if (formData.password.length < 8) {
+      return 'Password must be at least 8 characters.';
+    }
+
     if (!formData.province || !formData.city || !formData.barangay || !formData.address.trim()) {
       return 'Please complete all service location fields.';
     }
@@ -423,19 +514,25 @@ function AuthPage({
       if (diditSession.status === 'APPROVED' || diditSession.status === 'PENDING_REVIEW') {
         const result = await finishDiditIdentitySignup(identitySession, diditSession.status);
         const isPending = result.identityStatus === 'PENDING_REVIEW' || diditSession.status === 'PENDING_REVIEW';
-        setIdentityOutcome({
-          kind: isPending ? 'pending' : 'approved',
-          title: isPending ? 'Identity review pending' : 'Email confirmation sent',
-          message: isPending
-            ? 'Your account was created but access is held until identity review is approved.'
-            : 'Your identity was approved. Confirm your email before logging in.',
-        });
-        setIdentityStep('outcome');
+        pendingLoginStatusRef.current = isPending
+          ? 'Your account was created, but access is held until identity review is approved.'
+          : 'Your identity was approved. Confirm your email, then log in.';
+        setFormData((current) => ({
+          ...current,
+          email: identitySession.email || current.email,
+          password: '',
+          confirmPassword: '',
+        }));
+        setIdentitySession(null);
+        setIdentityOutcome(null);
+        setIdentityStatusMessage('');
+        setIdentityStep('details');
+        handleModeChange('login');
         logRegistrationDebug('auth_page:didit_signup_outcome_ready', {
           result,
           diditStatus: diditSession.status,
           pendingReview: isPending,
-          nextStep: 'outcome',
+          nextStep: 'login',
         });
         return;
       }
@@ -736,9 +833,9 @@ function AuthPage({
               <h2>Continue in Didit</h2>
               <p>
                 Open Didit to scan your ID, complete liveness, and finish face match.
-                Return here after the verification page is done.
+                You will return to the login page when verification is done.
               </p>
-              <a className="auth-submit" href={identitySession?.verificationUrl || '#'} target="_blank" rel="noreferrer">
+              <a className="auth-submit" href={identitySession?.verificationUrl || '#'}>
                 <ExternalLink size={18} aria-hidden="true" />
                 Open Didit Verification
               </a>
@@ -1100,6 +1197,7 @@ function AuthPage({
               )}
 
               {submitError && <div className="auth-alert error">{submitError}</div>}
+              {isLoginMode && loginStatusMessage && <div className="auth-alert warning">{loginStatusMessage}</div>}
 
               <button type="submit" className="auth-submit" disabled={isSubmitting}>
                 {isSubmitting ? <RefreshCw className="gl-spin" size={18} aria-hidden="true" /> : isRegisterMode ? (usesDidit ? <ShieldCheck size={18} aria-hidden="true" /> : <Upload size={18} aria-hidden="true" />) : <LogIn size={18} aria-hidden="true" />}

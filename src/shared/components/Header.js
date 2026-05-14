@@ -123,20 +123,22 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
     },
     logo: {
       textDecoration: 'none',
-      color: '#0c507e',
+      color: 'var(--gl-blue)',
       fontWeight: 850,
-      fontSize: '1.45rem',
+      fontSize: 'var(--gl-brand-font-size)',
       fontFamily: "'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       letterSpacing: 0,
+      lineHeight: 1,
       marginRight: '0.5rem',
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '8px',
+      gap: 'var(--gl-brand-gap)',
     },
     logoImg: {
-      width: '34px',
-      height: '34px',
+      width: 'var(--gl-brand-logo-size)',
+      height: 'var(--gl-brand-logo-size)',
       objectFit: 'contain',
+      flex: '0 0 auto',
     },
     searchWrap: {
       width: '100%',
@@ -167,7 +169,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       borderRadius: '8px',
       padding: '0 1rem',
       height: '40px',
-      backgroundColor: '#27ae60',
+      backgroundColor: 'var(--gl-green)',
       color: '#ffffff',
       fontWeight: 700,
       cursor: 'pointer',
@@ -205,7 +207,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       padding: '0.7rem',
     },
     dropdownHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' },
-    textButton: { border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: 600 },
+    textButton: { border: 'none', background: 'none', color: 'var(--gl-blue)', cursor: 'pointer', fontWeight: 600 },
     notificationItem: {
       width: '100%',
       border: '1px solid #e2e8f0',
@@ -220,7 +222,7 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-    unreadItem: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' },
+    unreadItem: { backgroundColor: 'var(--gl-accent-soft)', borderColor: 'var(--gl-accent-border)' },
     itemTop: { display: 'flex', justifyContent: 'space-between', gap: '0.5rem' },
     itemTitle: { fontWeight: 700, color: '#1e293b' },
     itemTime: { color: '#64748b', fontSize: '0.78rem' },
@@ -360,8 +362,8 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
   const isWorkerAccount = Boolean(sellerProfile?.isWorker);
 
   const primaryActionTheme = isWorkerAccount
-    ? { key: 'my-work', base: '#2563eb', hover: '#1d4ed8' }
-    : { key: 'become-seller', base: '#27ae60', hover: '#219653' };
+    ? { key: 'my-work', base: 'var(--gl-blue)', hover: 'var(--gl-blue-2)' }
+    : { key: 'become-seller', base: 'var(--gl-green)', hover: '#059669' };
 
   const primaryActionStyle = {
     ...styles.primaryButton,
@@ -452,12 +454,12 @@ function Header({ searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOp
                         style={{ ...styles.notificationItem, ...(!item.isRead ? styles.unreadItem : {}) }}
                         onClick={() => handleNotificationClick(item.id)}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = item.isRead ? '#f8fafc' : '#dbeafe';
-                          e.currentTarget.style.borderColor = item.isRead ? '#cbd5e1' : '#93c5fd';
+                          e.currentTarget.style.backgroundColor = item.isRead ? 'var(--gl-surface-2)' : 'var(--gl-accent-soft)';
+                          e.currentTarget.style.borderColor = item.isRead ? 'var(--gl-border-strong)' : 'var(--gl-accent-border)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = item.isRead ? '#ffffff' : '#eff6ff';
-                          e.currentTarget.style.borderColor = item.isRead ? '#e2e8f0' : '#bfdbfe';
+                          e.currentTarget.style.backgroundColor = item.isRead ? 'var(--gl-surface)' : 'var(--gl-accent-soft)';
+                          e.currentTarget.style.borderColor = item.isRead ? 'var(--gl-border)' : 'var(--gl-accent-border)';
                         }}
                       >
                         <div>

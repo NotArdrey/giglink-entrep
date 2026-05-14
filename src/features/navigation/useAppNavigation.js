@@ -104,6 +104,7 @@ export const useAppNavigation = () => {
   const [authUser, setAuthUser] = useState(null);
   const [currentView, setCurrentView] = useState('client-dashboard');
   const [previousView, setPreviousView] = useState('client-dashboard');
+  const [selectedChatBookingId, setSelectedChatBookingId] = useState(null);
   const [sellerProfile, setSellerProfile] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [currentSearchQuery, setCurrentSearchQuery] = useState('');
@@ -286,6 +287,9 @@ export const useAppNavigation = () => {
       '--giglink-accent-hover': tokens.accentHover || tokens.accent,
       '--giglink-accent-deep': tokens.accentDeep || tokens.accent,
       '--giglink-accent-soft': tokens.accentSoft,
+      '--giglink-accent-border': tokens.accentBorder,
+      '--giglink-accent-ring': tokens.accentRing,
+      '--giglink-accent-shadow': tokens.accentShadow,
       '--giglink-shadow': tokens.shadow,
       '--giglink-shadow-soft': tokens.shadowSoft,
       '--giglink-nav-bg': tokens.navBg,
@@ -297,6 +301,11 @@ export const useAppNavigation = () => {
       '--giglink-success-text': tokens.successText,
       '--giglink-success-border': tokens.successBorder,
       '--giglink-danger': tokens.danger,
+      '--giglink-danger-bg': tokens.dangerBg,
+      '--giglink-danger-border': tokens.dangerBorder,
+      '--giglink-warning': tokens.warning,
+      '--giglink-warning-bg': tokens.warningBg,
+      '--giglink-warning-border': tokens.warningBorder,
       '--gl-page': tokens.pageBg,
       '--gl-page-soft': tokens.surfaceSoft,
       '--gl-surface': tokens.surface,
@@ -311,7 +320,18 @@ export const useAppNavigation = () => {
       '--gl-blue-2': tokens.accentHover || tokens.accentDeep || tokens.accent,
       '--gl-cyan': '#10b0d1',
       '--gl-green': tokens.success,
+      '--gl-amber': tokens.warning,
       '--gl-red': tokens.danger,
+      '--gl-accent-soft': tokens.accentSoft,
+      '--gl-accent-border': tokens.accentBorder,
+      '--gl-accent-ring': tokens.accentRing,
+      '--gl-accent-shadow': tokens.accentShadow,
+      '--gl-success-soft': tokens.successBg,
+      '--gl-success-border': tokens.successBorder,
+      '--gl-danger-soft': tokens.dangerBg,
+      '--gl-danger-border': tokens.dangerBorder,
+      '--gl-warning-soft': tokens.warningBg,
+      '--gl-warning-border': tokens.warningBorder,
       '--gl-shadow': tokens.shadow,
       '--gl-shadow-soft': tokens.shadowSoft,
       '--bg-page': tokens.pageBg,
@@ -485,6 +505,7 @@ export const useAppNavigation = () => {
       setSellerProfile(null);
       setUserLocation(null);
       setIsSellerOnboardingOpen(false);
+      setSelectedChatBookingId(null);
       setCurrentView('client-dashboard');
       setIsLoadingTransition(false);
     }
@@ -632,34 +653,43 @@ export const useAppNavigation = () => {
   };
 
   const handleBackToClientDashboard = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('client-dashboard');
   };
 
   const handleOpenAdminDashboard = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('admin-dashboard');
   };
 
   const handleOpenMyBookings = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('my-bookings');
   };
 
-  const handleOpenChatPage = () => {
+  const handleOpenChatPage = (bookingId = null) => {
+    const nextBookingId = bookingId && typeof bookingId === 'object' ? null : bookingId;
+    setSelectedChatBookingId(nextBookingId || null);
     setCurrentView('chat');
   };
 
   const handleOpenBrowseServices = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('browse-services');
   };
 
   const handleOpenMyWork = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('my-work');
   };
 
   const handleOpenProfile = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('profile');
   };
 
   const handleOpenAccountSettings = () => {
+    setSelectedChatBookingId(null);
     setCurrentView('account-settings');
   };
 
@@ -724,6 +754,7 @@ export const useAppNavigation = () => {
     authUser,
     currentView,
     previousView,
+    selectedChatBookingId,
     sellerProfile,
     userLocation,
     currentSearchQuery,

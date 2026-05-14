@@ -10,6 +10,7 @@ function WorkerDashboard({
   onLogout,
   onOpenSellerSetup,
   onOpenMyBookings,
+  onOpenChatPage,
   sellerProfile,
   onOpenMyWork,
   onOpenProfile,
@@ -31,11 +32,11 @@ function WorkerDashboard({
   const pricingModel = sellerProfile?.pricingModel === 'inquiry' ? 'Inquiry based' : `PHP ${fixedPrice}`;
 
   const styles = {
-    page: { minHeight: '100vh', backgroundColor: '#f8fafc' },
+    page: { minHeight: '100vh', backgroundColor: 'var(--gl-page)', color: 'var(--gl-text)' },
     main: { maxWidth: '1050px', margin: '0 auto', padding: '1rem' },
     card: {
-      backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
+      backgroundColor: 'var(--gl-surface)',
+      border: '1px solid var(--gl-border)',
       borderRadius: '8px',
       padding: '1rem',
       marginBottom: '1rem',
@@ -45,13 +46,13 @@ function WorkerDashboard({
       gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
       gap: '0.6rem',
       marginTop: '0.75rem',
-      color: '#334155',
+      color: 'var(--gl-text-2)',
     },
     actionButton: {
       border: 'none',
       borderRadius: '8px',
       padding: '0.65rem 0.95rem',
-      backgroundColor: '#2563eb',
+      backgroundColor: 'var(--gl-blue)',
       color: '#ffffff',
       fontWeight: 800,
       cursor: 'pointer',
@@ -71,6 +72,7 @@ function WorkerDashboard({
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}

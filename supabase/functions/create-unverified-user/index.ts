@@ -63,6 +63,11 @@ const fetchLiveDiditDecision = async (sessionId: string) => {
   return merged;
 };
 
+const isDiditAutoApproveEnabled = () => {
+  const value = cleanString(Deno.env.get("GIGLINK_DIDIT_AUTO_APPROVE") || Deno.env.get("DIDIT_AUTO_APPROVE"));
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+};
+
 const ensureSignupAuthUser = async (
   supabaseAdmin: any,
   { email, password, identityRole, appRole, fullName, identityStatus, diditSessionId, documentType, documentTypeKey }: Record<string, unknown>,
@@ -199,7 +204,8 @@ serve(async (req: Request) => {
       fullName,
     });
 
-    let finalIdentityStatus = resolvedStatus === "APPROVED" ? "APPROVED" : "PENDING_REVIEW";
+    const autoApproveDidit = isDiditAutoApproveEnabled();
+    let finalIdentityStatus = resolvedStatus === "APPROVED" || autoApproveDidit ? "APPROVED" : "PENDING_REVIEW";
     let duplicateIdentity = { hasDuplicate: false, matches: [] };
     if (documentFingerprint) {
       duplicateIdentity = await findDuplicateIdentityClaim(supabaseAdmin, {
@@ -207,7 +213,7 @@ serve(async (req: Request) => {
         role: identityRole,
         email,
       });
-      if (duplicateIdentity.hasDuplicate) finalIdentityStatus = "PENDING_REVIEW";
+      if (duplicateIdentity.hasDuplicate && !autoApproveDidit) finalIdentityStatus = "PENDING_REVIEW";
     }
 
     const authUser = await ensureSignupAuthUser(supabaseAdmin, {
@@ -303,7 +309,7 @@ serve(async (req: Request) => {
       success: true,
       user_id: authUser.id,
       didit_session_id: diditSessionId,
-      metadata: { identityRole, appRole, identityStatus: finalIdentityStatus },
+      metadata: { identityRole, appRole, identityStatus: finalIdentityStatus, autoApproveDidit },
     });
 
     return jsonResponse({
@@ -315,6 +321,7 @@ serve(async (req: Request) => {
       emailConfirmationDeferred: finalIdentityStatus !== "APPROVED",
       emailDelivery,
       manualReviewId: manualReview?.id || null,
+      autoApproved: autoApproveDidit,
       message: finalIdentityStatus === "APPROVED"
         ? "Identity approved. Confirm your email before logging in."
         : "Your account was created and is waiting for identity review.",
@@ -325,4 +332,3 @@ serve(async (req: Request) => {
     return jsonResponse({ success: false, error: message }, error instanceof RegistrationRateLimitError ? 429 : 200);
   }
 });
-

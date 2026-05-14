@@ -1,4 +1,5 @@
 const REGISTRATION_LOG_PREFIX = '[GigLink Registration]';
+const REGISTRATION_TERMINAL_LOG_ENDPOINT = '/__giglink_registration_log';
 
 const SENSITIVE_KEYS = new Set([
   'password',
@@ -109,8 +110,29 @@ export const getRegistrationFormLogSnapshot = (formData = {}) => {
 
 export const logRegistrationDebug = (eventName, details = {}, level = 'log') => {
   const consoleMethod = typeof console?.[level] === 'function' ? level : 'log';
-  console[consoleMethod](`${REGISTRATION_LOG_PREFIX} ${eventName}`, {
+  const payload = {
     timestamp: new Date().toISOString(),
     ...sanitizeRegistrationLogValue(details),
-  });
+  };
+
+  console[consoleMethod](`${REGISTRATION_LOG_PREFIX} ${eventName}`, payload);
+
+  if (
+    process.env.NODE_ENV === 'development'
+    && typeof fetch === 'function'
+    && typeof window !== 'undefined'
+  ) {
+    fetch(REGISTRATION_TERMINAL_LOG_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventName,
+        level: consoleMethod,
+        payload,
+      }),
+      keepalive: true,
+    }).catch(() => {
+      // Terminal forwarding is best-effort and should never affect signup.
+    });
+  }
 };

@@ -199,12 +199,12 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       width: 'min(95vw, 860px)',
       maxHeight: '92vh',
       overflowY: 'auto',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--gl-surface)',
       borderRadius: '8px',
       boxShadow: '0 20px 42px rgba(15, 23, 42, 0.28)',
       padding: '0.8rem',
       position: 'relative',
-      color: '#0f172a',
+      color: 'var(--gl-text)',
     },
     close: {
       position: 'absolute',
@@ -213,8 +213,9 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       width: '32px',
       height: '32px',
       borderRadius: '8px',
-      border: '1px solid #cbd5e1',
-      backgroundColor: '#ffffff',
+      border: '1px solid var(--gl-border-strong)',
+      backgroundColor: 'var(--gl-surface)',
+      color: 'var(--gl-text)',
       cursor: 'pointer',
     },
     title: { marginTop: '0.1rem', marginBottom: '0.6rem' },
@@ -223,24 +224,24 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       width: '36px',
       height: '36px',
       borderRadius: '8px',
-      border: '1px solid #cbd5e1',
-      backgroundColor: '#ffffff',
+      border: '1px solid var(--gl-border-strong)',
+      backgroundColor: 'var(--gl-surface)',
       cursor: 'pointer',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#334155',
+      color: 'var(--gl-text-2)',
       padding: 0,
     },
     monthHeading: { margin: 0 },
-    gridWrap: { marginTop: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' },
-    weekHeadings: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', backgroundColor: '#f8fafc' },
-    weekHeading: { padding: '0.35rem', fontWeight: 700, fontSize: '0.78rem', textAlign: 'center', color: '#334155' },
+    gridWrap: { marginTop: '0.5rem', border: '1px solid var(--gl-border)', borderRadius: '8px', overflow: 'hidden' },
+    weekHeadings: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', backgroundColor: 'var(--gl-surface-2)' },
+    weekHeading: { padding: '0.35rem', fontWeight: 700, fontSize: '0.78rem', textAlign: 'center', color: 'var(--gl-text-2)' },
     dateGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' },
     dayCell: {
       minHeight: '64px',
-      border: '1px solid #f1f5f9',
-      backgroundColor: '#ffffff',
+      border: '1px solid var(--gl-border)',
+      backgroundColor: 'var(--gl-surface)',
       cursor: 'pointer',
       display: 'flex',
       flexDirection: 'column',
@@ -249,16 +250,16 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       padding: '0.3rem',
     },
     dayNumber: { fontWeight: 700 },
-    daySlots: { fontSize: '0.72rem', color: '#334155' },
-    selectedDateLabel: { margin: '0.55rem 0', color: '#334155' },
-    note: { borderRadius: '8px', backgroundColor: '#eff6ff', color: '#1e3a8a', padding: '0.65rem 0.75rem' },
-    slotSection: { borderTop: '1px solid #e2e8f0', paddingTop: '0.55rem' },
-    helper: { color: '#64748b', margin: '0.3rem 0' },
+    daySlots: { fontSize: '0.72rem', color: 'var(--gl-text-2)' },
+    selectedDateLabel: { margin: '0.55rem 0', color: 'var(--gl-text-2)' },
+    note: { borderRadius: '8px', backgroundColor: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', padding: '0.65rem 0.75rem' },
+    slotSection: { borderTop: '1px solid var(--gl-border)', paddingTop: '0.55rem' },
+    helper: { color: 'var(--gl-text-3)', margin: '0.3rem 0' },
     slotGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.45rem', marginTop: '0.45rem' },
     slotButton: {
-      border: '1px solid #cbd5e1',
+      border: '1px solid var(--gl-border-strong)',
       borderRadius: '8px',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--gl-surface)',
       padding: '0.6rem',
       textAlign: 'left',
       cursor: 'pointer',
@@ -275,7 +276,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
       fontWeight: 700,
       color: '#ffffff',
       cursor: 'pointer',
-      backgroundColor: '#2563eb',
+      backgroundColor: 'var(--gl-blue)',
       position: 'sticky',
       bottom: 0,
       zIndex: 2,
@@ -293,14 +294,14 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
     },
     confirmContent: {
       width: 'min(92vw, 470px)',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--gl-surface)',
       borderRadius: '8px',
-      border: '1px solid #e2e8f0',
+      border: '1px solid var(--gl-border)',
       padding: '1rem',
     },
     confirmActions: { display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.8rem' },
-    cancelButton: { border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
-    submitButton: { border: 'none', borderRadius: '8px', backgroundColor: '#2563eb', color: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
+    cancelButton: { border: '1px solid var(--gl-border-strong)', borderRadius: '8px', backgroundColor: 'var(--gl-surface)', color: 'var(--gl-text)', padding: '0.5rem 0.8rem', cursor: 'pointer' },
+    submitButton: { border: 'none', borderRadius: '8px', backgroundColor: 'var(--gl-blue)', color: '#ffffff', padding: '0.5rem 0.8rem', cursor: 'pointer' },
   };
 
   return (
@@ -360,8 +361,8 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
                   key={dateValue}
                   style={{
                     ...styles.dayCell,
-                    ...(cell.isCurrentMonth ? {} : { backgroundColor: '#f8fafc', color: '#94a3b8' }),
-                    ...(isSelected ? { border: '1px solid #2563eb', backgroundColor: '#dbeafe' } : {}),
+                    ...(cell.isCurrentMonth ? {} : { backgroundColor: 'var(--gl-surface-2)', color: 'var(--gl-text-3)' }),
+                    ...(isSelected ? { border: '1px solid var(--gl-blue)', backgroundColor: 'var(--gl-accent-soft)' } : {}),
                     ...(isDisabled ? { cursor: 'not-allowed', opacity: 0.6 } : {}),
                   }}
                   disabled={isDisabled}
@@ -405,8 +406,8 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
                     key={block.id}
                     style={{
                       ...styles.slotButton,
-                      ...(isFull ? { backgroundColor: '#f1f5f9', color: '#94a3b8' } : { backgroundColor: '#ecfdf5', borderColor: '#86efac' }),
-                      ...(isSelected ? { borderColor: '#16a34a', boxShadow: 'inset 0 0 0 1px #16a34a' } : {}),
+                      ...(isFull ? { backgroundColor: 'var(--gl-surface-2)', color: 'var(--gl-text-3)' } : { backgroundColor: 'var(--gl-success-soft)', borderColor: 'var(--gl-success-border)' }),
+                      ...(isSelected ? { borderColor: 'var(--gl-green)', boxShadow: 'inset 0 0 0 1px var(--gl-green)' } : {}),
                     }}
                     disabled={isFull}
                     onClick={() => setSelectedBlockId(block.id)}
@@ -415,7 +416,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
                     <span>
                       {formatTime(block.startTime)} - {formatTime(block.endTime)} [{block.slotsLeft} slots left]
                     </span>
-                    {isSelected && <span style={{ color: '#15803d', fontWeight: 700 }}>- Selected</span>}
+                    {isSelected && <span style={{ color: 'var(--gl-green)', fontWeight: 700 }}>- Selected</span>}
                   </button>
                 );
               })}
@@ -426,7 +427,7 @@ function BookingCalendarModal({ isOpen, onClose, worker, schedule, onConfirmBook
         <button
           style={{
             ...styles.confirmButton,
-            ...(canOpenConfirm ? { backgroundColor: hoveredButton === 'confirm' ? '#1d4ed8' : '#2563eb' } : { backgroundColor: '#94a3b8', cursor: 'not-allowed' }),
+            ...(canOpenConfirm ? { backgroundColor: hoveredButton === 'confirm' ? 'var(--gl-blue-2)' : 'var(--gl-blue)' } : { backgroundColor: '#94a3b8', cursor: 'not-allowed' }),
           }}
           onClick={handleOpenConfirm}
           disabled={!canOpenConfirm}

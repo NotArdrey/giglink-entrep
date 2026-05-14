@@ -76,6 +76,7 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
   const [activeServiceIndex, setActiveServiceIndex] = useState(0);
   const [sellerData, setSellerData] = useState(null);
   const [workerProfileBundle, setWorkerProfileBundle] = useState(null);
+  const [sellerRatingAggregate, setSellerRatingAggregate] = useState(null);
   const [sellerDbServices, setSellerDbServices] = useState([]);
   const [isLoadingSellerData, setIsLoadingSellerData] = useState(true);
   const [sellerDataError, setSellerDataError] = useState(null);
@@ -142,6 +143,7 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
       setSellerData(result.sellerData);
       sellerDataRef.current = result.sellerData;
       setWorkerProfileBundle(result.workerProfileBundle);
+      setSellerRatingAggregate(result.sellerRatingAggregate || null);
       setSellerDbServices(resolvedServices);
       setWorkerServices(resolvedWorkerServices);
     } catch (error) {
@@ -355,6 +357,7 @@ export const useWorkProfileServices = ({ sellerProfile } = {}) => {
     sellerDataError,
     sellerDbServices,
     sellerId,
+    sellerRatingAggregate,
     sellerUiProfile,
     setActiveServiceIndex,
     setIsCreateServiceOpen,

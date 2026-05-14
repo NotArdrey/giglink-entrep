@@ -177,7 +177,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
       textTransform: 'capitalize',
     },
     badgeActive: { backgroundColor: themeTokens.successBg, color: themeTokens.successText, border: `1px solid ${themeTokens.successBorder}` },
-    badgeDisabled: { backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' },
+    badgeDisabled: { backgroundColor: themeTokens.dangerBg, color: themeTokens.danger, border: `1px solid ${themeTokens.dangerBorder}` },
     badgeAdmin: { backgroundColor: themeTokens.badgeBg, color: themeTokens.badgeText, border: `1px solid ${themeTokens.accent}` },
     rowActions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
     rowButton: {
@@ -220,8 +220,8 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
       width: 'fit-content',
     },
     severityLow: { backgroundColor: themeTokens.successBg, color: themeTokens.successText },
-    severityMedium: { backgroundColor: '#ffedd5', color: '#9a3412' },
-    severityHigh: { backgroundColor: '#fee2e2', color: '#b91c1b' },
+    severityMedium: { backgroundColor: themeTokens.warningBg, color: themeTokens.warning },
+    severityHigh: { backgroundColor: themeTokens.dangerBg, color: themeTokens.danger },
     commentList: { display: 'grid', gap: '12px' },
     commentCard: {
       border: `1px solid ${themeTokens.border}`,
@@ -275,7 +275,7 @@ function AdminDashboard({ appTheme = 'light', onLogout, onOpenDashboard }) {
       height,
       borderRadius: '12px 12px 4px 4px',
       background: color,
-      boxShadow: '0 10px 18px rgba(37, 99, 235, 0.12)',
+      boxShadow: themeTokens.accentShadow,
     }),
     summaryRow: {
       display: 'grid',

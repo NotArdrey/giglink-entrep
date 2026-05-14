@@ -236,12 +236,12 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
             ? 'Your account has been created, but access is held until identity review is approved.'
             : 'Your identity was approved. Check your inbox and confirm your email before logging in.',
         });
-        setStep('outcome');
+        onLogin?.();
         logRegistrationDebug('identity_page:didit_signup_outcome_ready', {
           result,
           normalizedStatus,
           pendingReview,
-          nextStep: 'outcome',
+          nextStep: 'login',
         });
         return;
       }
@@ -318,17 +318,20 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
     brand: {
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 8,
+      gap: 'var(--gl-brand-gap)',
       border: 0,
       background: 'transparent',
       color: 'var(--gl-blue)',
       fontWeight: 900,
-      fontSize: 22,
+      fontSize: 'var(--gl-brand-font-size)',
+      lineHeight: 1,
       cursor: 'pointer',
     },
     brandImg: {
-      width: 34,
-      height: 34,
+      width: 'var(--gl-brand-logo-size)',
+      height: 'var(--gl-brand-logo-size)',
+      objectFit: 'contain',
+      flex: '0 0 auto',
     },
     backButton: {
       minHeight: 42,
@@ -410,9 +413,9 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
       minHeight: 30,
       padding: '0 10px',
       borderRadius: 8,
-      border: '1px solid rgba(37, 99, 235, 0.24)',
+      border: '1px solid var(--gl-accent-border)',
       color: 'var(--gl-blue)',
-      background: 'rgba(37, 99, 235, 0.08)',
+      background: 'var(--gl-accent-soft)',
       fontWeight: 850,
       fontSize: 12,
       textTransform: 'uppercase',
@@ -501,8 +504,8 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
       gap: 9,
       padding: 12,
       borderRadius: 8,
-      border: kind === 'error' ? '1px solid rgba(220, 38, 38, 0.28)' : '1px solid rgba(37, 99, 235, 0.24)',
-      background: kind === 'error' ? 'rgba(220, 38, 38, 0.08)' : 'rgba(37, 99, 235, 0.08)',
+      border: kind === 'error' ? '1px solid var(--gl-danger-border)' : '1px solid var(--gl-accent-border)',
+      background: kind === 'error' ? 'var(--gl-danger-soft)' : 'var(--gl-accent-soft)',
       color: kind === 'error' ? 'var(--gl-red)' : 'var(--gl-blue)',
       fontSize: 13,
       lineHeight: 1.45,
@@ -557,8 +560,8 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
       gap: 12,
       padding: 28,
       borderRadius: 8,
-      border: kind === 'failed' ? '1px solid rgba(220, 38, 38, 0.28)' : '1px solid rgba(5, 150, 105, 0.28)',
-      background: kind === 'failed' ? 'rgba(220, 38, 38, 0.08)' : 'rgba(5, 150, 105, 0.08)',
+      border: kind === 'failed' ? '1px solid var(--gl-danger-border)' : '1px solid var(--gl-success-border)',
+      background: kind === 'failed' ? 'var(--gl-danger-soft)' : 'var(--gl-success-soft)',
       textAlign: 'center',
     }),
   };
@@ -806,13 +809,11 @@ function IdentityRegistrationPage({ onBack, onLogin }) {
               <div style={styles.statusPanel} data-testid="didit-session-panel">
                 <h3 style={{ margin: 0 }}>Continue in Didit</h3>
                 <p style={styles.subtitle}>
-                  Open the secure Didit verification page. When Didit redirects back, use the status check below to finish account creation.
+                  Open the secure Didit verification page. You will return to the login page when verification is done.
                 </p>
                 <div style={styles.buttonRow}>
                   <a
                     href={savedSession?.verificationUrl || '#'}
-                    target="_blank"
-                    rel="noreferrer"
                     style={styles.primaryButton}
                   >
                     <ExternalLink size={18} aria-hidden="true" />

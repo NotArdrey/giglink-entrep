@@ -94,7 +94,7 @@ function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
       border: 'none',
       cursor: 'pointer',
       transition: 'all 0.2s',
-      backgroundColor: hoveredButton === 'submit' ? '#1d4ed8' : '#2563eb',
+      backgroundColor: hoveredButton === 'submit' ? 'var(--gl-blue-2)' : 'var(--gl-blue)',
       color: '#ffffff',
     },
     secondaryButton: {
@@ -144,7 +144,7 @@ function ForgotPasswordModal({ isOpen, onClose, onSubmit, onBackToLogin }) {
     resetButton: {
       background: 'none',
       border: 'none',
-      color: hoveredButton === 'reset' ? '#1d4ed8' : '#2563eb',
+      color: hoveredButton === 'reset' ? 'var(--gl-blue-2)' : 'var(--gl-blue)',
       cursor: 'pointer',
       textDecoration: hoveredButton === 'reset' ? 'underline' : 'none',
       padding: 0,

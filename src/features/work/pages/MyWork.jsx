@@ -27,6 +27,12 @@ import {
 const formatDateLong = (date) =>
   date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
+const getInitials = (value = '') => {
+  const parts = String(value).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'GL';
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+};
+
 const normalizeRateBasis = (value) => {
   const raw = String(value || '').trim().toLowerCase().replace(/_/g, '-');
   if (raw === 'per-hour' || raw === 'hourly') return 'per-hour';
@@ -47,11 +53,12 @@ const classStyles = {
   'empty-state-banner': { background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fcd34d', borderRadius: '12px', padding: '40px 24px', textAlign: 'center', marginBottom: '32px' },
   'profile-summary-card': { background: 'white', borderRadius: '12px', padding: '28px', margin: '0 auto 32px', width: '100%', maxWidth: '1100px', boxSizing: 'border-box', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', alignItems: 'start' },
   'profile-info': { display: 'flex', gap: '20px', alignItems: 'flex-start' },
-  'profile-avatar': { width: '80px', height: '80px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 700, flexShrink: 0 },
+  'profile-avatar': { width: '80px', height: '80px', background: 'linear-gradient(135deg, var(--gl-blue), var(--gl-blue-2))', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 700, flexShrink: 0 },
+  'profile-avatar-image': { width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', display: 'block' },
   'profile-name-link': { border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer', fontSize: '24px', fontWeight: 700, color: '#2c3e50', margin: '0 0 4px 0' },
-  'service-type': { fontSize: '14px', color: '#2563eb', fontWeight: 600, margin: '0 0 8px 0' },
+  'service-type': { fontSize: '14px', color: 'var(--gl-blue)', fontWeight: 600, margin: '0 0 8px 0' },
   location: { fontSize: '14px', color: '#7f8c8d', margin: 0 },
-  'service-mode-tag': { margin: '8px 0 0', fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', display: 'inline-block', padding: '4px 8px', borderRadius: '999px' },
+  'service-mode-tag': { margin: '8px 0 0', fontSize: '12px', fontWeight: 700, color: 'var(--gl-blue)', background: 'var(--gl-accent-soft)', display: 'inline-block', padding: '4px 8px', borderRadius: '999px' },
   'profile-stats': { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
   'service-description-panel': { gridColumn: '1 / -1', borderTop: '1px solid #eceff1', paddingTop: '18px' },
   'service-description-title': { margin: '0 0 8px', fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' },
@@ -61,7 +68,7 @@ const classStyles = {
   'service-detail-label': { fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' },
   'service-detail-value': { fontSize: '13px', fontWeight: 700, color: '#1f2937' },
   stat: { textAlign: 'center', padding: '16px', background: '#f9f9f9', borderRadius: '8px' },
-  'stat-number': { display: 'block', fontSize: '24px', fontWeight: 700, color: '#2563eb', marginBottom: '4px' },
+  'stat-number': { display: 'block', fontSize: '24px', fontWeight: 700, color: 'var(--gl-blue)', marginBottom: '4px' },
   'stat-label': { display: 'block', fontSize: '12px', color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: '0.5px' },
   'inquiries-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 48px' },
   'section-header': { marginBottom: '24px' },
@@ -70,27 +77,28 @@ const classStyles = {
   'section-subtitle': { fontSize: '14px', color: '#7f8c8d', margin: 0 },
   'inquiries-grid': { width: '100%', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' },
   'inquiry-card': { width: '100%', boxSizing: 'border-box', background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)', transition: 'all 0.3s ease', border: '1px solid transparent' },
-  'inquiry-header': { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' },
-  'client-info': { display: 'flex', gap: '12px', flex: 1 },
-  'client-photo': { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 },
+  'inquiry-header': { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', marginBottom: '16px' },
+  'client-info': { display: 'flex', gap: '12px', flex: '1 1 auto', minWidth: 0, alignItems: 'center' },
+  'client-photo': { width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, overflow: 'hidden' },
+  'client-photo-fallback': { width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, var(--gl-blue), var(--gl-green))', color: '#ffffff', fontSize: '15px', fontWeight: 800, letterSpacing: 0, border: '1px solid rgba(255, 255, 255, 0.16)' },
   'client-rating': { fontSize: '12px', color: '#f59e0b', margin: '4px 0 0 0' },
   'status-badge': { display: 'inline-block', padding: '4px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' },
   'status-pending': { background: '#fef3c7', color: '#92400e' },
-  'status-waiting': { background: '#dbeafe', color: '#1e40af' },
+  'status-waiting': { background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)' },
   'status-negotiating': { background: '#fecdd3', color: '#831843' },
   'status-default': { background: '#e5e7eb', color: '#374151' },
   'inquiry-body': { marginBottom: '16px' },
-  'inquiry-service': { fontSize: '15px', fontWeight: 600, color: '#2563eb', margin: '0 0 8px 0' },
+  'inquiry-service': { fontSize: '15px', fontWeight: 600, color: 'var(--gl-blue)', margin: '0 0 8px 0' },
   'inquiry-description': { fontSize: '14px', color: '#555', margin: '0 0 12px 0', lineHeight: 1.5 },
   'inquiry-meta': { display: 'flex', gap: '16px', fontSize: '12px', color: '#7f8c8d' },
-  'inquiry-actions': { display: 'flex', gap: '8px' },
-  'btn-respond': { flex: 1, padding: '10px 16px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'inquiry-actions': { display: 'flex', justifyContent: 'flex-end', gap: '8px' },
+  'btn-respond': { minWidth: '116px', minHeight: '38px', padding: '9px 14px', background: 'var(--gl-blue)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', transition: 'transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '7px', boxShadow: 'var(--gl-accent-shadow)' },
   'schedule-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 48px' },
   'week-slider': { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '10px 12px', marginBottom: '16px' },
   'week-nav-btn': { border: '1px solid #cbd5e1', background: '#f8fafc', color: '#1f2937', borderRadius: '8px', padding: '8px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
   'week-range': { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', color: '#1f2937' },
   'schedule-state-message': { margin: '0 0 12px', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 700 },
-  'schedule-loading-state': { background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8' },
+  'schedule-loading-state': { background: 'var(--gl-accent-soft)', border: '1px solid var(--gl-accent-border)', color: 'var(--gl-blue)' },
   'schedule-error-state': { background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' },
   'calendar-availability-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' },
   'calendar-day-card': { background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '16px' },
@@ -100,37 +108,37 @@ const classStyles = {
   'calendar-bookings-list': { marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #d1d5db', display: 'grid', gap: '6px' },
   'schedule-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' },
   'schedule-day-card': { background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' },
-  'day-header': { fontSize: '18px', fontWeight: 700, color: '#2c3e50', margin: 0, paddingBottom: '12px', borderBottom: '2px solid #2563eb' },
+  'day-header': { fontSize: '18px', fontWeight: 700, color: '#2c3e50', margin: 0, paddingBottom: '12px', borderBottom: '2px solid var(--gl-blue)' },
   'day-date': { margin: '8px 0 12px', fontSize: '12px', color: '#64748b' },
   'no-slots': { fontSize: '14px', color: '#95a5a6', textAlign: 'center', padding: '20px 0', margin: 0 },
   'time-blocks': { display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' },
   'time-block': { padding: '16px', border: '1px solid #eceff1', borderRadius: '8px', background: '#f9f9f9', position: 'relative', transition: 'all 0.3s ease' },
-  'slot-available': { border: '1px solid #bfdbfe', background: '#eff6ff' },
+  'slot-available': { border: '1px solid var(--gl-accent-border)', background: 'var(--gl-accent-soft)' },
   'slot-half': { border: '1px solid #fef3c7', background: '#fffbeb' },
   'slot-full': { border: '1px solid #fecaca', background: '#fef2f2', opacity: 0.7 },
   'block-time': { fontSize: '15px', fontWeight: 700, color: '#2c3e50', marginBottom: '8px' },
   'block-status': { marginBottom: '8px' },
   'slots-counter': { display: 'block', fontSize: '12px', color: '#555', marginBottom: '4px' },
   'status-bar': { width: '100%', height: '6px', background: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' },
-  'filled-bar': { height: '100%', background: 'linear-gradient(90deg, #2563eb, #1d4ed8)', transition: 'width 0.3s ease' },
+  'filled-bar': { height: '100%', background: 'linear-gradient(90deg, var(--gl-blue), var(--gl-blue-2))', transition: 'width 0.3s ease' },
   'bookings-preview': { fontSize: '12px', color: '#555', margin: '8px 0', padding: '8px', background: 'rgba(0, 0, 0, 0.03)', borderRadius: '4px', display: 'grid', gap: '6px' },
   'booking-item': { padding: 0, margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', minHeight: '24px' },
   'booking-name': { fontWeight: 600, color: '#1f2937', fontSize: '12px', flexShrink: 0, minWidth: 'fit-content' },
   'booking-inline-actions': { display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 },
-  'recurring-cycle-pill': { display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: '999px', background: '#dbeafe', color: '#1e3a8a', fontSize: '11px', fontWeight: 700, height: '24px', whiteSpace: 'nowrap' },
+  'recurring-cycle-pill': { display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: '999px', background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', fontSize: '11px', fontWeight: 700, height: '24px', whiteSpace: 'nowrap' },
   'lock-hint': { fontSize: '11px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' },
   'booking-item-checks': { fontSize: '11px', color: '#374151', whiteSpace: 'nowrap' },
   'check-toggle': { display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', fontWeight: 600, color: '#374151' },
   compact: { fontSize: '11px', padding: 0, height: '24px', display: 'flex', alignItems: 'center', gap: '4px' },
-  'mark-done-btn': { border: 'none', background: '#27ae60', color: '#fff', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
+  'mark-done-btn': { border: 'none', background: 'var(--gl-green)', color: '#fff', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' },
   'done-pill': { display: 'inline-flex', alignItems: 'center', background: '#dcfce7', color: '#166534', border: '1px solid #86efac', borderRadius: '999px', padding: '4px 8px', fontSize: '11px', fontWeight: 700, height: '24px', whiteSpace: 'nowrap' },
   'block-actions': { display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' },
   'action-btn': { width: '28px', height: '28px', padding: 0, background: 'white', border: '1px solid #eceff1', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  'btn-add-slot': { width: '100%', padding: '10px', background: 'white', color: '#2563eb', border: '2px dashed #2563eb', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
+  'btn-add-slot': { width: '100%', padding: '10px', background: 'white', color: 'var(--gl-blue)', border: '2px dashed var(--gl-blue)', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.3s ease' },
   'section-add-slot-btn': { width: 'auto', minWidth: '148px', minHeight: '40px', padding: '9px 14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', whiteSpace: 'nowrap' },
   'stats-footer': { width: '100%', maxWidth: '1100px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', margin: '48px auto 0' },
   'stat-card': { background: 'white', borderRadius: '12px', padding: '24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' },
-  'stat-value': { fontSize: '32px', fontWeight: 700, color: '#2563eb', margin: '0 0 4px 0' },
+  'stat-value': { fontSize: '32px', fontWeight: 700, color: 'var(--gl-blue)', margin: '0 0 4px 0' },
   'stat-desc': { fontSize: '12px', color: '#95a5a6', margin: 0 },
   'done-confirm-overlay': { position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '14px' },
   'done-confirm-modal': { width: 'min(620px, 92vw)', background: '#ffffff', borderRadius: '12px', padding: '22px', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.25)' },
@@ -139,7 +147,7 @@ const classStyles = {
   'done-cancel-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#e5e7eb', color: '#111827' },
   'done-confirm-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#16a34a', color: '#fff' },
   'delete-confirm-btn': { border: 'none', borderRadius: '8px', minHeight: '44px', padding: '10px 14px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', background: '#dc2626', color: '#fff' },
-  'gcash-qr-btn': { border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  'gcash-qr-btn': { border: '1px solid var(--gl-accent-border)', background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
   'profile-gcash-btn': { marginTop: '8px' },
   'gcash-preview-modal': { width: 'min(520px, 92vw)' },
   'gcash-preview-body': { marginTop: '12px', display: 'flex', gap: '14px', alignItems: 'flex-start' },
@@ -155,14 +163,14 @@ const classStyles = {
   'payment-confirm-actions': { display: 'flex', gap: '8px', flexWrap: 'wrap' },
   'btn-approve-cash': { border: 'none', background: '#16a34a', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
   'btn-deny-cash': { border: 'none', background: '#dc2626', color: '#fff', borderRadius: '7px', padding: '8px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
-  'btn-gcash-preview': { border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px' },
+  'btn-gcash-preview': { border: '1px solid var(--gl-accent-border)', background: 'var(--gl-accent-soft)', color: 'var(--gl-blue)', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', height: '24px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: '8px' },
   'payment-qr-grid': { marginTop: '12px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px' },
   'payment-qr-item': { border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px', background: '#f8fafc', textAlign: 'center' },
   'payment-qr-title': { margin: '0 0 6px', fontSize: '13px', fontWeight: 700, color: '#1f2937' },
   'payment-qr-caption': { margin: '6px 0 0', fontSize: '12px', color: '#6b7280' },
   'section-filter-row': { display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '0 auto 18px', width: '100%', maxWidth: '1100px' },
   'section-filter-btn': { padding: '8px 12px', borderRadius: '999px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '12px', fontWeight: 700, cursor: 'pointer' },
-  'section-filter-btn-active': { background: '#1d4ed8', color: '#ffffff', borderColor: '#1d4ed8' },
+  'section-filter-btn-active': { background: 'var(--gl-blue)', color: '#ffffff', borderColor: 'var(--gl-blue)' },
   'refund-section': { width: '100%', maxWidth: '1100px', margin: '0 auto 40px' },
   'refund-grid': { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' },
   'refund-card': { background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '10px', padding: '14px', display: 'grid', gap: '8px' },
@@ -174,16 +182,16 @@ const classStyles = {
 };
 
 const hoverStyles = {
-  backButton: { background: '#f9f9f9', border: '1px solid #2563eb', color: '#2563eb' },
+  backButton: { background: 'var(--gl-surface-2)', border: '1px solid var(--gl-blue)', color: 'var(--gl-blue)' },
   logoutButton: { background: '#fee', border: '1px solid #e74c3c' },
-  profileName: { color: '#1d4ed8', textDecoration: 'underline' },
-  inquiryCard: { boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)', border: '1px solid #2563eb', transform: 'translateY(-2px)' },
-  respondButton: { background: '#1d4ed8', transform: 'translateY(-1px)' },
+  profileName: { color: 'var(--gl-blue)', textDecoration: 'underline' },
+  inquiryCard: { boxShadow: 'var(--gl-shadow-soft)', border: '1px solid var(--gl-blue)', transform: 'translateY(-2px)' },
+  respondButton: { background: 'var(--gl-blue-2)', transform: 'translateY(-1px)' },
   weekNav: { background: '#eef2ff', border: '1px solid #818cf8' },
-  gcashButton: { background: '#dbeafe', border: '1px solid #93c5fd' },
+  gcashButton: { background: 'var(--gl-accent-soft)', border: '1px solid var(--gl-accent-border)' },
   markDone: { background: '#219653' },
-  addSlot: { background: '#eff6ff', border: '2px dashed #1d4ed8', color: '#1d4ed8' },
-  editAction: { background: '#dbeafe', border: '1px solid #2563eb' },
+  addSlot: { background: 'var(--gl-accent-soft)', border: '2px dashed var(--gl-blue)', color: 'var(--gl-blue)' },
+  editAction: { background: 'var(--gl-accent-soft)', border: '1px solid var(--gl-blue)' },
   deleteAction: { background: '#fecaca', border: '1px solid #e74c3c' },
   deleteConfirm: { background: '#b91c1c' },
   approveCash: { background: '#15803d' },
@@ -204,7 +212,7 @@ const hoverStyles = {
  * inquiries: [{ id, clientName, service, status, requestDate }, ...]
  * schedules: { 'Mon': [...timeBlocks], 'Tue': [...], ... }
  */
-const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
+const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, currentView, searchQuery, onSearchChange, onLogout, onOpenSellerSetup, onOpenMyBookings, onOpenChatPage, sellerProfile, onOpenMyWork, onOpenProfile, onOpenAccountSettings, onOpenSettings, onOpenDashboard, onOpenBrowseServices, onBackToDashboard, onAddNewWork, onOpenAdminDashboard }) => {
   // ============ STATE MANAGEMENT ============
 
   const [selectedChatId, setSelectedChatId] = useState(null);
@@ -234,6 +242,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     sellerDataError,
     sellerDbServices,
     sellerId,
+    sellerRatingAggregate,
     setActiveServiceIndex,
     setIsCreateServiceOpen,
     setSellerDataError,
@@ -319,7 +328,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     .map((txn) => ({
       id: txn.sourceBookingId || txn.id,
       clientName: txn.clientName,
-      clientPhoto: '',
+      clientPhoto: txn.clientPhoto || txn.rawBooking?.clientPhoto || '',
       clientRating: null,
       service: txn.service,
       description: txn.rawBooking?.description || 'Service booking request',
@@ -565,8 +574,8 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
       color: themeTokens.textPrimary,
     },
     'empty-state-banner': {
-      background: isDarkMode ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.18), rgba(245, 158, 11, 0.12))' : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-      border: `1px solid ${isDarkMode ? 'rgba(245, 158, 11, 0.35)' : '#fcd34d'}`,
+      background: `linear-gradient(135deg, ${themeTokens.warningBg}, ${themeTokens.surfaceAlt})`,
+      border: `1px solid ${themeTokens.warningBorder}`,
     },
     'profile-summary-card': {
       background: themeTokens.surface,
@@ -630,13 +639,13 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     },
     'schedule-loading-state': {
       background: themeTokens.accentSoft,
-      border: `1px solid ${isDarkMode ? '#60a5fa' : '#bfdbfe'}`,
-      color: isDarkMode ? '#bfdbfe' : '#1d4ed8',
+      border: `1px solid ${themeTokens.accentBorder}`,
+      color: themeTokens.accent,
     },
     'schedule-error-state': {
-      background: isDarkMode ? 'rgba(220, 38, 38, 0.14)' : '#fef2f2',
-      border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.38)' : '#fecaca'}`,
-      color: isDarkMode ? '#fecaca' : '#b91c1c',
+      background: themeTokens.dangerBg,
+      border: `1px solid ${themeTokens.dangerBorder}`,
+      color: themeTokens.danger,
     },
     'inquiry-card': queueCardStyle,
     'inquiry-description': {
@@ -685,16 +694,16 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
       border: `1px solid ${themeTokens.border}`,
     },
     'slot-available': {
-      background: isDarkMode ? 'rgba(37, 99, 235, 0.12)' : '#eff6ff',
-      border: `1px solid ${isDarkMode ? 'rgba(96, 165, 250, 0.4)' : '#bfdbfe'}`,
+      background: themeTokens.accentSoft,
+      border: `1px solid ${themeTokens.accentBorder}`,
     },
     'slot-half': {
-      background: isDarkMode ? 'rgba(217, 119, 6, 0.14)' : '#fffbeb',
-      border: `1px solid ${isDarkMode ? 'rgba(251, 191, 36, 0.38)' : '#fef3c7'}`,
+      background: themeTokens.warningBg,
+      border: `1px solid ${themeTokens.warningBorder}`,
     },
     'slot-full': {
-      background: isDarkMode ? 'rgba(220, 38, 38, 0.14)' : '#fef2f2',
-      border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.36)' : '#fecaca'}`,
+      background: themeTokens.dangerBg,
+      border: `1px solid ${themeTokens.dangerBorder}`,
     },
     'block-time': {
       color: themeTokens.textPrimary,
@@ -720,7 +729,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     },
     'recurring-cycle-pill': {
       background: themeTokens.accentSoft,
-      color: isDarkMode ? '#bfdbfe' : '#1e3a8a',
+      color: themeTokens.accent,
     },
     'lock-hint': {
       color: themeTokens.textMuted,
@@ -760,26 +769,26 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     },
     'gcash-qr-btn': {
       background: themeTokens.accentSoft,
-      border: `1px solid ${isDarkMode ? '#60a5fa' : '#bfdbfe'}`,
-      color: isDarkMode ? '#bfdbfe' : '#1d4ed8',
+      border: `1px solid ${themeTokens.accentBorder}`,
+      color: themeTokens.accent,
     },
     'btn-gcash-preview': {
       background: themeTokens.accentSoft,
-      border: `1px solid ${isDarkMode ? '#60a5fa' : '#bfdbfe'}`,
-      color: isDarkMode ? '#bfdbfe' : '#1d4ed8',
+      border: `1px solid ${themeTokens.accentBorder}`,
+      color: themeTokens.accent,
     },
     'payment-confirm-card': queueCardStyle,
     'confirm-status-pending': {
-      background: isDarkMode ? 'rgba(249, 115, 22, 0.16)' : '#ffedd5',
-      color: isDarkMode ? '#fed7aa' : '#9a3412',
+      background: themeTokens.warningBg,
+      color: themeTokens.warning,
     },
     'confirm-status-approved': {
       background: isDarkMode ? 'rgba(22, 163, 74, 0.16)' : '#dcfce7',
       color: isDarkMode ? '#bbf7d0' : '#166534',
     },
     'confirm-status-denied': {
-      background: isDarkMode ? 'rgba(220, 38, 38, 0.16)' : '#fee2e2',
-      color: isDarkMode ? '#fecaca' : '#b91c1c',
+      background: themeTokens.dangerBg,
+      color: themeTokens.danger,
     },
     'payment-qr-item': queueCardStyle,
     'payment-qr-title': {
@@ -799,8 +808,8 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
       color: themeTokens.textPrimary,
     },
     'cancelled-card': {
-      background: isDarkMode ? 'rgba(220, 38, 38, 0.14)' : '#fef2f2',
-      border: `1px solid ${isDarkMode ? 'rgba(248, 113, 113, 0.38)' : '#fecaca'}`,
+      background: themeTokens.dangerBg,
+      border: `1px solid ${themeTokens.dangerBorder}`,
       color: themeTokens.textPrimary,
     },
   };
@@ -918,6 +927,9 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
     : currentProfile?.paymentAdvance
       ? 'Advance payment'
       : 'After service';
+  const avgRatingLabel = sellerRatingAggregate?.rating_count
+    ? Number(sellerRatingAggregate.avg_rating || 0).toFixed(2).replace(/\.00$/, '')
+    : '0';
   const normalizedSellerRole = String(sellerProfile?.role || '').trim().toLowerCase();
   const canShowAddServiceButton = normalizedSellerRole === 'worker';
   const cashQrId = currentProfile?.cashQrId || `CASHQR-${(currentProfile?.fullName || 'WORKER').replace(/\s+/g, '-').toUpperCase()}`;
@@ -1004,6 +1016,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
         onLogout={onLogout}
         onOpenSellerSetup={onOpenSellerSetup}
         onOpenMyBookings={onOpenMyBookings}
+        onOpenChatPage={onOpenChatPage}
         sellerProfile={sellerProfile}
         onOpenMyWork={onOpenMyWork}
         onOpenProfile={onOpenProfile}
@@ -1127,7 +1140,15 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
             <div style={sx('profile-summary-card')}>
               <div style={sx('profile-info')}>
                 <div style={sx('profile-avatar')}>
-                  {currentProfile?.fullName?.charAt(0) || '?'}
+                  {currentProfile?.profilePhoto ? (
+                    <img
+                      src={currentProfile.profilePhoto}
+                      alt={`${currentProfile?.fullName || 'Service provider'} profile`}
+                      style={sx('profile-avatar-image')}
+                    />
+                  ) : (
+                    currentProfile?.fullName?.charAt(0) || '?'
+                  )}
                 </div>
                 <div>
                   <button
@@ -1174,7 +1195,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                   <span style={sx('stat-label')}>Active Inquiries</span>
                 </div>
                 <div style={sx('stat')}>
-                  <span style={sx('stat-number')}>0</span>
+                  <span style={sx('stat-number')}>{avgRatingLabel}</span>
                   <span style={sx('stat-label')}>Avg Rating</span>
                 </div>
                 <div style={sx('stat')}>
@@ -1295,17 +1316,27 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                   >
                     <div style={sx('inquiry-header')}>
                       <div style={sx('client-info')}>
-                        <img
-                          src={inquiry.clientPhoto}
-                          alt={inquiry.clientName}
-                          style={sx('client-photo')}
-                        />
-                        <div>
+                        {inquiry.clientPhoto ? (
+                          <img
+                            src={inquiry.clientPhoto}
+                            alt={inquiry.clientName}
+                            style={sx('client-photo')}
+                          />
+                        ) : (
+                          <span style={sx('client-photo-fallback')} aria-hidden="true">
+                            {getInitials(inquiry.clientName)}
+                          </span>
+                        )}
+                        <div style={{ minWidth: 0 }}>
                           <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0, ...cardStrongTextStyle }}>{inquiry.clientName}</h3>
-                          <p style={sx('client-rating')} className="gl-inline-icon-line">
-                            <Star size={13} fill="currentColor" aria-hidden="true" />
-                            {inquiry.clientRating} rating
-                          </p>
+                          {inquiry.clientRating ? (
+                            <p style={sx('client-rating')} className="gl-inline-icon-line">
+                              <Star size={13} fill="currentColor" aria-hidden="true" />
+                              {inquiry.clientRating} rating
+                            </p>
+                          ) : (
+                            <p style={{ ...sx('client-rating'), color: themeTokens.textMuted }}>New client</p>
+                          )}
                         </div>
                       </div>
                       <span style={sx('status-badge', getStatusBadgeColor(inquiry.status))}>
@@ -1324,10 +1355,12 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                     
                     <div style={sx('inquiry-actions')}>
                       <button
+                        type="button"
                         style={{ ...sx('btn-respond'), ...(isHovered(`respond-${inquiry.id}`) ? hoverStyles.respondButton : {}) }}
                         onMouseEnter={() => setHoverKey(`respond-${inquiry.id}`)}
                         onMouseLeave={() => setHoverKey('')}
                         onClick={() => handleRespondClick(inquiry.id)}
+                        aria-label={`Respond to ${inquiry.clientName}`}
                       >
                         <MessageSquareText size={16} aria-hidden="true" />
                         Respond {inquiry.messages > 0 && `(${inquiry.messages})`}
@@ -1465,7 +1498,7 @@ const MyWork = ({ appTheme = 'light', themeMode = 'system', onThemeChange, curre
                               ...((txn.refundStatus === 'completed' || txn.refundStatus === 'approved')
                                 ? sx('confirm-status-approved')
                                 : txn.refundStatus === 'approved-awaiting-client-confirmation'
-                                  ? { background: isDarkMode ? 'rgba(59, 130, 246, 0.18)' : '#dbeafe', color: isDarkMode ? '#bfdbfe' : '#1d4ed8' }
+                                  ? { background: themeTokens.accentSoft, color: themeTokens.accent }
                                   : sx('confirm-status-pending')),
                             }}
                           >
